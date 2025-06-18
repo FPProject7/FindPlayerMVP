@@ -1,46 +1,58 @@
 // frontend/src/components/layout/BottomNavBar.jsx
 
 import React from 'react';
-import { IoHomeOutline, IoPodiumOutline, IoCalendarOutline } from 'react-icons/io5';
-import { LiaClipboardCheckSolid } from "react-icons/lia";
+import { NavLink } from 'react-router-dom'; // 1. Import NavLink instead of Link
+import { IoHomeOutline, IoHome, IoPodiumOutline, IoPodium, IoCalendarOutline, IoCalendar } from 'react-icons/io5';
+import { LiaClipboardCheckSolid, LiaClipboardSolid } from "react-icons/lia";
 import { FaPlus } from 'react-icons/fa';
 
-const BottomNavBar = () => {
-  const navItems = [
-    { icon: <IoHomeOutline size={36} />, label: 'Home' },
-    { icon: <LiaClipboardCheckSolid size={40} />, label: 'Challenges' },
-    { icon: <FaPlus size={24} />, isCenter: true },
-    { icon: <IoPodiumOutline size={36} />, label: 'Leaderboard' },
-    { icon: <IoCalendarOutline size={36} />, label: 'Events' },
-  ];
+// Import the SVG file
+import navBackground from '../../assets/nav-bg-responsive.svg';
 
-  return (
-    <nav className="nav-container">
-      {navItems.map((item, index) => {
-        if (item.isCenter) {
-          return (
-            <button key={index} className="nav-center-button">
-              {item.icon}
-            </button>
-          );
-        }
-        let buttonStyle = {};
-                if (item.label === 'Challenges') {
-                    // Pushes the challenges button slightly to the left
-                    buttonStyle = { paddingRight: '30px' };
+const BottomNavBar = () => {
+    const navContainerStyle = {
+        backgroundImage: `url(${navBackground})`,
+    };
+
+    // We now include the destination path for each link
+    // And provide both an active and inactive icon
+    const navItems = [
+        { to: "/", icon: <IoHomeOutline size={28} />, activeIcon: <IoHome size={28} />, label: 'Home' },
+        { to: "/challenges", icon: <LiaClipboardCheckSolid size={30} />, activeIcon: <LiaClipboardSolid size={30} />, label: 'Challenges' },
+        { to: "/upload", icon: <FaPlus size={24} />, label: 'Add', isCenter: true },
+        { to: "/leaderboard", icon: <IoPodiumOutline size={28} />, activeIcon: <IoPodium size={28} />, label: 'Leaderboard' },
+        { to: "/events", icon: <IoCalendarOutline size={28} />, activeIcon: <IoCalendar size={28} />, label: 'Events' },
+    ];
+
+    const navLinkStyle = ({ isActive }) => {
+        // This function returns a style object. If the NavLink is active, it sets the color to red.
+        return {
+            color: isActive ? '#dc2626' : '#6b7280', // Red for active, gray for inactive
+        };
+    };
+
+    return (
+        <nav className="nav-container" style={navContainerStyle}>
+            {navItems.map((item, index) => {
+                if (item.isCenter) {
+                    // The center button can be a regular Link or NavLink as well
+                    return (
+                        <NavLink key={index} to={item.to} className="nav-center-button" aria-label={item.label}>
+                            {item.icon}
+                        </NavLink>
+                    );
                 }
-                if (item.label === 'Leaderboard') {
-                    // Pushes the leaderboard button slightly to the right
-                    buttonStyle = { paddingLeft: '30px' };
-                }
-        return (
-            <button key={index} className="nav-button" style={buttonStyle}>
-              {item.icon}
-            </button>
-        );
-      })}
-    </nav>
-  );
+                return (
+                    <NavLink key={index} to={item.to} className="nav-button" style={navLinkStyle} aria-label={item.label}>
+                        {({ isActive }) => (
+                            // We now show a different icon based on whether the link is active
+                            isActive ? item.activeIcon : item.icon
+                        )}
+                    </NavLink>
+                );
+            })}
+        </nav>
+    );
 };
 
 export default BottomNavBar;
