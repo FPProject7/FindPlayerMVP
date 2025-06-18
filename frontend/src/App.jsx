@@ -20,7 +20,7 @@ function App() {
         {/* Add other main page routes here */}
       </Route>
 
-      {/* You can add routes that DON'T use the MainLayout here (e.g., Login/Sign-up pages) */}
+      {/* You can add routes that DON'T use the MainLayout here (Login/Sign-up pages) */}
       {/* <Route path="/login" element={<LoginPage />} /> */}
     </Routes>
   );
