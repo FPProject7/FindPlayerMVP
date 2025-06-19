@@ -45,7 +45,6 @@ const BottomNavBar = () => {
                 return (
                     <NavLink key={index} to={item.to} className="nav-button" style={navLinkStyle} aria-label={item.label}>
                         {({ isActive }) => (
-                            // We now show a different icon based on whether the link is active
                             isActive ? item.activeIcon : item.icon
                         )}
                     </NavLink>
