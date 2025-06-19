@@ -146,6 +146,15 @@
   color: #555;
 }
 
+.login-error {
+  color: #e74c3c;
+  font-size: 0.95rem;
+  margin: 0.25rem 0 0.5rem 0;
+  text-align: left;
+  width: 100%;
+  display: block;
+}
+
 .password-input-wrapper {
   position: relative;
   width: 100%;

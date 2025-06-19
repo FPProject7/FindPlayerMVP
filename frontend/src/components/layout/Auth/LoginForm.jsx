@@ -32,7 +32,7 @@ function LoginForm({ setIsAuthenticated }) {
       <div className="login-header">
         <img src={loginLogo} alt="FindPlayer Logo" className="login-logo" />
         <h1 className="login-title">FindPlayer</h1>
-        <p className="login-subtitle bold">Log Into your account</p>
+        <p className="login-subtitle bold">Log Into Your Account</p>
         <p className="login-subtitle">Enter your email to sign up to the MOVEMENT</p>
       </div>
 
