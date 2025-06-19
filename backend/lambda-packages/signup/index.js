@@ -1,6 +1,7 @@
 // backend/functions/signup.js
 
 import { CognitoIdentityProviderClient, SignUpCommand } from "@aws-sdk/client-cognito-identity-provider";
+import { createHmac } from 'crypto';
 
 const REGION = "us-east-1";
 const CLIENT_ID = "29ae68avp4t8mvcg30fr97j3o2";
