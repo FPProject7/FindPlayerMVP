@@ -4,8 +4,8 @@ import { handler } from '../functions/signup.js';
 
 const mockEvent = {
   body: JSON.stringify({
-    email: "new-test-athlete-2@findplayer.app",
-    password: "SecurePassword12Jad!",
+    email: "new-test-athlete-4@findplayer.app",
+    password: "New-Password123!",
     role: "Athlete",
     firstName: "Jad Test",
     gender: "Male",
