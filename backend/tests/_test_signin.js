@@ -1,6 +1,6 @@
 // backend/_test_signin.js
 
-import { handler } from './functions/signin.js';
+import { handler } from '../functions/signin.js';
 
 const mockEvent = {
   body: JSON.stringify({

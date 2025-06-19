@@ -11,6 +11,8 @@
   "description": "",
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.830.0",
+    "jsonwebtoken": "^9.0.2",
+    "jwk-to-pem": "^2.0.7",
     "mysql2": "^3.14.1"
   }
 }

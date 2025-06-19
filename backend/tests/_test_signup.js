@@ -1,18 +1,21 @@
-import { handler } from './functions/signup.js';
+// backend/_test_signup.js
 
-// This mock event simulates what API Gateway will send to your function.
-// The 'body' must be a JSON string.
+import { handler } from '../functions/signup.js';
+
 const mockEvent = {
   body: JSON.stringify({
-    email: "test@findplayer.app",
-    password: "SecurePassword123!",
+    email: "new-test-athlete-2@findplayer.app",
+    password: "SecurePassword12Jad!",
     role: "Athlete",
-    firstName: "Jad"
+    firstName: "Jad Test",
+    gender: "Male",
+    sport: "Basketball",
+    position: "Point Guard"
   })
 };
 
 const testSignup = async () => {
-  console.log("--- Testing Sign-Up Function ---");
+  console.log("--- Testing Full Sign-Up Function ---");
   try {
     const response = await handler(mockEvent);
     console.log("--- Cognito Response ---");
