@@ -7,6 +7,9 @@ import HomePage from './pages/HomePage';
 import ChallengesPage from './pages/ChallengesPage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import EventsPage from './pages/EventsPage';
+import LoginPage from './pages/Auth/LoginPage';
+import SignUpPage from './pages/Auth/SignUpPage';
+import ResetPasswordPage from './pages/Auth/ResetPasswordPage';
 
 function App() {
   return (
@@ -20,8 +23,11 @@ function App() {
         {/* Add other main page routes here */}
       </Route>
 
-      {/* You can add routes that DON'T use the MainLayout here (Login/Sign-up pages) */}
-      {/* <Route path="/login" element={<LoginPage />} /> */}
+      {/* Auth pages (without MainLayout) */}
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/signup" element={<SignUpPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+    
     </Routes>
   );
 }
