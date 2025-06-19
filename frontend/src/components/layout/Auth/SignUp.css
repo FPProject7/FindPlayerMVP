@@ -69,3 +69,12 @@
   font-weight: 600;
   cursor: pointer;
 }
+.login-highlight {
+  color: #dc2626;  /* or whatever color you want */
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.login-highlight:hover {
+  text-decoration: underline;  /* optional: add underline on hover if you like */
+}

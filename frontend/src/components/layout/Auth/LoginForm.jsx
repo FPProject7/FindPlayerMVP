@@ -5,6 +5,7 @@ import * as yup from 'yup';
 import SocialLoginButtons from './SocialLoginButtons';
 import './LoginForm.css';
 import loginLogo from '../../../assets/login-logo.jpg';
+import { Link } from 'react-router-dom';
 
 // Validation schema
 const schema = yup.object().shape({
@@ -12,7 +13,7 @@ const schema = yup.object().shape({
   password: yup.string().min(6, 'Password must be at least 6 characters').required('Password is required'),
 });
 
-function LoginForm() {
+function LoginForm({ setIsAuthenticated }) {
   const {
     register,
     handleSubmit,
@@ -35,32 +36,33 @@ function LoginForm() {
         <p className="login-subtitle">Enter your email to sign up to the MOVEMENT</p>
       </div>
 
-      <div>
-        <input
-          type="email"
-          placeholder="Email..."
-          className="login-input"
-          {...register('email')}
-        />
-        {errors.email && <p className="login-error">{errors.email.message}</p>}
-      </div>
+      <div className="input-group">
+  <input
+    type="email"
+    placeholder="Email..."
+    className="login-input"
+    {...register('email')}
+  />
+  {errors.email && <p className="login-error">{errors.email.message}</p>}
+</div>
 
-      <div>
-        <input
-          type="password"
-          placeholder="Password..."
-          className="login-input"
-          {...register('password')}
-        />
-        {errors.password && <p className="login-error">{errors.password.message}</p>}
-      </div>
+<div className="input-group">
+  <input
+    type="password"
+    placeholder="Password..."
+    className="login-input"
+    {...register('password')}
+  />
+  {errors.password && <p className="login-error">{errors.password.message}</p>}
+</div>
 
       <button type="submit" className="login-button">
         Continue
       </button>
 
       <div className="login-links center">
-        <a href="#" className="forgot">FORGOT YOUR PASSWORD?</a>
+        <Link to="/reset-password" className="forgot">FORGOT YOUR PASSWORD?</Link>
+     
       </div>
 
       <div className="login-or">
@@ -71,8 +73,9 @@ function LoginForm() {
 
       <div className="login-links center">
         <span>Don't Have An Account?</span>
-        <a href="#" className="signup">SIGN UP</a>
+        <Link to="/signup" className="signup">SIGN UP</Link>
       </div>
+      
 
       <SocialLoginButtons />
 

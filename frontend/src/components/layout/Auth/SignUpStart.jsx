@@ -1,6 +1,7 @@
 import React from 'react';
 import './SignUp.css';  // We'll add this CSS next
 import loginLogo from '../../../assets/login-logo.jpg';
+import { Link } from 'react-router-dom';
 
 function SignUpStart({ onSelectRole, onLogin }) {
   return (
@@ -21,8 +22,8 @@ function SignUpStart({ onSelectRole, onLogin }) {
       </select>
 
       <p className="login-link">
-        Already Have An Account? <span className="login-highlight" onClick={onLogin}>LOG IN</span>
-      </p>
+  Already Have An Account? <Link to="/login" className="login-highlight">LOG IN</Link>
+</p>
     </div>
   );
 }
