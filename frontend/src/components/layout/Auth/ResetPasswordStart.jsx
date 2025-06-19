@@ -4,7 +4,9 @@ import './SignUp.css';
 import loginLogo from '../../../assets/login-logo.jpg';
 
 function ResetPasswordStart({ onContinue }) {
-  const { register, handleSubmit, formState: { errors } } = useForm();
+  const { register, handleSubmit, watch, formState: { errors } } = useForm();
+  const email = watch('email');
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   const onSubmit = (data) => {
     console.log('Email submitted:', data);
@@ -13,7 +15,7 @@ function ResetPasswordStart({ onContinue }) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="form-box">
-       <img src={loginLogo} alt="FindPlayer Logo" className="login-logo" />
+      <img src={loginLogo} alt="FindPlayer Logo" className="login-logo" />
       <h1 className="login-title">FindPlayer</h1>
       <p className="login-subtitle">Enter your email</p>
 
@@ -21,7 +23,13 @@ function ResetPasswordStart({ onContinue }) {
         type="email"
         placeholder="Email..."
         className="login-input"
-        {...register('email', { required: 'Email is required' })}
+        {...register('email', {
+          required: 'Email is required',
+          pattern: {
+            value: emailPattern,
+            message: 'Invalid email address',
+          },
+        })}
       />
       {errors.email && <p className="login-error">{errors.email.message}</p>}
 
@@ -29,7 +37,10 @@ function ResetPasswordStart({ onContinue }) {
         type="email"
         placeholder="Verify Your Email..."
         className="login-input"
-        {...register('verifyEmail', { required: 'Please verify your email' })}
+        {...register('verifyEmail', {
+          required: 'Please verify your email',
+          validate: value => value === email || 'Emails do not match',
+        })}
       />
       {errors.verifyEmail && <p className="login-error">{errors.verifyEmail.message}</p>}
 
