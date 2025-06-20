@@ -7,6 +7,7 @@ import loginLogo from '../../../assets/login-logo.jpg';
 import api from '../../../api/axiosConfig';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../stores/useAuthStore';
+import LoadingDots from '../../common/LoadingDots'; // <--- Import LoadingDots
 
 const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
 
@@ -35,6 +36,7 @@ function AthleteSignUpForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [apiError, setApiError] = useState('');
   const [imageError, setImageError] = useState('');
+  const [isLoading, setIsLoading] = useState(false); // <--- New loading state
   const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
 
@@ -76,12 +78,14 @@ function AthleteSignUpForm() {
   const onSubmit = async (data) => {
     setApiError('');
     setImageError('');
+    setIsLoading(true); // <--- Set loading to true at the start of submission
 
     let profilePictureBase64 = null;
     let profilePictureContentType = null;
     if (selectedFile) {
       if (imageError) {
           console.log("Image validation error present, preventing submission.");
+          setIsLoading(false); // <--- Reset loading if validation error prevents processing
           return;
       }
 
@@ -102,6 +106,7 @@ function AthleteSignUpForm() {
 
     if (profilePictureBase64 === null && selectedFile) {
         setApiError('Failed to process profile picture. Please try another image.');
+        setIsLoading(false); // <--- Reset loading if file processing fails
         return;
     }
 
@@ -135,6 +140,8 @@ function AthleteSignUpForm() {
         err.message ||
         'Sign up failed. Please try again.'
       );
+    } finally {
+      setIsLoading(false); // <--- Set loading to false when submission finishes
     }
   };
 
@@ -169,7 +176,6 @@ function AthleteSignUpForm() {
           onChange={handleProfilePicChange}
         />
       </div>
-      {/* <--- MOVED IMAGE ERROR DISPLAY HERE (outside the profile-pic-upload div) */}
       {imageError && <p className="login-error image-upload-error">{imageError}</p>}
 
       <input
@@ -284,7 +290,9 @@ function AthleteSignUpForm() {
       {errors.password && <p className="login-error">{errors.password.message}</p>}
       {apiError && <p className="login-error">{apiError}</p>}
 
-      <button type="submit" className="login-button">Continue</button>
+      <button type="submit" className="login-button" disabled={isLoading}> {/* <--- Disable while loading */}
+        {isLoading ? <LoadingDots /> : 'Continue'} {/* <--- Use LoadingDots component */}
+      </button>
 
       <p className="login-terms">
         By clicking continue, you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.

@@ -4,14 +4,16 @@ import './SignUp.css';
 import loginLogo from '../../../assets/login-logo.jpg';
 import api from '../../../api/axiosConfig';
 import { useNavigate } from 'react-router-dom';
+import LoadingDots from '../../common/LoadingDots';
 
 function ResetPasswordSetNew({ email }) {
   const { register, handleSubmit, watch, formState: { errors } } = useForm();
-  const password = watch('password'); // Watch the first password field for validation
+  const password = watch('password');
   const [apiError, setApiError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [showPassword, setShowPassword] = useState(false); // State for first password visibility
-  const [showVerifyPassword, setShowVerifyPassword] = useState(false); // State for verify password visibility
+  const [showPassword, setShowPassword] = useState(false);
+  const [showVerifyPassword, setShowVerifyPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // <--- New loading state
   const navigate = useNavigate();
 
   const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
@@ -19,6 +21,7 @@ function ResetPasswordSetNew({ email }) {
   const onSubmit = async (data) => {
     setApiError('');
     setSuccessMessage('');
+    setIsLoading(true); // <--- Set loading to true at the start of submission
     console.log('Attempting to reset password for email:', email);
 
     try {
@@ -33,6 +36,7 @@ function ResetPasswordSetNew({ email }) {
 
       setTimeout(() => {
         navigate('/login');
+        setIsLoading(false); // <--- Reset loading here after navigation
       }, 2000);
 
     } catch (err) {
@@ -42,6 +46,12 @@ function ResetPasswordSetNew({ email }) {
         err.message ||
         'Failed to reset password. Please check code or try again.'
       );
+    } finally {
+      // If there's no setTimeout, this ensures isLoading is false immediately after API call.
+      // With setTimeout, it's handled inside the timeout block.
+      if (!successMessage) { // Only set false here if no success message (i.e., immediately on error)
+        setIsLoading(false);
+      }
     }
   };
 
@@ -133,7 +143,9 @@ function ResetPasswordSetNew({ email }) {
       {apiError && <p className="login-error">{apiError}</p>}
       {successMessage && <p className="login-success-message">{successMessage}</p>}
 
-      <button type="submit" className="login-button">Continue</button>
+      <button type="submit" className="login-button" disabled={isLoading}> {/* <--- Disable while loading */}
+        {isLoading ? <LoadingDots /> : 'Continue'} {/* <--- Use LoadingDots component */}
+      </button>
     </form>
   );
 }

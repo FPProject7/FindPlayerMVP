@@ -7,6 +7,7 @@ import loginLogo from '../../../assets/login-logo.jpg';
 import api from '../../../api/axiosConfig';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../stores/useAuthStore';
+import LoadingDots from '../../common/LoadingDots';
 
 const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
 
@@ -33,36 +34,34 @@ function CoachSignUpForm() {
   const [preview, setPreview] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [apiError, setApiError] = useState('');
-  const [imageError, setImageError] = useState(''); // <--- New state for image validation errors
+  const [imageError, setImageError] = useState('');
+  const [isLoading, setIsLoading] = useState(false); // <--- New loading state
   const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
 
   const handleProfilePicChange = (e) => {
-    setImageError(''); // Clear previous image errors
+    setImageError('');
     setPreview(null);
-    setSelectedFile(null); // Clear file selection if it fails validation
+    setSelectedFile(null);
 
     const file = e.target.files[0];
 
     if (!file) {
-      return; // No file selected
+      return;
     }
 
-    // 1. Validate File Type
     if (!ALLOWED_FILE_TYPES.includes(file.type)) {
       setImageError('Unsupported file type. Please use JPG, PNG, GIF, or WebP.');
-      e.target.value = null; // Clear input to allow re-selection of same file
+      e.target.value = null;
       return;
     }
 
-    // 2. Validate File Size
     if (file.size > MAX_FILE_SIZE_BYTES) {
       setImageError(`File size exceeds ${MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB. Please choose a smaller image.`);
-      e.target.value = null; // Clear input
+      e.target.value = null;
       return;
     }
 
-    // If validation passes
     setPreview(URL.createObjectURL(file));
     setSelectedFile(file);
   };
@@ -77,13 +76,15 @@ function CoachSignUpForm() {
 
   const onSubmit = async (data) => {
     setApiError('');
-    setImageError(''); // Ensure image error is cleared on submit attempt
+    setImageError('');
+    setIsLoading(true); // <--- Set loading to true at the start of submission
 
     let profilePictureBase64 = null;
-    let profilePictureContentType = null; // <--- New variable to send content type
+    let profilePictureContentType = null;
     if (selectedFile) {
       if (imageError) {
           console.log("Image validation error present, preventing submission.");
+          setIsLoading(false); // <--- Reset loading if validation error prevents processing
           return;
       }
 
@@ -102,12 +103,13 @@ function CoachSignUpForm() {
       }).catch(() => null);
 
       if (profilePictureBase64) {
-          profilePictureContentType = selectedFile.type; // Get content type from selected file
+          profilePictureContentType = selectedFile.type;
       }
     }
 
     if (profilePictureBase64 === null && selectedFile) {
         setApiError('Failed to process profile picture. Please try another image.');
+        setIsLoading(false); // <--- Reset loading if file processing fails
         return;
     }
 
@@ -119,7 +121,7 @@ function CoachSignUpForm() {
         email: data.email,
         password: data.password,
         profilePictureBase64: profilePictureBase64,
-        profilePictureContentType: profilePictureContentType, // <--- Add content type to payload
+        profilePictureContentType: profilePictureContentType,
         role: 'coach'
       };
 
@@ -145,6 +147,8 @@ function CoachSignUpForm() {
         err.message ||
         'Sign up failed. Please try again.'
       );
+    } finally {
+      setIsLoading(false); // <--- Set loading to false when submission finishes
     }
   };
 
@@ -177,12 +181,10 @@ function CoachSignUpForm() {
         <input
           id="coach-profile-pic-input"
           type="file"
-          // Removed accept="image/*" here, as validation is now handled in JS
           style={{ display: 'none' }}
           onChange={handleProfilePicChange}
         />
       </div>
-      {/* <--- MOVED IMAGE ERROR DISPLAY HERE (outside the profile-pic-upload div) */}
       {imageError && <p className="login-error image-upload-error">{imageError}</p>}
 
       <input
@@ -248,7 +250,9 @@ function CoachSignUpForm() {
       {errors.password && <p className="login-error">{errors.password.message}</p>}
       {apiError && <p className="login-error">{apiError}</p>}
 
-      <button type="submit" className="login-button">Continue</button>
+      <button type="submit" className="login-button" disabled={isLoading}> {/* <--- Disable while loading */}
+        {isLoading ? <LoadingDots /> : 'Continue'} {/* <--- Use LoadingDots component */}
+      </button>
 
       <p className="login-terms">
         By clicking continue, you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.

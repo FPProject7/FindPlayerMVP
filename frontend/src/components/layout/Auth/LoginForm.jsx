@@ -5,9 +5,10 @@ import * as yup from 'yup';
 import SocialLoginButtons from './SocialLoginButtons';
 import './LoginForm.css';
 import loginLogo from '../../../assets/login-logo.jpg';
-import { Link, useNavigate } from 'react-router-dom'; // <--- Added useNavigate
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../../../api/axiosConfig';
-import { useAuthStore } from '../../../stores/useAuthStore'; // <--- Import your auth store
+import { useAuthStore } from '../../../stores/useAuthStore';
+import LoadingDots from '../../common/LoadingDots';
 
 // Validation schema
 const schema = yup.object().shape({
@@ -18,8 +19,9 @@ const schema = yup.object().shape({
 function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [apiError, setApiError] = useState('');
-  const navigate = useNavigate(); // <--- Initialize useNavigate
-  const login = useAuthStore((state) => state.login); // <--- Get the login action from your store
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+  const login = useAuthStore((state) => state.login);
 
   const {
     register,
@@ -30,30 +32,25 @@ function LoginForm() {
   });
 
   const onSubmit = async (data) => {
-    setApiError(''); // Clear previous errors
+    setApiError('');
+    setIsLoading(true);
     try {
       const response = await api.post('/signin', {
         email: data.email,
         password: data.password,
       });
 
-      // --- IMPORTANT: Adjust these lines based on your actual backend response ---
-      // Assuming your backend returns data like: { idToken: '...', userProfile: { name: '...', email: '...' } }
       const { idToken, userProfile } = response.data;
 
-      // 1. Call your store's login action to save token and user info
-      login(userProfile, { IdToken: idToken }); // Ensure params match your useAuthStore.js `login` signature
+      login(userProfile, { IdToken: idToken });
 
-      // 2. Redirect to the main app page
-      navigate('/home'); // Or '/' or whatever your main authenticated route is
+      navigate('/home');
 
     } catch (err) {
-      // Improved error handling for common API responses
       const errorMessage = err.response?.data?.message || err.message || 'Login failed. Please check your credentials and try again.';
       setApiError(errorMessage);
     } finally {
-        // You might want to clear errors here if you have a separate "loading" state
-        // or if you want to ensure the error message disappears on subsequent attempts.
+      setIsLoading(false);
     }
   };
 
@@ -107,8 +104,8 @@ function LoginForm() {
       {errors.password && <p className="login-error">{errors.password.message}</p>}
       {apiError && <p className="login-error">{apiError}</p>}
 
-      <button type="submit" className="login-button">
-        Continue
+      <button type="submit" className="login-button" disabled={isLoading}>
+        {isLoading ? <LoadingDots /> : 'Continue'} {/* <--- Use LoadingDots component here */}
       </button>
 
       <div className="login-links center">
