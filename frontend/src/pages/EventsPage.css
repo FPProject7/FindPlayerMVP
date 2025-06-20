@@ -1,0 +1,32 @@
+/* frontend/src/pages/EventsPage.css */
+
+.events-page-container {
+  position: relative;
+  padding: 20px;
+  min-height: 100vh;
+  box-sizing: border-box;
+  background-color: #f9f9f9;
+  color: #333;
+}
+
+.sign-in-button {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  padding: 10px 15px;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: bold;
+  z-index: 10;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  transition: background-color 0.2s ease;
+}
+
+.sign-in-button:hover {
+  background-color: #c82333;
+}

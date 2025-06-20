@@ -4,13 +4,24 @@ import ResetPasswordSetNew from '../../components/layout/Auth/ResetPasswordSetNe
 
 function ResetPasswordPage() {
   const [step, setStep] = useState(1);
+  const [userEmail, setUserEmail] = useState('');
+
+  const handleContinueToSetNewPassword = (email) => {
+    setUserEmail(email);
+    setStep(2);
+  };
+
+  const handleGoBackToStart = () => {
+    setStep(1);
+    setUserEmail('');
+  };
 
   return (
-    <div>
+    <div className="reset-password-page-container form-wrapper"> {/* Add wrapper classes for styling */}
       {step === 1 ? (
-        <ResetPasswordStart onContinue={() => setStep(2)} />
+        <ResetPasswordStart onContinue={handleContinueToSetNewPassword} />
       ) : (
-        <ResetPasswordSetNew />
+        <ResetPasswordSetNew email={userEmail} onBack={handleGoBackToStart} />
       )}
     </div>
   );

@@ -2,7 +2,7 @@
 import { CognitoIdentityProviderClient, ConfirmForgotPasswordCommand } from "@aws-sdk/client-cognito-identity-provider";
 
 const REGION = "us-east-1";
-const CLIENT_ID = "29ae68avp4t8mvcg30fr97j3o2";
+const CLIENT_ID = "3bn5bf8c9ks2rpu9q7jkefhcni";
 
 const client = new CognitoIdentityProviderClient({ region: REGION });
 

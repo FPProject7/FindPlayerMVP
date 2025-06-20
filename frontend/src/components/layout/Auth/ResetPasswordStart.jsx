@@ -1,16 +1,43 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import './SignUp.css';
 import loginLogo from '../../../assets/login-logo.jpg';
+import api from '../../../api/axiosConfig';
+import LoadingDots from '../../common/LoadingDots';
 
 function ResetPasswordStart({ onContinue }) {
   const { register, handleSubmit, watch, formState: { errors } } = useForm();
   const email = watch('email');
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const [apiError, setApiError] = useState('');
+  const [isLoading, setIsLoading] = useState(false); // <--- New loading state
 
-  const onSubmit = (data) => {
-    console.log('Email submitted:', data);
-    onContinue();  // move to next step
+  const onSubmit = async (data) => {
+    setApiError('');
+    setIsLoading(true); // <--- Set loading to true at the start of submission
+    console.log('Attempting to send reset code for email:', data.email);
+
+    try {
+      const response = await api.post('/forgot-password', {
+        email: data.email,
+      });
+
+      console.log('Reset code request successful:', response.data);
+      // alert('Verification code sent to your email!'); // REMOVED THIS LINE previously
+
+      // Proceed to the next step, passing the email
+      onContinue(data.email);
+
+    } catch (err) {
+      console.error('Error requesting reset code:', err);
+      setApiError(
+        err.response?.data?.message ||
+        err.message ||
+        'Failed to send verification code. Please check your email or try again.'
+      );
+    } finally {
+      setIsLoading(false); // <--- Set loading to false when submission finishes
+    }
   };
 
   return (
@@ -44,7 +71,11 @@ function ResetPasswordStart({ onContinue }) {
       />
       {errors.verifyEmail && <p className="login-error">{errors.verifyEmail.message}</p>}
 
-      <button type="submit" className="login-button">Continue</button>
+      {apiError && <p className="login-error">{apiError}</p>}
+
+      <button type="submit" className="login-button" disabled={isLoading}> {/* <--- Disable while loading */}
+        {isLoading ? <LoadingDots /> : 'Continue'} {/* <--- Use LoadingDots component */}
+      </button>
     </form>
   );
 }

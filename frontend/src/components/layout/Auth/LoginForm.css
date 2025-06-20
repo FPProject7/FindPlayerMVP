@@ -66,6 +66,44 @@ width: 60px;      /* or whatever size looks good */
   text-align: left;  /* force content to align left inside this block */
 }
 
+.input-group {
+  position: relative;
+  width: 100%;
+}
+
+.login-input {
+  width: 100%;
+  padding: 0.75rem 2.5rem 0.75rem 0.75rem; /* right padding for the icon */
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+.show-password-btn {
+  position: absolute;
+  top: 50%;
+  right: 1rem;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  color: #888;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 1.5rem;
+  width: 1.5rem;
+}
+
+.show-password-btn:focus {
+  outline: none;
+  color: #007bff;
+}
+
 .input-wrapper {
   width: 100%;
   text-align: left;

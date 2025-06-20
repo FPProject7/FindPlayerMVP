@@ -4,11 +4,18 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import './SignUp.css';
 import loginLogo from '../../../assets/login-logo.jpg';
+import api from '../../../api/axiosConfig';
+import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../../../stores/useAuthStore';
+import LoadingDots from '../../common/LoadingDots'; // <--- Import LoadingDots
 
 const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
 
+const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB
+
 const schema = yup.object().shape({
-  fullName: yup.string().required('Full name is required'),
+  firstName: yup.string().required('Full name is required'),
   gender: yup.string().required('Gender is required'),
   sport: yup.string().required('Sport is required'),
   position: yup.string().required('Position is required'),
@@ -25,15 +32,39 @@ const schema = yup.object().shape({
 function AthleteSignUpForm() {
   const [selectedSport, setSelectedSport] = useState('');
   const [preview, setPreview] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [apiError, setApiError] = useState('');
+  const [imageError, setImageError] = useState('');
+  const [isLoading, setIsLoading] = useState(false); // <--- New loading state
+  const navigate = useNavigate();
+  const login = useAuthStore((state) => state.login);
 
   const handleProfilePicChange = (e) => {
+    setImageError('');
+    setPreview(null);
+    setSelectedFile(null);
+
     const file = e.target.files[0];
-    if (file) {
-      setPreview(URL.createObjectURL(file));
-    } else {
-      setPreview(null);
+
+    if (!file) {
+      return;
     }
+
+    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+      setImageError('Unsupported file type. Please use JPG, PNG, GIF, or WebP.');
+      e.target.value = null;
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      setImageError(`File size exceeds ${MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB. Please choose a smaller image.`);
+      e.target.value = null;
+      return;
+    }
+
+    setPreview(URL.createObjectURL(file));
+    setSelectedFile(file);
   };
 
   const {
@@ -44,9 +75,74 @@ function AthleteSignUpForm() {
     resolver: yupResolver(schema),
   });
 
-  const onSubmit = (data) => {
-    console.log('Athlete signup:', data);
-    alert('Signed up as athlete (just testing)!');
+  const onSubmit = async (data) => {
+    setApiError('');
+    setImageError('');
+    setIsLoading(true); // <--- Set loading to true at the start of submission
+
+    let profilePictureBase64 = null;
+    let profilePictureContentType = null;
+    if (selectedFile) {
+      if (imageError) {
+          console.log("Image validation error present, preventing submission.");
+          setIsLoading(false); // <--- Reset loading if validation error prevents processing
+          return;
+      }
+
+      const reader = new FileReader();
+      reader.readAsDataURL(selectedFile);
+
+      profilePictureBase64 = await new Promise((resolve, reject) => {
+        reader.onloadend = () => {
+          resolve(reader.result.split(',')[1]);
+        };
+        reader.onerror = (error) => {
+          console.error("FileReader error:", error);
+          setApiError('Failed to read profile picture file.');
+          reject(error);
+        };
+      }).catch(() => null);
+    }
+
+    if (profilePictureBase64 === null && selectedFile) {
+        setApiError('Failed to process profile picture. Please try another image.');
+        setIsLoading(false); // <--- Reset loading if file processing fails
+        return;
+    }
+
+    try {
+      const payload = {
+        ...data,
+        profilePictureBase64: profilePictureBase64,
+        profilePictureContentType: profilePictureContentType,
+        role: 'athlete'
+      };
+
+      const response = await api.post('/signup', payload);
+
+      console.log('Athlete signup successful:', response.data);
+
+      const { idToken, accessToken, refreshToken, userProfile } = response.data;
+
+      login(userProfile, {
+        IdToken: idToken,
+        AccessToken: accessToken,
+        RefreshToken: refreshToken
+      });
+
+      console.log('User auto-logged in. Redirecting to home...');
+      navigate('/home');
+
+    } catch (err) {
+      console.error('Athlete signup error:', err);
+      setApiError(
+        err.response?.data?.message ||
+        err.message ||
+        'Sign up failed. Please try again.'
+      );
+    } finally {
+      setIsLoading(false); // <--- Set loading to false when submission finishes
+    }
   };
 
   return (
@@ -54,7 +150,7 @@ function AthleteSignUpForm() {
       <button
         type="button"
         className="back-button"
-        onClick={() => window.location.reload()}
+        onClick={() => window.history.back()}
       >
         ← Back
       </button>
@@ -76,19 +172,19 @@ function AthleteSignUpForm() {
         <input
           id="profile-pic-input"
           type="file"
-          accept="image/*"
           style={{ display: 'none' }}
           onChange={handleProfilePicChange}
         />
       </div>
+      {imageError && <p className="login-error image-upload-error">{imageError}</p>}
 
       <input
         type="text"
         placeholder="Full Name..."
         className="login-input"
-        {...register('fullName')}
+        {...register('firstName')}
       />
-      {errors.fullName && <p className="login-error">{errors.fullName.message}</p>}
+      {errors.firstName && <p className="login-error">{errors.firstName.message}</p>}
 
       <select
         className="login-input"
@@ -192,8 +288,11 @@ function AthleteSignUpForm() {
         </button>
       </div>
       {errors.password && <p className="login-error">{errors.password.message}</p>}
+      {apiError && <p className="login-error">{apiError}</p>}
 
-      <button type="submit" className="login-button">Continue</button>
+      <button type="submit" className="login-button" disabled={isLoading}> {/* <--- Disable while loading */}
+        {isLoading ? <LoadingDots /> : 'Continue'} {/* <--- Use LoadingDots component */}
+      </button>
 
       <p className="login-terms">
         By clicking continue, you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
