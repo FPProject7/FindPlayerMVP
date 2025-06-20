@@ -4,6 +4,11 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import './SignUp.css';
 import loginLogo from '../../../assets/login-logo.jpg';
+import api from '../../../api/axiosConfig';
+import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../../../stores/useAuthStore';
+
+const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
 
 const schema = yup.object().shape({
   fullName: yup.string().required('Full name is required'),
@@ -13,17 +18,30 @@ const schema = yup.object().shape({
   password: yup
     .string()
     .required('Password is required')
-    .min(8, 'Password must be at least 8 characters')
-    .matches(/[A-Z]/, 'Password must contain at least one uppercase letter')
-    .matches(/[a-z]/, 'Password must contain at least one lowercase letter')
-    .matches(/[0-9]/, 'Password must contain at least one number')
-    .matches(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
+    .matches(
+      passwordPattern,
+      'Password must be at least 8 characters, include uppercase, lowercase, number, and special character'
+    ),
 });
 
-function ScoutSignUpForm({ onBack }) {
-  const [profilePic, setProfilePic] = useState(null);
+function ScoutSignUpForm() {
+  const [selectedFile, setSelectedFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [apiError, setApiError] = useState('');
+  const navigate = useNavigate();
+  const login = useAuthStore((state) => state.login);
+
+  const handleProfilePicChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setPreview(URL.createObjectURL(file));
+      setSelectedFile(file);
+    } else {
+      setPreview(null);
+      setSelectedFile(null);
+    }
+  };
 
   const {
     register,
@@ -33,25 +51,76 @@ function ScoutSignUpForm({ onBack }) {
     resolver: yupResolver(schema),
   });
 
-  const handleProfilePicChange = (e) => {
-    const file = e.target.files[0];
-    setProfilePic(file);
-    if (file) {
-      setPreview(URL.createObjectURL(file));
-    } else {
-      setPreview(null);
-    }
-  };
+  const onSubmit = async (data) => {
+    setApiError('');
 
-  const onSubmit = (data) => {
-    // You may want to include profilePic in your form submission
-    console.log('Scout signup:', { ...data, profilePic });
-    alert('Signed up as scout (just testing)!');
+    let profilePictureBase64 = null;
+    if (selectedFile) {
+      const reader = new FileReader();
+      reader.readAsDataURL(selectedFile);
+
+      profilePictureBase64 = await new Promise((resolve, reject) => {
+        reader.onloadend = () => {
+          resolve(reader.result.split(',')[1]);
+        };
+        reader.onerror = (error) => {
+          console.error("FileReader error:", error);
+          setApiError('Failed to read profile picture file.');
+          reject(error);
+        };
+      }).catch(() => null);
+    }
+
+    if (profilePictureBase64 === null && selectedFile) {
+        console.log("Submission stopped: Profile picture conversion failed.");
+        return;
+    }
+
+    try {
+      // <--- Explicitly construct payload fields to match backend
+      const payload = {
+        email: data.email,
+        password: data.password,
+        firstName: data.fullName, // Mapping frontend 'fullName' to backend 'firstName'
+        gender: data.gender,
+        sport: data.expertise, // Mapping frontend 'expertise' to backend 'sport'
+        // position: data.position, // Include if applicable for Scout/Coach, otherwise omit
+        profilePictureBase64: profilePictureBase64,
+        role: 'Scout', // <--- Changed to 'Scout' (capital S) for consistency
+      };
+
+      const response = await api.post('/signup', payload);
+
+      console.log('Scout signup successful:', response.data);
+
+      const { idToken, accessToken, refreshToken, userProfile } = response.data;
+
+      login(userProfile, {
+        IdToken: idToken,
+        AccessToken: accessToken,
+        RefreshToken: refreshToken
+      });
+
+      console.log('Auto-login successful. Redirecting to home...');
+      navigate('/home');
+
+    } catch (err) {
+      console.error('Scout signup error:', err);
+      setApiError(
+        err.response?.data?.message ||
+        err.message ||
+        'Sign up failed. Please try again.'
+      );
+    }
   };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="form-box">
-      <button type="button" className="back-button" onClick={onBack}>
+      <button
+        type="button"
+        className="back-button"
+        onClick={() => window.history.back()}
+      >
         ← Back
       </button>
 
@@ -142,10 +211,14 @@ function ScoutSignUpForm({ onBack }) {
       </div>
       {errors.password && <p className="login-error">{errors.password.message}</p>}
 
-      <button type="submit" className="login-button">Continue</button>
+      {apiError && <p className="login-error api-error">{apiError}</p>}
 
-      <p className="login-terms">
-        By clicking continue, you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
+      <button type="submit" className="login-button">
+        Sign Up
+      </button>
+
+      <p className="login-footer-text">
+        Already have an account? <a href="/login" className="login-footer-link">Log in</a>
       </p>
     </form>
   );

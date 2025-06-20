@@ -4,11 +4,14 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import './SignUp.css';
 import loginLogo from '../../../assets/login-logo.jpg';
+import api from '../../../api/axiosConfig';
+import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../../../stores/useAuthStore'; // <--- IMPORT useAuthStore
 
 const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
 
 const schema = yup.object().shape({
-  fullName: yup.string().required('Full name is required'),
+  firstName: yup.string().required('Full name is required'),
   gender: yup.string().required('Gender is required'),
   sport: yup.string().required('Sport is required'),
   position: yup.string().required('Position is required'),
@@ -25,14 +28,20 @@ const schema = yup.object().shape({
 function AthleteSignUpForm() {
   const [selectedSport, setSelectedSport] = useState('');
   const [preview, setPreview] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [apiError, setApiError] = useState('');
+  const navigate = useNavigate();
+  const login = useAuthStore((state) => state.login); // <--- GET login action from store
 
   const handleProfilePicChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       setPreview(URL.createObjectURL(file));
+      setSelectedFile(file);
     } else {
       setPreview(null);
+      setSelectedFile(null);
     }
   };
 
@@ -44,9 +53,64 @@ function AthleteSignUpForm() {
     resolver: yupResolver(schema),
   });
 
-  const onSubmit = (data) => {
-    console.log('Athlete signup:', data);
-    alert('Signed up as athlete (just testing)!');
+  const onSubmit = async (data) => {
+    setApiError('');
+
+    let profilePictureBase64 = null;
+    if (selectedFile) {
+      const reader = new FileReader();
+      reader.readAsDataURL(selectedFile);
+      profilePictureBase64 = await new Promise((resolve, reject) => {
+        reader.onloadend = () => {
+          resolve(reader.result.split(',')[1]);
+        };
+        reader.onerror = (error) => {
+          setApiError('Failed to read profile picture file.');
+          reject(error);
+        };
+      }).catch(() => null);
+    }
+
+    if (profilePictureBase64 === null && selectedFile) {
+        return;
+    }
+
+    try {
+      const payload = {
+        ...data,
+        profilePictureBase64: profilePictureBase64,
+        role: 'athlete'
+      };
+
+      // Make the API call to your backend signup endpoint
+      const response = await api.post('/signup', payload);
+
+      console.log('Athlete signup successful:', response.data);
+
+      // --- NEW LOGIC: Use backend's response to log in user ---
+      const { idToken, accessToken, refreshToken, userProfile } = response.data; // Destructure all received data
+
+      // Call the login action from your auth store
+      // Pass userProfile and an object containing IdToken, AccessToken, RefreshToken
+      login(userProfile, {
+        IdToken: idToken,
+        AccessToken: accessToken,
+        RefreshToken: refreshToken
+      });
+
+      console.log('User auto-logged in. Redirecting to home...');
+      // Redirect to the home screen after successful signup and auto-login
+      navigate('/home');
+      // --- END NEW LOGIC ---
+
+    } catch (err) {
+      console.error('Athlete signup error:', err);
+      setApiError(
+        err.response?.data?.message ||
+        err.message ||
+        'Sign up failed. Please try again.'
+      );
+    }
   };
 
   return (
@@ -54,7 +118,7 @@ function AthleteSignUpForm() {
       <button
         type="button"
         className="back-button"
-        onClick={() => window.location.reload()}
+        onClick={() => window.history.back()}
       >
         ← Back
       </button>
@@ -86,9 +150,9 @@ function AthleteSignUpForm() {
         type="text"
         placeholder="Full Name..."
         className="login-input"
-        {...register('fullName')}
+        {...register('firstName')}
       />
-      {errors.fullName && <p className="login-error">{errors.fullName.message}</p>}
+      {errors.firstName && <p className="login-error">{errors.firstName.message}</p>}
 
       <select
         className="login-input"
@@ -192,6 +256,7 @@ function AthleteSignUpForm() {
         </button>
       </div>
       {errors.password && <p className="login-error">{errors.password.message}</p>}
+      {apiError && <p className="login-error">{apiError}</p>}
 
       <button type="submit" className="login-button">Continue</button>
 

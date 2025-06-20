@@ -4,6 +4,11 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import './SignUp.css';
 import loginLogo from '../../../assets/login-logo.jpg';
+import api from '../../../api/axiosConfig';
+import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../../../stores/useAuthStore';
+
+const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
 
 const schema = yup.object().shape({
   fullName: yup.string().required('Full name is required'),
@@ -13,17 +18,30 @@ const schema = yup.object().shape({
   password: yup
     .string()
     .required('Password is required')
-    .min(8, 'Password must be at least 8 characters')
-    .matches(/[A-Z]/, 'Password must contain at least one uppercase letter')
-    .matches(/[a-z]/, 'Password must contain at least one lowercase letter')
-    .matches(/[0-9]/, 'Password must contain at least one number')
-    .matches(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
+    .matches(
+      passwordPattern,
+      'Password must be at least 8 characters, include uppercase, lowercase, number, and special character'
+    ),
 });
 
-function CoachSignUpForm({ onBack }) {
-  const [profilePic, setProfilePic] = useState(null);
+function CoachSignUpForm() {
+  const [selectedFile, setSelectedFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [apiError, setApiError] = useState('');
+  const navigate = useNavigate();
+  const login = useAuthStore((state) => state.login);
+
+  const handleProfilePicChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setPreview(URL.createObjectURL(file));
+      setSelectedFile(file);
+    } else {
+      setPreview(null);
+      setSelectedFile(null);
+    }
+  };
 
   const {
     register,
@@ -33,25 +51,71 @@ function CoachSignUpForm({ onBack }) {
     resolver: yupResolver(schema),
   });
 
-  const handleProfilePicChange = (e) => {
-    const file = e.target.files[0];
-    setProfilePic(file);
-    if (file) {
-      setPreview(URL.createObjectURL(file));
-    } else {
-      setPreview(null);
-    }
-  };
+  const onSubmit = async (data) => {
+    setApiError('');
 
-  const onSubmit = (data) => {
-    // You may want to include profilePic in your form submission
-    console.log('Coach signup:', { ...data, profilePic });
-    alert('Signed up as coach (just testing)!');
+    let profilePictureBase64 = null;
+    if (selectedFile) {
+      const reader = new FileReader();
+      reader.readAsDataURL(selectedFile);
+      profilePictureBase64 = await new Promise((resolve, reject) => {
+        reader.onloadend = () => {
+          resolve(reader.result.split(',')[1]);
+        };
+        reader.onerror = (error) => {
+          setApiError('Failed to read profile picture file.');
+          reject(error);
+        };
+      }).catch(() => null);
+    }
+
+    if (profilePictureBase64 === null && selectedFile) {
+        return;
+    }
+
+    try {
+      const payload = {
+        firstName: data.fullName, // <--- Keep this mapping for backend
+        gender: data.gender,
+        sport: data.expertise,
+        email: data.email,
+        password: data.password,
+        profilePictureBase64: profilePictureBase64,
+        role: 'coach'
+      };
+
+      const response = await api.post('/signup', payload);
+
+      console.log('Coach signup successful:', response.data);
+
+      const { idToken, accessToken, refreshToken, userProfile } = response.data;
+
+      login(userProfile, {
+        IdToken: idToken,
+        AccessToken: accessToken,
+        RefreshToken: refreshToken
+      });
+
+      console.log('Auto-login successful. Redirecting to home...');
+      navigate('/home');
+
+    } catch (err) {
+      console.error('Coach signup error:', err);
+      setApiError(
+        err.response?.data?.message ||
+        err.message ||
+        'Sign up failed. Please try again.'
+      );
+    }
   };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="form-box">
-      <button type="button" className="back-button" onClick={onBack}>
+      <button
+        type="button"
+        className="back-button"
+        onClick={() => window.history.back()}
+      >
         ← Back
       </button>
 
@@ -112,35 +176,36 @@ function CoachSignUpForm({ onBack }) {
       />
       {errors.email && <p className="login-error">{errors.email.message}</p>}
 
-<div className="password-input-wrapper">
-  <input
-    type={showPassword ? 'text' : 'password'}
-    placeholder="Password..."
-    className="login-input"
-    {...register('password')}
-  />
-  <button
-    type="button"
-    className="password-toggle-btn"
-    onClick={() => setShowPassword((v) => !v)}
-    tabIndex={-1}
-    aria-label={showPassword ? 'Hide password' : 'Show password'}
-  >
-    {showPassword ? (
-      // Eye closed SVG
-      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24">
-        <path d="M17.94 17.94A10.06 10.06 0 0 1 12 20c-5 0-9.27-3.11-11-8 1.09-2.86 3.04-5.13 5.56-6.44M6.1 6.1A9.93 9.93 0 0 1 12 4c5 0 9.27 3.11 11 8a11.05 11.05 0 0 1-2.06 3.34M1 1l22 22" stroke="#555" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-    ) : (
-      // Eye open SVG
-      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24">
-        <ellipse cx="12" cy="12" rx="10" ry="6" stroke="#555" strokeWidth="2"/>
-        <circle cx="12" cy="12" r="3" stroke="#555" strokeWidth="2"/>
-      </svg>
-    )}
-  </button>
-</div>
-{errors.password && <p className="login-error">{errors.password.message}</p>}
+      <div className="password-input-wrapper">
+        <input
+          type={showPassword ? 'text' : 'password'}
+          placeholder="Password..."
+          className="login-input"
+          {...register('password')}
+        />
+        <button
+          type="button"
+          className="password-toggle-btn"
+          onClick={() => setShowPassword((v) => !v)}
+          tabIndex={-1}
+          aria-label={showPassword ? 'Hide password' : 'Show password'}
+        >
+          {showPassword ? (
+            // Eye closed SVG
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24">
+              <path d="M17.94 17.94A10.06 10.06 0 0 1 12 20c-5 0-9.27-3.11-11-8 1.09-2.86 3.04-5.13 5.56-6.44M6.1 6.1A9.93 9.93 0 0 1 12 4c5 0 9.27 3.11 11 8a11.05 11.05 0 0 1-2.06 3.34M1 1l22 22" stroke="#555" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          ) : (
+            // Eye open SVG
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24">
+              <ellipse cx="12" cy="12" rx="10" ry="6" stroke="#555" strokeWidth="2"/>
+              <circle cx="12" cy="12" r="3" stroke="#555" strokeWidth="2"/>
+            </svg>
+          )}
+        </button>
+      </div>
+      {errors.password && <p className="login-error">{errors.password.message}</p>}
+      {apiError && <p className="login-error">{apiError}</p>}
 
       <button type="submit" className="login-button">Continue</button>
 
