@@ -6,9 +6,12 @@ import './SignUp.css';
 import loginLogo from '../../../assets/login-logo.jpg';
 import api from '../../../api/axiosConfig';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../../../stores/useAuthStore'; // <--- IMPORT useAuthStore
+import { useAuthStore } from '../../../stores/useAuthStore';
 
 const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+
+const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB
 
 const schema = yup.object().shape({
   firstName: yup.string().required('Full name is required'),
@@ -31,18 +34,35 @@ function AthleteSignUpForm() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [apiError, setApiError] = useState('');
+  const [imageError, setImageError] = useState('');
   const navigate = useNavigate();
-  const login = useAuthStore((state) => state.login); // <--- GET login action from store
+  const login = useAuthStore((state) => state.login);
 
   const handleProfilePicChange = (e) => {
+    setImageError('');
+    setPreview(null);
+    setSelectedFile(null);
+
     const file = e.target.files[0];
-    if (file) {
-      setPreview(URL.createObjectURL(file));
-      setSelectedFile(file);
-    } else {
-      setPreview(null);
-      setSelectedFile(null);
+
+    if (!file) {
+      return;
     }
+
+    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+      setImageError('Unsupported file type. Please use JPG, PNG, GIF, or WebP.');
+      e.target.value = null;
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      setImageError(`File size exceeds ${MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB. Please choose a smaller image.`);
+      e.target.value = null;
+      return;
+    }
+
+    setPreview(URL.createObjectURL(file));
+    setSelectedFile(file);
   };
 
   const {
@@ -55,16 +75,25 @@ function AthleteSignUpForm() {
 
   const onSubmit = async (data) => {
     setApiError('');
+    setImageError('');
 
     let profilePictureBase64 = null;
+    let profilePictureContentType = null;
     if (selectedFile) {
+      if (imageError) {
+          console.log("Image validation error present, preventing submission.");
+          return;
+      }
+
       const reader = new FileReader();
       reader.readAsDataURL(selectedFile);
+
       profilePictureBase64 = await new Promise((resolve, reject) => {
         reader.onloadend = () => {
           resolve(reader.result.split(',')[1]);
         };
         reader.onerror = (error) => {
+          console.error("FileReader error:", error);
           setApiError('Failed to read profile picture file.');
           reject(error);
         };
@@ -72,6 +101,7 @@ function AthleteSignUpForm() {
     }
 
     if (profilePictureBase64 === null && selectedFile) {
+        setApiError('Failed to process profile picture. Please try another image.');
         return;
     }
 
@@ -79,19 +109,16 @@ function AthleteSignUpForm() {
       const payload = {
         ...data,
         profilePictureBase64: profilePictureBase64,
+        profilePictureContentType: profilePictureContentType,
         role: 'athlete'
       };
 
-      // Make the API call to your backend signup endpoint
       const response = await api.post('/signup', payload);
 
       console.log('Athlete signup successful:', response.data);
 
-      // --- NEW LOGIC: Use backend's response to log in user ---
-      const { idToken, accessToken, refreshToken, userProfile } = response.data; // Destructure all received data
+      const { idToken, accessToken, refreshToken, userProfile } = response.data;
 
-      // Call the login action from your auth store
-      // Pass userProfile and an object containing IdToken, AccessToken, RefreshToken
       login(userProfile, {
         IdToken: idToken,
         AccessToken: accessToken,
@@ -99,9 +126,7 @@ function AthleteSignUpForm() {
       });
 
       console.log('User auto-logged in. Redirecting to home...');
-      // Redirect to the home screen after successful signup and auto-login
       navigate('/home');
-      // --- END NEW LOGIC ---
 
     } catch (err) {
       console.error('Athlete signup error:', err);
@@ -140,11 +165,12 @@ function AthleteSignUpForm() {
         <input
           id="profile-pic-input"
           type="file"
-          accept="image/*"
           style={{ display: 'none' }}
           onChange={handleProfilePicChange}
         />
       </div>
+      {/* <--- MOVED IMAGE ERROR DISPLAY HERE (outside the profile-pic-upload div) */}
+      {imageError && <p className="login-error image-upload-error">{imageError}</p>}
 
       <input
         type="text"

@@ -10,6 +10,10 @@ import { useAuthStore } from '../../../stores/useAuthStore';
 
 const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
 
+// Constants for image validation (same as Athlete form)
+const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB
+
 const schema = yup.object().shape({
   fullName: yup.string().required('Full name is required'),
   gender: yup.string().required('Gender is required'),
@@ -29,18 +33,38 @@ function CoachSignUpForm() {
   const [preview, setPreview] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [apiError, setApiError] = useState('');
+  const [imageError, setImageError] = useState(''); // <--- New state for image validation errors
   const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
 
   const handleProfilePicChange = (e) => {
+    setImageError(''); // Clear previous image errors
+    setPreview(null);
+    setSelectedFile(null); // Clear file selection if it fails validation
+
     const file = e.target.files[0];
-    if (file) {
-      setPreview(URL.createObjectURL(file));
-      setSelectedFile(file);
-    } else {
-      setPreview(null);
-      setSelectedFile(null);
+
+    if (!file) {
+      return; // No file selected
     }
+
+    // 1. Validate File Type
+    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+      setImageError('Unsupported file type. Please use JPG, PNG, GIF, or WebP.');
+      e.target.value = null; // Clear input to allow re-selection of same file
+      return;
+    }
+
+    // 2. Validate File Size
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      setImageError(`File size exceeds ${MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB. Please choose a smaller image.`);
+      e.target.value = null; // Clear input
+      return;
+    }
+
+    // If validation passes
+    setPreview(URL.createObjectURL(file));
+    setSelectedFile(file);
   };
 
   const {
@@ -53,34 +77,49 @@ function CoachSignUpForm() {
 
   const onSubmit = async (data) => {
     setApiError('');
+    setImageError(''); // Ensure image error is cleared on submit attempt
 
     let profilePictureBase64 = null;
+    let profilePictureContentType = null; // <--- New variable to send content type
     if (selectedFile) {
+      if (imageError) {
+          console.log("Image validation error present, preventing submission.");
+          return;
+      }
+
       const reader = new FileReader();
       reader.readAsDataURL(selectedFile);
+
       profilePictureBase64 = await new Promise((resolve, reject) => {
         reader.onloadend = () => {
           resolve(reader.result.split(',')[1]);
         };
         reader.onerror = (error) => {
+          console.error("FileReader error:", error);
           setApiError('Failed to read profile picture file.');
           reject(error);
         };
       }).catch(() => null);
+
+      if (profilePictureBase64) {
+          profilePictureContentType = selectedFile.type; // Get content type from selected file
+      }
     }
 
     if (profilePictureBase64 === null && selectedFile) {
+        setApiError('Failed to process profile picture. Please try another image.');
         return;
     }
 
     try {
       const payload = {
-        firstName: data.fullName, // <--- Keep this mapping for backend
+        firstName: data.fullName,
         gender: data.gender,
         sport: data.expertise,
         email: data.email,
         password: data.password,
         profilePictureBase64: profilePictureBase64,
+        profilePictureContentType: profilePictureContentType, // <--- Add content type to payload
         role: 'coach'
       };
 
@@ -138,11 +177,13 @@ function CoachSignUpForm() {
         <input
           id="coach-profile-pic-input"
           type="file"
-          accept="image/*"
+          // Removed accept="image/*" here, as validation is now handled in JS
           style={{ display: 'none' }}
           onChange={handleProfilePicChange}
         />
       </div>
+      {/* <--- MOVED IMAGE ERROR DISPLAY HERE (outside the profile-pic-upload div) */}
+      {imageError && <p className="login-error image-upload-error">{imageError}</p>}
 
       <input
         type="text"

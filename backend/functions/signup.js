@@ -3,14 +3,18 @@
 import {
     CognitoIdentityProviderClient,
     SignUpCommand,
-    AdminInitiateAuthCommand
+    AdminInitiateAuthCommand,
+    AdminUpdateUserAttributesCommand
 } from "@aws-sdk/client-cognito-identity-provider";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
 const REGION = process.env.REGION || "us-east-1";
 const CLIENT_ID = process.env.CLIENT_ID;
 const USER_POOL_ID = process.env.USER_POOL_ID;
+const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME;
 
-const client = new CognitoIdentityProviderClient({ region: REGION });
+const cognitoClient = new CognitoIdentityProviderClient({ region: REGION });
+const s3Client = new S3Client({ region: REGION });
 
 export const handler = async (event) => {
     let body;
@@ -25,10 +29,9 @@ export const handler = async (event) => {
         };
     }
 
-    // Destructure all expected fields from the frontend
-    const { email, password, role, firstName, gender, sport, position, profilePictureBase64 } = body;
+    // Destructure new profilePictureContentType
+    const { email, password, role, firstName, gender, sport, position, profilePictureBase64, profilePictureContentType } = body; // <--- New field
 
-    // Basic validation for required fields
     if (!email || !password || !firstName || !role) {
         return {
             statusCode: 400,
@@ -37,7 +40,6 @@ export const handler = async (event) => {
         };
     }
 
-    // Cognito User Attributes
     const userAttributes = [
         { Name: "email", Value: email },
         { Name: "name", Value: firstName },
@@ -58,9 +60,11 @@ export const handler = async (event) => {
         UserAttributes: userAttributes,
     };
 
+    let profilePictureUrl = null;
+
     try {
         const signUpCommand = new SignUpCommand(signUpParams);
-        await client.send(signUpCommand);
+        await cognitoClient.send(signUpCommand);
 
         console.log(`User ${email} signed up successfully.`);
 
@@ -75,7 +79,7 @@ export const handler = async (event) => {
         };
 
         const initiateAuthCommand = new AdminInitiateAuthCommand(initiateAuthParams);
-        const authResponse = await client.send(initiateAuthCommand);
+        const authResponse = await cognitoClient.send(initiateAuthCommand);
 
         console.log(`User ${email} auto-authenticated successfully.`);
 
@@ -84,13 +88,59 @@ export const handler = async (event) => {
         const accessToken = authenticationResult.AccessToken;
         const refreshToken = authenticationResult.RefreshToken;
 
+        // STEP 3: Handle Profile Picture Upload to S3 (if provided)
+        if (profilePictureBase64 && S3_BUCKET_NAME) {
+            try {
+                // Use profilePictureContentType directly
+                const contentType = profilePictureContentType || 'application/octet-stream'; // <--- Use provided content type
+                const base64Data = profilePictureBase64; // No need to remove prefix here, frontend does it
+                const imageBuffer = Buffer.from(base64Data, 'base64');
+
+                // Generate a unique file name (e.g., user_email-timestamp.ext)
+                const fileExtension = contentType.split('/')[1] || 'jpeg';
+                const s3Key = `profile-pictures/${email.replace(/[^a-zA-Z0-9]/g, '_')}-${Date.now()}.${fileExtension}`;
+
+                const s3UploadParams = {
+                    Bucket: S3_BUCKET_NAME,
+                    Key: s3Key,
+                    Body: imageBuffer,
+                    ContentType: contentType, // <--- Use provided content type
+                };
+
+                const putObjectCommand = new PutObjectCommand(s3UploadParams);
+                await s3Client.send(putObjectCommand);
+
+                profilePictureUrl = `https://${S3_BUCKET_NAME}.s3.${REGION}.amazonaws.com/${s3Key}`;
+                console.log(`Profile picture uploaded to S3: ${profilePictureUrl}`);
+
+                // STEP 4: Update Cognito User Attributes with Profile Picture URL
+                const updateUserAttributesParams = {
+                    UserPoolId: USER_POOL_ID,
+                    Username: email,
+                    UserAttributes: [
+                        { Name: "custom:profilePictureUrl", Value: profilePictureUrl }
+                    ],
+                };
+                const updateUserAttributesCommand = new AdminUpdateUserAttributesCommand(updateUserAttributesParams);
+                await cognitoClient.send(updateUserAttributesCommand);
+                console.log(`Cognito user attributes updated with profile picture URL for ${email}`);
+
+            } catch (s3Error) {
+                console.error("Error uploading profile picture to S3 or updating Cognito attributes:", s3Error);
+                profilePictureUrl = null;
+            }
+        } else {
+            console.log("No profile picture provided or S3 bucket not configured.");
+        }
+
         const userProfile = {
             name: firstName,
             email: email,
             role: role,
             gender: gender,
             sport: sport,
-            position: position
+            position: position,
+            profilePictureUrl: profilePictureUrl
         };
 
         return {
