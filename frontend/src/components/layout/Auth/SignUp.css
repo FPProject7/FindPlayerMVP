@@ -167,3 +167,10 @@
   width: 100%;
   margin-bottom: 0; /* Remove extra margin, handled by wrapper */
 }
+
+.login-success-message {
+  color: #28a745;
+  font-size: 0.9em;
+  margin-top: 10px;
+  text-align: center;
+}
