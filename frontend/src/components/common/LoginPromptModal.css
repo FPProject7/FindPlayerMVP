@@ -45,3 +45,21 @@
 .modal-view-events:hover {
   text-decoration: underline;
 }
+
+.modal-view-events {
+  margin-top: 1rem;
+  background: none;
+  border: 1px solid #dcdcdc; /* Added border */
+  color: #6b7280;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  text-decoration: none;
+}
+.modal-view-events:hover {
+  background-color: #f0f0f0;
+  border-color: #ccc;
+  text-decoration: none;
+}
