@@ -22,7 +22,6 @@ function ResetPasswordSetNew({ email }) {
     setApiError('');
     setSuccessMessage('');
     setIsLoading(true); // <--- Set loading to true at the start of submission
-    console.log('Attempting to reset password for email:', email);
 
     try {
       const response = await api.post('/reset-password', {
@@ -31,12 +30,11 @@ function ResetPasswordSetNew({ email }) {
         password: data.password,
       });
 
-      console.log('Password reset successful:', response.data);
       setSuccessMessage('Password reset. Please log in.');
 
       setTimeout(() => {
         navigate('/login');
-        setIsLoading(false); // <--- Reset loading here after navigation
+        setIsLoading(false);
       }, 2000);
 
     } catch (err) {

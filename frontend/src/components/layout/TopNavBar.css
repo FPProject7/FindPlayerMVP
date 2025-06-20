@@ -1,0 +1,98 @@
+/* frontend/src/components/layout/TopNavBar.css */
+
+.top-nav-bar {
+    position: fixed; /* Anchored to the top of the viewport */
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px; /* Fixed height for the header bar */
+    background-color: white; /* White background as per design */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow at the bottom */
+    z-index: 999; /* Ensure it stays on top of scrolling content */
+    
+    display: flex; /* Use flexbox to arrange items horizontally */
+    align-items: center; /* Vertically center items */
+    justify-content: space-between; /* Space out items */
+    padding: 0 15px; /* Horizontal padding */
+    box-sizing: border-box; /* Include padding in element's total width */
+  }
+  
+  /* Common styling for top nav items */
+  .top-nav-item {
+    display: flex;
+    align-items: center;
+  }
+  
+  /* Profile Icon Styling */
+  .profile-icon-container .profile-icon-button {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .profile-icon-container .profile-pic-thumbnail {
+    width: 36px; /* Size of the image */
+    height: 36px;
+    border-radius: 50%; /* Make the image circular */
+    object-fit: cover; /* Ensure image covers the area */
+    border: 2px solid #dc2626; /* Red border matching previous request */
+  }
+  
+  /* Search Bar Styling */
+  .search-bar-container {
+    flex-grow: 1; /* Allow search bar to take available space */
+    margin: 0 15px; /* Space between profile icon and search, and search and action icons */
+    background-color: #f0f2f5; /* Light grey background for search bar */
+    border-radius: 20px; /* Rounded corners */
+    padding: 5px 10px;
+    display: flex;
+    align-items: center;
+  }
+  
+  .search-bar-container .search-input {
+    border: none;
+    background: none;
+    outline: none;
+    flex-grow: 1;
+    padding: 5px;
+    font-size: 1em;
+    color: #333;
+  }
+  
+  .search-bar-container .search-input::placeholder {
+    color: #888;
+  }
+  
+  .search-bar-container .search-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0 5px;
+    display: flex; /* To center the icon */
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* Notification and Messaging Icons Styling */
+  .action-icons-container {
+    gap: 10px; /* Space between notification and message buttons */
+  }
+  
+  .action-icons-container .action-icon-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 50%; /* Make clickable area circular */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .action-icons-container .action-icon-button:hover {
+    background-color: #f0f0f0; /* Subtle hover effect */
+  }

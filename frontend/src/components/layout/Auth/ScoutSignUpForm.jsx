@@ -77,14 +77,13 @@ function ScoutSignUpForm() {
   const onSubmit = async (data) => {
     setApiError('');
     setImageError('');
-    setIsLoading(true); // <--- Set loading to true at the start of submission
+    setIsLoading(true);
 
     let profilePictureBase64 = null;
     let profilePictureContentType = null;
     if (selectedFile) {
       if (imageError) {
-          console.log("Image validation error present, preventing submission.");
-          setIsLoading(false); // <--- Reset loading if validation error prevents processing
+          setIsLoading(false);
           return;
       }
 
@@ -127,8 +126,6 @@ function ScoutSignUpForm() {
 
       const response = await api.post('/signup', payload);
 
-      console.log('Scout signup successful:', response.data);
-
       const { idToken, accessToken, refreshToken, userProfile } = response.data;
 
       login(userProfile, {
@@ -137,7 +134,6 @@ function ScoutSignUpForm() {
         RefreshToken: refreshToken
       });
 
-      console.log('Auto-login successful. Redirecting to home...');
       navigate('/home');
 
     } catch (err) {
@@ -148,7 +144,7 @@ function ScoutSignUpForm() {
         'Sign up failed. Please try again.'
       );
     } finally {
-      setIsLoading(false); // <--- Set loading to false when submission finishes
+      setIsLoading(false);
     }
   };
 

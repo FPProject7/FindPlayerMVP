@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom';
+import { Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import MainLayout from './components/layout/MainLayout';
 import HomePage from './pages/HomePage';
 import ChallengesPage from './pages/ChallengesPage';
@@ -11,25 +11,55 @@ import ResetPasswordPage from './pages/Auth/ResetPasswordPage';
 import LoginPromptModal from "./components/common/LoginPromptModal";
 import { useAuthStore } from './stores/useAuthStore';
 
+// Existing new page imports
+import UserProfilePage from './pages/UserProfilePage';
+import ScoutDashboardPage from './pages/ScoutDashboardPage';
+// --- NEW: Notifications & Messages Page Imports ---
+import NotificationsPage from './pages/NotificationsPage'; // <--- New page import
+import MessagesPage from './pages/MessagesPage';         // <--- New page import
+// --- END NEW ---
+
+// ProtectedRoute Component (remains unchanged)
+const ProtectedRoute = ({ children }) => {
+  const { isAuthenticated } = useAuthStore();
+  const location = useLocation();
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+  return children;
+};
+
+// RoleProtectedRoute Component (remains unchanged)
+const RoleProtectedRoute = ({ children, allowedRoles }) => {
+  const { isAuthenticated, user } = useAuthStore();
+  const location = useLocation();
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+  const userRoleLower = user?.role?.toLowerCase();
+  const allowedRolesLower = allowedRoles.map(role => role.toLowerCase());
+  if (allowedRolesLower.length > 0 && userRoleLower && !allowedRolesLower.includes(userRoleLower)) {
+    console.warn(`Access Denied: User role '${user.role}' not in allowed roles [${allowedRoles.join(', ')}] for path ${location.pathname}`);
+    alert("Access Denied: You do not have permission to view this page.");
+    return <Navigate to="/home" replace />;
+  }
+  return children;
+};
+
+
 function App() {
   const [showModal, setShowModal] = useState(false);
   const location = useLocation();
   const { isAuthenticated } = useAuthStore();
 
   useEffect(() => {
-    // Paths where the modal should NEVER show (auth forms themselves)
+    // Added new pages to trulyPublicPages for modal logic
     const authRelatedPaths = ['/login', '/signup', '/reset-password'];
-    // Paths that are fully public content AND should NOT be blocked by the modal
-    const trulyPublicPages = ['/events'];
+    const trulyPublicPages = ['/events', '/profile', '/scout-dashboard', '/notifications', '/messages']; // <--- Added new pages here
 
     const isAuthRelatedPath = authRelatedPaths.includes(location.pathname);
     const isTrulyPublicPage = trulyPublicPages.includes(location.pathname);
 
-    // Logic for showing the modal:
-    // The modal shows IF:
-    // 1. The user is NOT authenticated
-    // 2. The current path is NOT an authentication-related path
-    // 3. The current path is NOT a truly public page (like /events)
     if (!isAuthenticated && !isAuthRelatedPath && !isTrulyPublicPage) {
       setShowModal(true);
     } else {
@@ -39,36 +69,41 @@ function App() {
 
   return (
     <>
-      {/* The modal is rendered here, outside the Routes, so it can overlay everything */}
       {showModal && <LoginPromptModal />}
 
       <Routes>
-        {/* Public Routes - These are the actual login/signup/reset forms. */}
-        {/* They should not be wrapped by MainLayout if MainLayout includes things like a nav bar that expects content underneath. */}
+        {/* Public Routes - Authentication forms (no MainLayout) */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-        {/* Main Application Content Routes (Including the "Events" page) */}
-        {/* All these pages will be wrapped by MainLayout. */}
-        {/* The LoginPromptModal will overlay them if the user is not authenticated,
-            except for the /events page as per your requirement. */}
+        {/* Public Content Route - Accessible to all, not blocked by modal */}
+        <Route path="/events" element={<MainLayout><EventsPage /></MainLayout>} />
+        
+        {/* Main Application Content Routes (Viewable with modal if unauthenticated) */}
         <Route element={<MainLayout />}>
-          <Route path="/" element={<HomePage />} />
+          <Route path="/" element={<HomePage />} /> 
           <Route path="/home" element={<HomePage />} />
           <Route path="/challenges" element={<ChallengesPage />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
-          <Route path="/events" element={<EventsPage />} /> {/* This is now a fully public route, not blocked by ProtectedRoute */}
-          {/* Add any other app content routes here */}
         </Route>
 
-        {/* Fallback route: If no other route matches, handle redirect. */}
-        {/* If authenticated and hits an undefined route, go to /home. */}
-        {/* If unauthenticated and hits an undefined route, still allows them to land on it,
-            but the modal will likely show, prompting login. */}
-        {/* This specific catch-all might need fine-tuning depending on how you want to handle truly non-existent URLs. */}
-        {/* For now, it will simply render the MainLayout (with HomePage) and the modal if unauthenticated. */}
-        <Route path="*" element={<MainLayout><HomePage /></MainLayout>} />
+        {/* Truly Protected Routes (Requires authentication, no modal overlay) */}
+        {/* These routes load only if authenticated, and are also wrapped by MainLayout. */}
+        <Route element={<MainLayout />}>
+            <Route path="/profile" element={<ProtectedRoute><UserProfilePage /></ProtectedRoute>} /> 
+            <Route path="/scout-dashboard" element={<RoleProtectedRoute allowedRoles={['Scout']}><ScoutDashboardPage /></RoleProtectedRoute>} /> 
+            {/* --- NEW: Protected Notifications & Messages Routes --- */}
+            <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} /> {/* <--- New Route */}
+            <Route path="/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />             {/* <--- New Route */}
+            {/* --- END NEW --- */}
+        </Route>
+
+        {/* Catch-all route */}
+        <Route 
+          path="*" 
+          element={isAuthenticated ? <Navigate to="/home" replace /> : <Navigate to="/login" replace />} 
+        />
       </Routes>
     </>
   );

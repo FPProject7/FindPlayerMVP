@@ -15,15 +15,11 @@ function ResetPasswordStart({ onContinue }) {
   const onSubmit = async (data) => {
     setApiError('');
     setIsLoading(true); // <--- Set loading to true at the start of submission
-    console.log('Attempting to send reset code for email:', data.email);
 
     try {
       const response = await api.post('/forgot-password', {
         email: data.email,
       });
-
-      console.log('Reset code request successful:', response.data);
-      // alert('Verification code sent to your email!'); // REMOVED THIS LINE previously
 
       // Proceed to the next step, passing the email
       onContinue(data.email);

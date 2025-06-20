@@ -7,7 +7,7 @@ import loginLogo from '../../../assets/login-logo.jpg';
 import api from '../../../api/axiosConfig';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../stores/useAuthStore';
-import LoadingDots from '../../common/LoadingDots'; // <--- Import LoadingDots
+import LoadingDots from '../../common/LoadingDots';
 
 const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
 
@@ -36,7 +36,7 @@ function AthleteSignUpForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [apiError, setApiError] = useState('');
   const [imageError, setImageError] = useState('');
-  const [isLoading, setIsLoading] = useState(false); // <--- New loading state
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
 
@@ -78,14 +78,14 @@ function AthleteSignUpForm() {
   const onSubmit = async (data) => {
     setApiError('');
     setImageError('');
-    setIsLoading(true); // <--- Set loading to true at the start of submission
+    setIsLoading(true);
 
     let profilePictureBase64 = null;
     let profilePictureContentType = null;
     if (selectedFile) {
       if (imageError) {
           console.log("Image validation error present, preventing submission.");
-          setIsLoading(false); // <--- Reset loading if validation error prevents processing
+          setIsLoading(false);
           return;
       }
 
@@ -106,7 +106,7 @@ function AthleteSignUpForm() {
 
     if (profilePictureBase64 === null && selectedFile) {
         setApiError('Failed to process profile picture. Please try another image.');
-        setIsLoading(false); // <--- Reset loading if file processing fails
+        setIsLoading(false);
         return;
     }
 
@@ -119,8 +119,6 @@ function AthleteSignUpForm() {
       };
 
       const response = await api.post('/signup', payload);
-
-      console.log('Athlete signup successful:', response.data);
 
       const { idToken, accessToken, refreshToken, userProfile } = response.data;
 
@@ -141,7 +139,7 @@ function AthleteSignUpForm() {
         'Sign up failed. Please try again.'
       );
     } finally {
-      setIsLoading(false); // <--- Set loading to false when submission finishes
+      setIsLoading(false);
     }
   };
 
