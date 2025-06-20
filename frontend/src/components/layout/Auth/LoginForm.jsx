@@ -5,8 +5,9 @@ import * as yup from 'yup';
 import SocialLoginButtons from './SocialLoginButtons';
 import './LoginForm.css';
 import loginLogo from '../../../assets/login-logo.jpg';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom'; // <--- Added useNavigate
 import api from '../../../api/axiosConfig';
+import { useAuthStore } from '../../../stores/useAuthStore'; // <--- Import your auth store
 
 // Validation schema
 const schema = yup.object().shape({
@@ -14,9 +15,11 @@ const schema = yup.object().shape({
   password: yup.string().min(6, 'Password must be at least 6 characters').required('Password is required'),
 });
 
-function LoginForm({ setIsAuthenticated }) {
+function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [apiError, setApiError] = useState('');
+  const navigate = useNavigate(); // <--- Initialize useNavigate
+  const login = useAuthStore((state) => state.login); // <--- Get the login action from your store
 
   const {
     register,
@@ -27,20 +30,30 @@ function LoginForm({ setIsAuthenticated }) {
   });
 
   const onSubmit = async (data) => {
-    setApiError('');
+    setApiError(''); // Clear previous errors
     try {
       const response = await api.post('/signin', {
         email: data.email,
         password: data.password,
       });
-      // Example: set auth state, redirect, etc.
-      if (setIsAuthenticated) setIsAuthenticated(true);
-      // Optionally redirect or show success
+
+      // --- IMPORTANT: Adjust these lines based on your actual backend response ---
+      // Assuming your backend returns data like: { idToken: '...', userProfile: { name: '...', email: '...' } }
+      const { idToken, userProfile } = response.data;
+
+      // 1. Call your store's login action to save token and user info
+      login(userProfile, { IdToken: idToken }); // Ensure params match your useAuthStore.js `login` signature
+
+      // 2. Redirect to the main app page
+      navigate('/home'); // Or '/' or whatever your main authenticated route is
+
     } catch (err) {
-      setApiError(
-        err.response?.data?.message ||
-        'Login failed. Please check your credentials and try again.'
-      );
+      // Improved error handling for common API responses
+      const errorMessage = err.response?.data?.message || err.message || 'Login failed. Please check your credentials and try again.';
+      setApiError(errorMessage);
+    } finally {
+        // You might want to clear errors here if you have a separate "loading" state
+        // or if you want to ensure the error message disappears on subsequent attempts.
     }
   };
 
