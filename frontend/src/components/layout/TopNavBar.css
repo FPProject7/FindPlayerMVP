@@ -6,8 +6,11 @@
     left: 0;
     right: 0;
     height: 60px; /* Fixed height for the header bar */
-    background-color: white; /* White background as per design */
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow at the bottom */
+    background-color: rgba(255, 255, 255, 0.3); /* More transparent white background */
+    backdrop-filter: blur(12px); /* Glassy blur effect */
+    -webkit-backdrop-filter: blur(12px); /* Safari support */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3); /* Subtle white border */
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1); /* Softer shadow for glass effect */
     z-index: 999; /* Ensure it stays on top of scrolling content */
     
     display: flex; /* Use flexbox to arrange items horizontally */

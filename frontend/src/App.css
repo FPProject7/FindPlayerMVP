@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
+
 body, html, #root {
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', 'SF Pro Display', 'Segoe UI', Roboto, Arial, sans-serif !important;
 }
@@ -43,4 +45,16 @@ body, html, #root {
 
 .read-the-docs {
   color: #888;
+}
+
+.challenge-heading,
+h2.challenge-heading,
+h2.text-xl.font-bold.mb-3.text-red-600.text-center.challenge-heading,
+.challenge-detail-view h2.challenge-heading {
+  font-family: "Monoton", sans-serif !important;
+  font-weight: 400 !important;
+  font-style: normal !important;
+  font-size: 2rem !important;
+  letter-spacing: 1px !important;
+  text-transform: uppercase !important;
 }

@@ -1,0 +1,52 @@
+/* frontend/src/components/common/ChallengeLoader.css */
+
+.challenge-loader-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100px; /* Give it some vertical space */
+  width: 100%;
+  max-width: 250px; /* Limit width to keep it centered and neat */
+  margin: auto; /* Center horizontally */
+  padding: 20px 0;
+}
+
+.challenge-loader-track {
+  width: 100%;
+  height: 6px; /* Thickness of the track */
+  background-color: #e0e0e0; /* Light gray track */
+  border-radius: 3px;
+  overflow: hidden; /* Hide the runner outside the track */
+  position: relative;
+  margin-bottom: 15px; /* Space between animation and text */
+}
+
+.challenge-loader-runner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 40%; /* Width of the "runner" bar */
+  background-color: #dc2626; /* Red color, matching your app's primary action color */
+  border-radius: 3px;
+  animation: runTrack 1.5s infinite ease-in-out; /* Animation */
+}
+
+@keyframes runTrack {
+  0% {
+    transform: translateX(-100%); /* Start off-screen to the left */
+  }
+  50% {
+    transform: translateX(150%); /* Move past the right side of the track */
+  }
+  100% {
+    transform: translateX(-100%); /* Loop back from the left */
+  }
+}
+
+.challenge-loader-text {
+  font-size: 1.1em;
+  font-weight: bold;
+  color: #6b7280; /* Gray text color */
+}
