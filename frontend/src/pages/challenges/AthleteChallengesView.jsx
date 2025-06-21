@@ -1,9 +1,10 @@
 // frontend/src/pages/challenges/AthleteChallengesView.jsx
 
 import React, { useState, useEffect } from 'react';
-// import api from '../../api/axiosConfig'; // Still commented out for mocking API calls
+import { useLocation } from 'react-router-dom';
+import ChallengeLoader from '../../components/common/ChallengeLoader';
 
-// --- Mock Data for Challenge List (for frontend development) ---
+// --- Mock Data for Challenge List ---
 const MOCK_CHALLENGES = [
   {
     id: 'c1',
@@ -49,13 +50,16 @@ const MOCK_CHALLENGES = [
 
 // --- Mock Data for Specific Challenge Detail ---
 const MOCK_CHALLENGE_DETAILS = {
-  'c1': { id: 'c1', title: 'Sprint Challenge', description: 'This challenge tests your raw speed over a short distance. Focus on explosive power from the blocks or standing start. Develop muscle memory for efficient stride length and frequency. Improves overall acceleration and top speed.', instructions: '1. Find a flat, clear 100-meter space (track or open field). 2. Set up clear start and finish markers. 3. Use a reliable timer (e.g., a friend with a stopwatch). 4. Record your sprint from a side angle (hip to head visible) to show form and technique. 5. Upload the video. Max video length 30s. Ensure lighting is adequate and you are clearly visible.', videoExampleUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ' }, // Rick Astley for example
-  'c2': { id: 'c2', title: 'Vertical Jump Test', description: 'Measure your explosive leg power. A higher jump indicates greater athletic potential for quick movements, crucial in sports like basketball, volleyball, or high-jump.', instructions: '1. Stand next to a wall or measuring device, flat-footed. 2. Mark your standing reach with your arm fully extended overhead. 3. Jump vertically as high as you can, touching the highest point possible. 4. Record your jump from a side angle, ensuring both your standing reach and jump height are visible. 5. Upload the video. Max video length 15s. Take 3 attempts and submit your best.', videoExampleUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ' },
-  'c3': { id: 'c3', title: 'Dribbling Drill', description: 'Evaluate your ball control and agility. Essential for changing direction quickly while maintaining possession, vital for players in team sports like basketball or soccer.', instructions: '1. Set up 5 cones 3 meters apart in a straight line or zigzag pattern. 2. Dribble the ball (football or basketball) through the cones as fast as possible, making sure not to touch any cones. 3. Record the drill from a high angle or from behind to clearly show the entire course. 4. Upload the video. Max video length 45s. Focus on tight control and quick turns.', videoExampleUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ' },
+  'c1': { id: 'c1', title: 'Sprint Challenge', description: 'This challenge tests your raw speed over a short distance. Focus on explosive power from the blocks or standing start. Develop muscle memory for efficient stride length and frequency. Improves overall acceleration and top speed.', instructions: '1. Find a flat, clear 100-meter space (track or open field). 2. Set up clear start and finish markers. 3. Use a reliable timer (e.g., a friend with a stopwatch). 4. Record your sprint from a side angle (hip to head visible) to show form and technique. 5. Upload the video. Max video length 30s. Ensure lighting is adequate and you are clearly visible.', videoExampleUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ?rel=0&showinfo=0&controls=1' }, // Rick Astley
+  'c2': { id: 'c2', title: 'Vertical Jump Test', description: 'Measure your explosive leg power. A higher jump indicates greater athletic potential for quick movements, crucial in sports like basketball, volleyball, or high-jump.', instructions: '1. Stand next to a wall or measuring device, flat-footed. 2. Mark your standing reach with your arm fully extended overhead. 3. Jump vertically as high as you can, touching the highest point possible. 4. Record your jump from a side angle, ensuring both your standing reach and jump height are visible. 5. Upload the video. Max video length 15s. Take 3 attempts and submit your best.', videoExampleUrl: 'https://www.youtube.com/embed/xvFZjo5PgG0?rel=0&showinfo=0&controls=1' }, // Example Vertical Jump
+  'c3': { id: 'c3', title: 'Dribbling Drill', description: 'Evaluate your ball control and agility. Essential for changing direction quickly while maintaining possession, vital for players in team sports like basketball or soccer.', instructions: '1. Set up 5 cones 3 meters apart in a straight line or zigzag pattern. 2. Dribble the ball (football or basketball) through the cones as fast as possible, making sure not to touch any cones. 3. Record the drill from a high angle or from behind to clearly show the entire course. 4. Upload the video. Max video length 45s. Focus on tight control and quick turns.', videoExampleUrl: 'https://www.youtube.com/embed/jNQXAC9IVRw?rel=0&showinfo=0&controls=1' }, // Example Dribbling Drill
+  'c4': { id: 'c4', title: 'Vertical Jump Test', description: 'Measure your explosive leg power. A higher jump indicates greater athletic potential for quick movements, crucial in sports like basketball, volleyball, or high-jump.', instructions: '1. Stand next to a wall or measuring device, flat-footed. 2. Mark your standing reach with your arm fully extended overhead. 3. Jump vertically as high as you can, touching the highest point possible. 4. Record your jump from a side angle, ensuring both your standing reach and jump height are visible. 5. Upload the video. Max video length 15s. Take 3 attempts and submit your best.', videoExampleUrl: 'https://www.youtube.com/embed/xvFZjo5PgG0?rel=0&showinfo=0&controls=1' }, // Example Vertical Jump
+  'c5': { id: 'c5', title: 'Dribbling Drill', description: 'Evaluate your ball control and agility. Essential for changing direction quickly while maintaining possession, vital for players in team sports like basketball or soccer.', instructions: '1. Set up 5 cones 3 meters apart in a straight line or zigzag pattern. 2. Dribble the ball (football or basketball) through the cones as fast as possible, making sure not to touch any cones. 3. Record the drill from a high angle or from behind to clearly show the entire course. 4. Upload the video. Max video length 45s. Focus on tight control and quick turns.', videoExampleUrl: 'https://www.youtube.com/embed/jNQXAC9IVRw?rel=0&showinfo=0&controls=1' }, // Example Dribbling Drill
+
 };
 
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
-const MAX_VIDEO_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB (Adjust based on your S3/Lambda limits)
+const MAX_VIDEO_SIZE_BYTES = 50 * 1024 * 1024;
 
 
 const AthleteChallengesView = () => {
@@ -66,23 +70,52 @@ const AthleteChallengesView = () => {
   const [submissionStatus, setSubmissionStatus] = useState('idle');
   const [videoFile, setVideoFile] = useState(null);
   const [videoError, setVideoError] = useState(null);
+  const location = useLocation();
 
+  // --- Ref to track previous location key (for re-click detection) ---
+  const prevLocationKey = React.useRef(location.key);
+
+  // --- Effect to Reset Detail View on NavLink Re-click (main fix) ---
   useEffect(() => {
+    // This effect runs whenever location.pathname or location.key changes.
+    // We want to reset ONLY if:
+    // 1. The path is currently '/challenges'
+    // 2. The location.key has changed (indicating a new history entry, often from re-clicking NavLink)
+    // 3. And a challenge is currently selected (meaning we are in the detail view)
+    if (location.pathname === '/challenges' && location.key !== prevLocationKey.current && selectedChallenge) {
+        console.log("AthleteChallengesView: NavLink re-click detected, resetting detail view.");
+        setSelectedChallenge(null);
+        setSubmissionStatus('idle');
+        setVideoFile(null);
+        setVideoError(null);
+        setError(null);
+    }
+    // Always update the ref to the current key for the next render cycle
+    prevLocationKey.current = location.key;
+  }, [location.pathname, location.key, selectedChallenge]); // Include selectedChallenge so it re-checks if selection changes while on /challenges
+
+
+  // --- Fetch Challenges List (MOCKED API Call) ---
+  useEffect(() => {
+    console.log("AthleteChallengesView: useEffect triggered, starting fetchChallenges.");
     const fetchChallenges = async () => {
       try {
         setLoading(true);
         setError(null);
+        console.log("AthleteChallengesView: Loading set to true, simulating delay...");
         await new Promise(resolve => setTimeout(resolve, 800));
         setChallenges(MOCK_CHALLENGES);
+        console.log("AthleteChallengesView: Challenges set to mock data.");
       } catch (err) {
-        console.error('Failed to fetch challenges:', err);
+        console.error('AthleteChallengesView: Failed to fetch challenges in catch block:', err);
         setError('Failed to load challenges. Please try again.');
       } finally {
         setLoading(false);
+        console.log("AthleteChallengesView: Loading set to false in finally block.");
       }
     };
     fetchChallenges();
-  }, []);
+  }, []); // Empty dependency array means this runs once on mount
 
   const handleChallengeClick = async (challengeId) => {
     try {
@@ -153,11 +186,10 @@ const AthleteChallengesView = () => {
     }
   };
 
-
   if (loading) {
     return (
-      <div className="py-4 flex justify-center items-center" style={{ minHeight: 'calc(100vh - 120px)' }}>
-        <h1 className="text-xl font-bold text-gray-700">Loading Challenges...</h1>
+      <div className="py-4 flex flex-col justify-center items-center bg-white" style={{ minHeight: 'calc(100vh - 120px)' }}>
+        <ChallengeLoader />
       </div>
     );
   }
@@ -172,22 +204,19 @@ const AthleteChallengesView = () => {
 
   return (
     <div className="py-4">
-      {/* Removed: <h1 className="text-2xl font-bold mb-6 text-gray-800">Challenges for Athletes</h1> */} {/* <--- REMOVED THIS HEADING */}
-
       {error && <div className="text-red-600 bg-red-100 p-3 rounded-md mb-4">{error}</div>}
 
       {selectedChallenge ? (
         // --- Challenge Detail View ---
-        <div className="challenge-detail-view bg-white p-6 rounded-lg shadow-xl relative"> {/* Added relative for back button positioning */}
+        <div className="challenge-detail-view bg-white p-6 rounded-lg shadow-xl relative">
           <button
             onClick={() => { setSelectedChallenge(null); setSubmissionStatus('idle'); setVideoFile(null); setVideoError(null); }}
-            className="fixed top-20 left-4 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors duration-200 z-10" // <--- Fixed position for back button
+            className="fixed top-20 left-4 px-4 py-2 bg-white/70 text-gray-800 rounded-lg shadow-md backdrop-blur-sm hover:bg-white/90 transition-colors duration-200 z-10"
           >
             ← Back to List
           </button>
 
-          {/* Added padding to content for fixed back button */ }
-          <div className="pt-12"> {/* <--- Added padding-top to push content below fixed button */}
+          <div className="pt-12">
               <h2 className="text-xl font-bold mb-3 text-gray-800">{selectedChallenge.title}</h2>
 
               {selectedChallenge.videoExampleUrl && (
@@ -198,7 +227,7 @@ const AthleteChallengesView = () => {
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                     style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
-                    title="Challenge Example Video"
+                    title={selectedChallenge.title}
                   ></iframe>
                 </div>
               )}
@@ -206,7 +235,6 @@ const AthleteChallengesView = () => {
               <p className="mb-3 text-gray-700"><strong>Description:</strong> {selectedChallenge.description}</p>
               <p className="mb-5 text-gray-700"><strong>Instructions:</strong> {selectedChallenge.instructions}</p>
 
-              {/* Video Upload Section */}
               <div className="video-upload-section bg-gray-50 border border-gray-200 p-5 rounded-lg">
                 <h3 className="text-lg font-bold mb-3 text-gray-800">Upload Your Video</h3>
 
@@ -232,19 +260,18 @@ const AthleteChallengesView = () => {
                     <button
                       onClick={handleVideoSubmit}
                       disabled={!videoFile}
-                      className="submit-video-button mt-4 bg-red-500 text-white py-2 px-5 rounded-lg font-semibold hover:bg-red-600 transition-colors duration-200 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="submit-video-button mt-2 bg-red-500 text-white py-2 px-5 rounded-lg font-semibold hover:bg-red-600 transition-colors duration-200 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Submit Video
                     </button>
                   </>
                 )}
               </div>
-          </div> {/* End of pt-12 div */}
+          </div>
 
         </div>
       ) : (
-        // --- Challenges List View ---
-        <div className="challenges-list grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="challenges-list grid grid-cols-1 gap-4">
           {challenges.length === 0 ? (
             <p className="text-gray-600 col-span-full text-center">No challenges available at the moment.</p>
           ) : (
