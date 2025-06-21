@@ -51,10 +51,10 @@ body, html, #root {
 h2.challenge-heading,
 h2.text-xl.font-bold.mb-3.text-red-600.text-center.challenge-heading,
 .challenge-detail-view h2.challenge-heading {
-  font-family: "Splash", cursive !important;
+  font-family: "Monoton", sans-serif !important;
   font-weight: 400 !important;
   font-style: normal !important;
-  font-size: 1.25rem !important; /* equivalent to text-xl */
+  font-size: 2rem !important;
   letter-spacing: 1px !important;
   text-transform: uppercase !important;
 }

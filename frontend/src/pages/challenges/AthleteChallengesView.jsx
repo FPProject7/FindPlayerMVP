@@ -1,6 +1,6 @@
 // frontend/src/pages/challenges/AthleteChallengesView.jsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import ChallengeLoader from '../../components/common/ChallengeLoader';
 
@@ -69,10 +69,92 @@ const AthleteChallengesView = () => {
   const [submissionStatus, setSubmissionStatus] = useState('idle');
   const [videoFile, setVideoFile] = useState(null);
   const [videoError, setVideoError] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [pullStartY, setPullStartY] = useState(0);
+  const [pullDistance, setPullDistance] = useState(0);
   const location = useLocation();
 
   // --- Ref to track previous location key (for re-click detection) ---
   const prevLocationKey = React.useRef(location.key);
+  const containerRef = useRef(null);
+
+  // --- Pull to refresh constants ---
+  const PULL_THRESHOLD = 80;
+  const MAX_PULL_DISTANCE = 120;
+
+  // --- Fetch Challenges Function (will be replaced with actual API call) ---
+  const fetchChallenges = async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
+      
+      console.log("AthleteChallengesView: Fetching challenges...");
+      
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, isRefresh ? 1000 : 800));
+      
+      // TODO: Replace with actual API call when backend is ready
+      // const response = await fetch('/api/challenges');
+      // const data = await response.json();
+      // setChallenges(data);
+      
+      // For now, use mock data
+      setChallenges(MOCK_CHALLENGES);
+      console.log("AthleteChallengesView: Challenges loaded successfully.");
+      
+    } catch (err) {
+      console.error('AthleteChallengesView: Failed to fetch challenges:', err);
+      setError('Failed to load challenges. Please try again.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+      console.log("AthleteChallengesView: Loading/refreshing completed.");
+    }
+  };
+
+  // --- Pull to Refresh Handlers ---
+  const handleTouchStart = (e) => {
+    if (selectedChallenge || loading) return; // Don't allow pull when in detail view or loading
+    
+    const touch = e.touches[0];
+    setPullStartY(touch.clientY);
+    setPullDistance(0);
+  };
+
+  const handleTouchMove = (e) => {
+    if (selectedChallenge || loading) return;
+    
+    const touch = e.touches[0];
+    const currentY = touch.clientY;
+    const distance = Math.max(0, currentY - pullStartY);
+    
+    // Only prevent default and handle pull-to-refresh if:
+    // 1. We're at the top of the page (scrollY === 0)
+    // 2. We're pulling down (distance > 0)
+    // 3. We're on the challenges list (not in detail view)
+    if (distance > 0 && window.scrollY === 0 && !selectedChallenge) {
+      e.preventDefault();
+      setPullDistance(Math.min(distance, MAX_PULL_DISTANCE));
+    } else {
+      // Allow normal scrolling in all other cases
+      setPullDistance(0);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (selectedChallenge || loading) return;
+    
+    if (pullDistance >= PULL_THRESHOLD) {
+      console.log("AthleteChallengesView: Pull to refresh triggered");
+      fetchChallenges(true);
+    }
+    
+    setPullDistance(0);
+  };
 
   // --- Effect to Reset Detail View on NavLink Re-click (main fix) ---
   useEffect(() => {
@@ -93,28 +175,19 @@ const AthleteChallengesView = () => {
     prevLocationKey.current = location.key;
   }, [location.pathname, location.key, selectedChallenge]); // Include selectedChallenge so it re-checks if selection changes while on /challenges
 
-
-  // --- Fetch Challenges List (MOCKED API Call) ---
+  // --- Initial Load and Auto-refresh on Navigation ---
   useEffect(() => {
     console.log("AthleteChallengesView: useEffect triggered, starting fetchChallenges.");
-    const fetchChallenges = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        console.log("AthleteChallengesView: Loading set to true, simulating delay...");
-        await new Promise(resolve => setTimeout(resolve, 800));
-        setChallenges(MOCK_CHALLENGES);
-        console.log("AthleteChallengesView: Challenges set to mock data.");
-      } catch (err) {
-        console.error('AthleteChallengesView: Failed to fetch challenges in catch block:', err);
-        setError('Failed to load challenges. Please try again.');
-      } finally {
-        setLoading(false);
-        console.log("AthleteChallengesView: Loading set to false in finally block.");
-      }
-    };
     fetchChallenges();
   }, []); // Empty dependency array means this runs once on mount
+
+  // --- Auto-refresh when navigating to challenges page ---
+  useEffect(() => {
+    if (location.pathname === '/challenges') {
+      console.log("AthleteChallengesView: Navigating to challenges page, refreshing data.");
+      fetchChallenges(true);
+    }
+  }, [location.pathname]);
 
   const handleChallengeClick = async (challengeId) => {
     try {
@@ -202,27 +275,63 @@ const AthleteChallengesView = () => {
   }
 
   return (
-    <div className="py-4">
+    <div 
+      className="py-4"
+      ref={containerRef}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      style={{ 
+        transform: `translateY(${pullDistance}px)`,
+        transition: pullDistance === 0 ? 'transform 0.3s ease-out' : 'none'
+      }}
+    >
+      {/* Pull to refresh indicator */}
+      {pullDistance > 0 && (
+        <div className="flex justify-center items-center py-4 text-gray-500">
+          {pullDistance >= PULL_THRESHOLD ? (
+            <div className="flex items-center">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500 mr-2"></div>
+              Release to refresh
+            </div>
+          ) : (
+            <div className="flex items-center">
+              <div className="mr-2">↓</div>
+              Pull down to refresh
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Refresh indicator */}
+      {refreshing && (
+        <div className="flex justify-center items-center py-2 text-gray-500">
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500 mr-2"></div>
+          Refreshing challenges...
+        </div>
+      )}
+
       {error && <div className="text-red-600 bg-red-100 p-3 rounded-md mb-4">{error}</div>}
 
       {selectedChallenge ? (
         // --- Challenge Detail View ---
         <div className="challenge-detail-view bg-white p-6 rounded-lg shadow-xl relative">
+          {/* Glassy Back Button */}
           <button
             onClick={() => { setSelectedChallenge(null); setSubmissionStatus('idle'); setVideoFile(null); setVideoError(null); }}
-            className="fixed top-20 left-4 px-4 py-2 bg-white/70 text-gray-800 rounded-lg shadow-md backdrop-blur-sm hover:bg-white/90 transition-colors duration-200 z-10"
+            className="absolute top-4 left-4 z-50 px-4 py-2 bg-white/20 backdrop-blur-md border border-white/30 text-gray-800 rounded-xl shadow-lg hover:bg-white/30 transition-all duration-200 font-medium"
           >
-            ← Back to List
+            ← Back
           </button>
 
           <div className="pt-12">
               <h2 
                 className="mb-3 text-red-600 text-center challenge-heading"
                 style={{ 
-                  fontFamily: '"Splash", cursive',
+                  fontFamily: '"Monoton", sans-serif',
                   fontWeight: "400",
                   fontStyle: "normal",
-                  fontSize: "1.25rem",
+                  fontSize: "2rem",
                   letterSpacing: "1px",
                   textTransform: "uppercase"
                 }}
