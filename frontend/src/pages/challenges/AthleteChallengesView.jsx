@@ -50,12 +50,11 @@ const MOCK_CHALLENGES = [
 
 // --- Mock Data for Specific Challenge Detail ---
 const MOCK_CHALLENGE_DETAILS = {
-  'c1': { id: 'c1', title: 'Sprint Challenge', description: 'This challenge tests your raw speed over a short distance. Focus on explosive power from the blocks or standing start. Develop muscle memory for efficient stride length and frequency. Improves overall acceleration and top speed.', instructions: '1. Find a flat, clear 100-meter space (track or open field). 2. Set up clear start and finish markers. 3. Use a reliable timer (e.g., a friend with a stopwatch). 4. Record your sprint from a side angle (hip to head visible) to show form and technique. 5. Upload the video. Max video length 30s. Ensure lighting is adequate and you are clearly visible.', videoExampleUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ?rel=0&showinfo=0&controls=1' }, // Rick Astley
-  'c2': { id: 'c2', title: 'Vertical Jump Test', description: 'Measure your explosive leg power. A higher jump indicates greater athletic potential for quick movements, crucial in sports like basketball, volleyball, or high-jump.', instructions: '1. Stand next to a wall or measuring device, flat-footed. 2. Mark your standing reach with your arm fully extended overhead. 3. Jump vertically as high as you can, touching the highest point possible. 4. Record your jump from a side angle, ensuring both your standing reach and jump height are visible. 5. Upload the video. Max video length 15s. Take 3 attempts and submit your best.', videoExampleUrl: 'https://www.youtube.com/embed/xvFZjo5PgG0?rel=0&showinfo=0&controls=1' }, // Example Vertical Jump
-  'c3': { id: 'c3', title: 'Dribbling Drill', description: 'Evaluate your ball control and agility. Essential for changing direction quickly while maintaining possession, vital for players in team sports like basketball or soccer.', instructions: '1. Set up 5 cones 3 meters apart in a straight line or zigzag pattern. 2. Dribble the ball (football or basketball) through the cones as fast as possible, making sure not to touch any cones. 3. Record the drill from a high angle or from behind to clearly show the entire course. 4. Upload the video. Max video length 45s. Focus on tight control and quick turns.', videoExampleUrl: 'https://www.youtube.com/embed/jNQXAC9IVRw?rel=0&showinfo=0&controls=1' }, // Example Dribbling Drill
-  'c4': { id: 'c4', title: 'Vertical Jump Test', description: 'Measure your explosive leg power. A higher jump indicates greater athletic potential for quick movements, crucial in sports like basketball, volleyball, or high-jump.', instructions: '1. Stand next to a wall or measuring device, flat-footed. 2. Mark your standing reach with your arm fully extended overhead. 3. Jump vertically as high as you can, touching the highest point possible. 4. Record your jump from a side angle, ensuring both your standing reach and jump height are visible. 5. Upload the video. Max video length 15s. Take 3 attempts and submit your best.', videoExampleUrl: 'https://www.youtube.com/embed/xvFZjo5PgG0?rel=0&showinfo=0&controls=1' }, // Example Vertical Jump
-  'c5': { id: 'c5', title: 'Dribbling Drill', description: 'Evaluate your ball control and agility. Essential for changing direction quickly while maintaining possession, vital for players in team sports like basketball or soccer.', instructions: '1. Set up 5 cones 3 meters apart in a straight line or zigzag pattern. 2. Dribble the ball (football or basketball) through the cones as fast as possible, making sure not to touch any cones. 3. Record the drill from a high angle or from behind to clearly show the entire course. 4. Upload the video. Max video length 45s. Focus on tight control and quick turns.', videoExampleUrl: 'https://www.youtube.com/embed/jNQXAC9IVRw?rel=0&showinfo=0&controls=1' }, // Example Dribbling Drill
-
+  'c1': { id: 'c1', title: 'Sprint Challenge', description: 'This challenge tests your raw speed over a short distance. Focus on explosive power from the blocks or standing start. Develop muscle memory for efficient stride length and frequency. Improves overall acceleration and top speed.', instructions: '1. Find a flat, clear 100-meter space (track or open field). 2. Set up clear start and finish markers. 3. Use a reliable timer (e.g., a friend with a stopwatch). 4. Record your sprint from a side angle (hip to head visible) to show form and technique. 5. Upload the video. Max video length 30s. Ensure lighting is adequate and you are clearly visible.', imageUrl: 'https://picsum.photos/seed/sprint-detail/400/250' },
+  'c2': { id: 'c2', title: 'Vertical Jump Test', description: 'Measure your explosive leg power. A higher jump indicates greater athletic potential for quick movements, crucial in sports like basketball, volleyball, or high-jump.', instructions: '1. Stand next to a wall or measuring device, flat-footed. 2. Mark your standing reach with your arm fully extended overhead. 3. Jump vertically as high as you can, touching the highest point possible. 4. Record your jump from a side angle, ensuring both your standing reach and jump height are visible. 5. Upload the video. Max video length 15s. Take 3 attempts and submit your best.', imageUrl: 'https://picsum.photos/seed/jump-detail/400/250' },
+  'c3': { id: 'c3', title: 'Dribbling Drill', description: 'Evaluate your ball control and agility. Essential for changing direction quickly while maintaining possession, vital for players in team sports like basketball or soccer.', instructions: '1. Set up 5 cones 3 meters apart in a straight line or zigzag pattern. 2. Dribble the ball (football or basketball) through the cones as fast as possible, making sure not to touch any cones. 3. Record the drill from a high angle or from behind to clearly show the entire course. 4. Upload the video. Max video length 45s. Focus on tight control and quick turns.', imageUrl: 'https://picsum.photos/seed/dribble-detail/400/250' },
+  'c4': { id: 'c4', title: 'Push-up Max', description: 'Measure your explosive leg power. A higher jump indicates greater athletic potential for quick movements, crucial in sports like basketball, volleyball, or high-jump.', instructions: '1. Stand next to a wall or measuring device, flat-footed. 2. Mark your standing reach with your arm fully extended overhead. 3. Jump vertically as high as you can, touching the highest point possible. 4. Record your jump from a side angle, ensuring both your standing reach and jump height are visible. 5. Upload the video. Max video length 15s. Take 3 attempts and submit your best.', imageUrl: 'https://picsum.photos/seed/pushup-detail/400/250' },
+  'c5': { id: 'c5', title: 'Long Jump', description: 'Evaluate your ball control and agility. Essential for changing direction quickly while maintaining possession, vital for players in team sports like basketball or soccer.', instructions: '1. Set up 5 cones 3 meters apart in a straight line or zigzag pattern. 2. Dribble the ball (football or basketball) through the cones as fast as possible, making sure not to touch any cones. 3. Record the drill from a high angle or from behind to clearly show the entire course. 4. Upload the video. Max video length 45s. Focus on tight control and quick turns.', imageUrl: 'https://picsum.photos/seed/longjump-detail/400/250' },
 };
 
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
@@ -217,18 +216,27 @@ const AthleteChallengesView = () => {
           </button>
 
           <div className="pt-12">
-              <h2 className="text-xl font-bold mb-3 text-gray-800">{selectedChallenge.title}</h2>
+              <h2 
+                className="mb-3 text-red-600 text-center challenge-heading"
+                style={{ 
+                  fontFamily: '"Splash", cursive',
+                  fontWeight: "400",
+                  fontStyle: "normal",
+                  fontSize: "1.25rem",
+                  letterSpacing: "1px",
+                  textTransform: "uppercase"
+                }}
+              >
+                {selectedChallenge.title}
+              </h2>
 
-              {selectedChallenge.videoExampleUrl && (
-                <div className="video-example-container mb-4" style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden', maxWidth: '100%', background: '#000' }}>
-                  <iframe
-                    src={selectedChallenge.videoExampleUrl}
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
-                    title={selectedChallenge.title}
-                  ></iframe>
+              {selectedChallenge.imageUrl && (
+                <div className="challenge-image-container mb-4">
+                  <img 
+                    src={selectedChallenge.imageUrl} 
+                    alt={selectedChallenge.title}
+                    className="w-full h-48 object-cover rounded-lg shadow-md"
+                  />
                 </div>
               )}
 
