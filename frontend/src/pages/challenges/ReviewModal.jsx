@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import challengeClient from "../../api/challengeApi";
-import ReviewModal from "./ReviewModal";
+import axios from "../../api/axiosConfig";
+//import ReviewModal from "../../components/challenges/ReviewModal";
 
 export default function CoachChallengesView() {
   const [selectedSubmission, setSelectedSubmission] = useState(null);
-  const [activeTab, setActiveTab] = useState("post"); // 'post' or 'view'
+  const [activeTab, setActiveTab] = useState("post");
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -13,7 +13,6 @@ export default function CoachChallengesView() {
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Fetch submissions when view tab is active
   useEffect(() => {
     if (activeTab === "view") {
       fetchSubmissions();
@@ -23,19 +22,10 @@ export default function CoachChallengesView() {
   const fetchSubmissions = async () => {
     setLoading(true);
     try {
-      console.log('Fetching submissions from:', challengeClient.defaults.baseURL + '/submissions');
-      const response = await challengeClient.get("/submissions");
-      console.log("Fetched submissions:", response.data);
+      const response = await axios.get("/challenges");
       setSubmissions(response.data);
     } catch (error) {
       console.error("Error fetching submissions:", error);
-      console.error("Error details:", {
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        message: error.message
-      });
-      alert(`Failed to fetch submissions: ${error.response?.data?.message || error.message}`);
     } finally {
       setLoading(false);
     }
@@ -49,24 +39,16 @@ export default function CoachChallengesView() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      console.log('Submitting challenge to:', challengeClient.defaults.baseURL + '/challenges');
-      const response = await challengeClient.post("/challenges", {
+      await axios.post("/challenges", {
         title: formData.title,
         description: formData.description,
         xp_value: parseInt(formData.xp_value, 10),
       });
-      console.log('Challenge created successfully:', response.data);
       alert("Challenge created successfully!");
       setFormData({ title: "", description: "", xp_value: "" });
     } catch (error) {
       console.error("Error creating challenge:", error);
-      console.error("Error details:", {
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        message: error.message
-      });
-      alert(`Failed to create challenge: ${error.response?.data?.message || error.message}`);
+      alert("Failed to create challenge. Please try again.");
     }
   };
 
@@ -76,13 +58,17 @@ export default function CoachChallengesView() {
       <div className="flex space-x-4 mb-4">
         <button
           onClick={() => setActiveTab("post")}
-          className={`px-4 py-2 rounded ${activeTab === "post" ? "bg-blue-500 text-white" : "bg-gray-200"}`}
+          className={`px-4 py-2 rounded ${
+            activeTab === "post" ? "bg-blue-500 text-white" : "bg-gray-200"
+          }`}
         >
           Post New Challenge
         </button>
         <button
           onClick={() => setActiveTab("view")}
-          className={`px-4 py-2 rounded ${activeTab === "view" ? "bg-blue-500 text-white" : "bg-gray-200"}`}
+          className={`px-4 py-2 rounded ${
+            activeTab === "view" ? "bg-blue-500 text-white" : "bg-gray-200"
+          }`}
         >
           View Athlete Submissions
         </button>
@@ -156,7 +142,7 @@ export default function CoachChallengesView() {
                       Submission #{submission.id} - {submission.status}
                     </p>
                     <p className="text-sm text-gray-600">
-                      Submitted at: {new Date(submission.submitted_at).toLocaleString()}
+                      Submitted at: {submission.submitted_at}
                     </p>
                   </li>
                 ))
@@ -166,11 +152,19 @@ export default function CoachChallengesView() {
         </div>
       )}
 
-      {/* Review Modal if needed */}
+      {/* Review Modal */}
       {selectedSubmission && (
         <ReviewModal
           submission={selectedSubmission}
           onClose={() => setSelectedSubmission(null)}
+          onApprove={(id, comment) => {
+            console.log("Approved:", id, comment);
+            // TODO: Integrate backend approve API
+          }}
+          onDeny={(id, comment) => {
+            console.log("Denied:", id, comment);
+            // TODO: Integrate backend deny API
+          }}
         />
       )}
     </div>
