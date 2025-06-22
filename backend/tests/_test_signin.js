@@ -4,8 +4,8 @@ import { handler } from '../functions/signin.js';
 
 const mockEvent = {
   body: JSON.stringify({
-    email: "new-test-athlete-3@findplayer.app", // Use the email of the user you just created
-    password: "New-Password123!",       // Use the correct password
+    email: "ejad.home@gmail.com", // Use the email of the user you just created
+    password: "P@ssword123",       // Use the correct password
   })
 };
 

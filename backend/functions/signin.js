@@ -3,12 +3,10 @@
 import { 
     CognitoIdentityProviderClient, 
     InitiateAuthCommand,
-    AdminGetUserCommand
+    AdminGetUserCommand 
 } from "@aws-sdk/client-cognito-identity-provider";
-
-const REGION = process.env.REGION || "us-east-1"; // Use env var if set, otherwise default
-const CLIENT_ID = process.env.CLIENT_ID; // <--- Get from Lambda Environment Variables
-const USER_POOL_ID = process.env.USER_POOL_ID; // <--- Get from Lambda Environment Variables
+const REGION = "us-east-1";
+const CLIENT_ID = "29ae68avp4t8mvcg30fr97j3o2";
 
 const client = new CognitoIdentityProviderClient({ region: REGION });
 
@@ -27,7 +25,6 @@ export const handler = async (event) => {
 
     const { email, password } = body;
 
-    // Basic validation for required fields
     if (!email || !password) {
         return {
             statusCode: 400,
@@ -36,9 +33,9 @@ export const handler = async (event) => {
         };
     }
 
-    // Parameters for InitiateAuthCommand (standard user pool login)
     const authParams = {
-        AuthFlow: "USER_SRP_AUTH",
+        AuthFlow: "USER_PASSWORD_AUTH", // <--- CHANGED BACK TO USER_PASSWORD_AUTH
+        ClientId: CLIENT_ID,
         AuthParameters: {
             USERNAME: email,
             PASSWORD: password,
@@ -46,29 +43,24 @@ export const handler = async (event) => {
     };
 
     try {
-        // STEP 1: Authenticate the user and get tokens
         const command = new InitiateAuthCommand(authParams);
         const authResponse = await client.send(command);
         const authenticationResult = authResponse.AuthenticationResult;
 
-        // Extract tokens
         const idToken = authenticationResult.IdToken;
         const accessToken = authenticationResult.AccessToken;
         const refreshToken = authenticationResult.RefreshToken;
 
-        let userProfile = {}; // Initialize user profile object
+        let userProfile = {}; 
         let profilePictureUrl = null;
 
-        // STEP 2: Fetch full user attributes using AdminGetUserCommand
-        // This is needed to get custom attributes like profilePictureUrl
         try {
             const adminGetUserCommand = new AdminGetUserCommand({
                 UserPoolId: USER_POOL_ID,
-                Username: email // Use the email as the username for fetching attributes
+                Username: email 
             });
             const userDetails = await client.send(adminGetUserCommand);
 
-            // Map Cognito UserAttributes (array of { Name, Value }) to a flat userProfile object
             if (userDetails.UserAttributes) {
                 userDetails.UserAttributes.forEach(attr => {
                     switch(attr.Name) {
@@ -80,9 +72,8 @@ export const handler = async (event) => {
                         case 'custom:position': userProfile.position = attr.Value; break;
                         case 'custom:profilePictureUrl': 
                             profilePictureUrl = attr.Value;
-                            userProfile.profilePictureUrl = attr.Value; // Store in profile
+                            userProfile.profilePictureUrl = attr.Value; 
                             break;
-                        // Add more custom attributes here if needed for frontend
                         default:
                             break;
                     }
@@ -91,8 +82,6 @@ export const handler = async (event) => {
             console.log(`User attributes fetched for ${email}. Profile URL: ${profilePictureUrl}`);
         } catch (getUserError) {
             console.error("Error fetching user details with AdminGetUserCommand for login:", getUserError);
-            // Log the error but don't necessarily fail the login, just omit the full profile
-            // userProfile might be incomplete but tokens are valid
         }
 
         return {
@@ -106,24 +95,23 @@ export const handler = async (event) => {
                 idToken: idToken,
                 accessToken: accessToken,
                 refreshToken: refreshToken,
-                userProfile: userProfile // <--- Send the full user profile including profilePictureUrl
+                userProfile: userProfile 
             }),
         };
     } catch (error) {
-        console.error("Login error:", error); // Log the full error for debugging
+        console.error("Login error:", error);
         let errorMessage = "An unknown error occurred during login.";
         let statusCode = 500;
 
-        // Refined error handling based on Cognito exceptions
         if (error.name === 'NotAuthorizedException') {
             errorMessage = "Incorrect username or password.";
-            statusCode = 401; // Unauthorized
+            statusCode = 401;
         } else if (error.name === 'UserNotConfirmedException') {
             errorMessage = "User is not confirmed. Please confirm your account.";
-            statusCode = 403; // Forbidden
-        } else if (error.name === 'UserNotFoundException') { // Often handled by NotAuthorizedException, but good to be explicit
+            statusCode = 403;
+        } else if (error.name === 'UserNotFoundException') { 
             errorMessage = "User not found.";
-            statusCode = 404; // Not Found
+            statusCode = 404; 
         } else if (error.message) {
             errorMessage = error.message;
         }
