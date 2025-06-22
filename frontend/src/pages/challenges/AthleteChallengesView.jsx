@@ -605,6 +605,14 @@ const AthleteChallengesView = () => {
                   
                   <p className="text-gray-600 text-sm mb-3 line-clamp-2">{challenge.description}</p>
                   
+                  {/* Coach Information */}
+                  {challenge.coach_name && (
+                    <div className="flex items-center mb-3 text-sm text-gray-500">
+                      <span className="mr-1">👨‍</span>
+                      <span>Coach: {challenge.coach_name}</span>
+                    </div>
+                  )}
+                  
                   {/* Submission Status */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
