@@ -1,0 +1,9 @@
+{
+  "name": "check-submission-status",
+  "version": "1.0.0",
+  "description": "Lambda function to check submission status for a challenge",
+  "main": "index.js",
+  "dependencies": {
+    "pg": "^8.11.3"
+  }
+} 

@@ -5,6 +5,7 @@ import { useLocation } from 'react-router-dom';
 import ChallengeLoader from '../../components/common/ChallengeLoader';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { fetchChallenges, completeChallengeSubmission } from '../../api/challengeService';
+import apiClient from '../../api/axiosConfig';
 
 // --- Mock Data for Challenge List ---
 const MOCK_CHALLENGES = [
@@ -62,6 +63,12 @@ const MOCK_CHALLENGE_DETAILS = {
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
 const MAX_VIDEO_SIZE_BYTES = 50 * 1024 * 1024;
 
+// API endpoint URLs
+const API_ENDPOINTS = {
+  submitChallenge: (challengeId) => `https://stpw2c9b5b.execute-api.us-east-1.amazonaws.com/default/challenges/${challengeId}/submit`,
+  checkSubmissionStatus: (challengeId) => `https://bv6tkoez9f.execute-api.us-east-1.amazonaws.com/default/challenges/${challengeId}/checkSubmissionStatus`
+};
+
 const AthleteChallengesView = () => {
   const [challenges, setChallenges] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -75,6 +82,7 @@ const AthleteChallengesView = () => {
   const [pullDistance, setPullDistance] = useState(0);
   const location = useLocation();
   const { user, isAuthenticated, token } = useAuthStore();
+  const [submissionStatuses, setSubmissionStatuses] = useState({});
 
   // --- Ref to track previous location key (for re-click detection) ---
   const prevLocationKey = React.useRef(location.key);
@@ -100,15 +108,18 @@ const AthleteChallengesView = () => {
       const challengesData = await fetchChallenges();
       setChallenges(challengesData);
       console.log("AthleteChallengesView: Challenges loaded successfully from API.");
+      console.log("Challenges data:", challengesData);
+      
+      // Re-enable submission status checking with the new endpoint
+      const challengeIds = challengesData.map(challenge => challenge.id);
+      console.log("Challenge IDs to check:", challengeIds);
+      await fetchSubmissionStatuses(challengeIds);
       
     } catch (err) {
       console.error('AthleteChallengesView: Failed to fetch challenges:', err);
       
-      // Handle authentication errors specifically
       if (err.message.includes('Authentication expired') || err.message.includes('Unauthorized')) {
         setError('Your session has expired. Please log in again.');
-        // Optionally redirect to login
-        // window.location.href = '/login';
       } else {
         setError(err.message || 'Failed to load challenges. Please try again.');
       }
@@ -236,20 +247,29 @@ const AthleteChallengesView = () => {
   }, [selectedChallenge, loading, pullDistance]); // Add dependencies
 
   const handleChallengeClick = async (challengeId) => {
+    setLoading(true);
+    setError(null);
+    
     try {
-      setLoading(true);
-      setError(null);
-      
-      // Find the challenge in the challenges array
       const challenge = challenges.find(c => c.id === challengeId);
       if (!challenge) {
         throw new Error('Challenge not found');
       }
       
       setSelectedChallenge(challenge);
-      setSubmissionStatus('idle');
       setVideoFile(null);
       setVideoError(null);
+
+      // Check if user has already submitted using stored status
+      const submission = submissionStatuses[challengeId];
+      if (submission) {
+        setSubmissionStatus('already_submitted');
+        console.log('User has already submitted for this challenge:', submission);
+      } else {
+        setSubmissionStatus('idle');
+        console.log('No existing submission found for this challenge');
+      }
+      
     } catch (err) {
       console.error('Failed to fetch challenge details:', err);
       setError('Failed to load challenge details. Please try again.');
@@ -289,8 +309,8 @@ const AthleteChallengesView = () => {
       return;
     }
     if (videoError) {
-        console.log("Video file validation error present, preventing submission.");
-        return;
+      console.log("Video file validation error present, preventing submission.");
+      return;
     }
 
     setSubmissionStatus('uploading');
@@ -299,7 +319,7 @@ const AthleteChallengesView = () => {
     try {
       console.log("AthleteChallengesView: Starting challenge submission process...");
       
-      // Use the complete submission flow (athlete_id will be extracted from JWT token)
+      // Use the complete submission flow
       await completeChallengeSubmission(
         selectedChallenge.id, 
         videoFile
@@ -309,11 +329,44 @@ const AthleteChallengesView = () => {
       setSubmissionStatus('waiting_approval');
       setVideoFile(null);
 
+      // Update the submission status for this challenge
+      const newSubmission = await checkSubmissionStatus(selectedChallenge.id);
+      setSubmissionStatuses(prev => ({
+        ...prev,
+        [selectedChallenge.id]: newSubmission
+      }));
+
     } catch (err) {
       console.error('Video submission failed:', err);
       setSubmissionStatus('idle');
       setError(err.message || 'Video submission failed. Please try again.');
     }
+  };
+
+  const checkSubmissionStatus = async (challengeId) => {
+    try {
+      const response = await apiClient.get(API_ENDPOINTS.checkSubmissionStatus(challengeId));
+      return response.data?.submission || null;
+    } catch (error) {
+      if (error.response?.status === 404) {
+        return null; // No submission exists
+      }
+      console.error(`Error checking submission for challenge ${challengeId}:`, error);
+      return null;
+    }
+  };
+
+  const fetchSubmissionStatuses = async (challengeIds) => {
+    const statuses = {};
+    
+    // Check submission status for each challenge
+    for (const challengeId of challengeIds) {
+      const submission = await checkSubmissionStatus(challengeId);
+      statuses[challengeId] = submission;
+    }
+    
+    setSubmissionStatuses(statuses);
+    console.log('Submission statuses loaded:', statuses);
   };
 
   if (loading) {
@@ -412,32 +465,58 @@ const AthleteChallengesView = () => {
 
                 {videoError && <div className="text-red-600 mb-3">{videoError}</div>}
 
-                {submissionStatus === 'waiting_approval' ? (
-                  <div className="status-message text-green-700 font-bold mb-4 border border-green-300 p-4 rounded-lg bg-green-50 flex items-center justify-center">
-                    <span className="mr-2 text-2xl">✅</span> Your video is submitted and waiting for approval!
-                  </div>
-                ) : submissionStatus === 'uploading' ? (
-                  <div className="status-message text-blue-700 font-bold mb-4 border border-blue-300 p-4 rounded-lg bg-blue-50 flex items-center justify-center">
-                    <span className="mr-2 text-2xl">⏳</span> Uploading video... Please wait.
-                  </div>
-                ) : ( // Default state: idle or previous failed attempt (show upload controls)
-                  <>
-                    <input
-                      type="file"
-                      accept="video/*"
-                      onChange={handleVideoFileChange}
-                      className="block w-full text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 mb-3"
-                    />
-                    {videoFile && <p className="text-sm text-gray-600 mb-3">Selected: {videoFile.name}</p>}
-                    <button
-                      onClick={handleVideoSubmit}
-                      disabled={!videoFile}
-                      className="submit-video-button mt-2 bg-red-500 text-white py-2 px-5 rounded-lg font-semibold hover:bg-red-600 transition-colors duration-200 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Submit Video
-                    </button>
-                  </>
-                )}
+                {/* Check if user has already submitted for this challenge */}
+                {(() => {
+                  const existingSubmission = submissionStatuses[selectedChallenge.id];
+                  const hasSubmitted = existingSubmission !== null && existingSubmission !== undefined;
+                  
+                  if (hasSubmitted) {
+                    return (
+                      <div className="status-message text-green-700 font-bold mb-4 border border-green-300 p-4 rounded-lg bg-green-50 flex items-center justify-center">
+                        <span className="mr-2 text-2xl">✅</span> 
+                        <div>
+                          <div>Your video has been submitted!</div>
+                          <div className="text-sm font-normal mt-1">
+                            Status: {existingSubmission?.status || 'Submitted'} | 
+                            Submitted: {existingSubmission?.submitted_at ? new Date(existingSubmission.submitted_at).toLocaleDateString() : 'N/A'}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  } else if (submissionStatus === 'waiting_approval') {
+                    return (
+                      <div className="status-message text-green-700 font-bold mb-4 border border-green-300 p-4 rounded-lg bg-green-50 flex items-center justify-center">
+                        <span className="mr-2 text-2xl">✅</span> Your video is submitted and waiting for approval!
+                      </div>
+                    );
+                  } else if (submissionStatus === 'uploading') {
+                    return (
+                      <div className="status-message text-blue-700 font-bold mb-4 border border-blue-300 p-4 rounded-lg bg-blue-50 flex items-center justify-center">
+                        <span className="mr-2 text-2xl">⏳</span> Uploading video... Please wait.
+                      </div>
+                    );
+                  } else {
+                    // Show upload controls only if no submission exists
+                    return (
+                      <>
+                        <input
+                          type="file"
+                          accept="video/*"
+                          onChange={handleVideoFileChange}
+                          className="block w-full text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 mb-3"
+                        />
+                        {videoFile && <p className="text-sm text-gray-600 mb-3">Selected: {videoFile.name}</p>}
+                        <button
+                          onClick={handleVideoSubmit}
+                          disabled={!videoFile}
+                          className="submit-video-button mt-2 bg-red-500 text-white py-2 px-5 rounded-lg font-semibold hover:bg-red-600 transition-colors duration-200 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Submit Video
+                        </button>
+                      </>
+                    );
+                  }
+                })()}
               </div>
           </div>
 
@@ -447,19 +526,51 @@ const AthleteChallengesView = () => {
           {challenges.length === 0 ? (
             <p className="text-gray-600 col-span-full text-center">No challenges available at the moment.</p>
           ) : (
-            challenges.map(challenge => (
-              <div
-                key={challenge.id}
-                className="challenge-item bg-white p-5 rounded-lg shadow-md cursor-pointer hover:shadow-lg transition-shadow duration-200 ease-in-out"
-                onClick={() => handleChallengeClick(challenge.id)}
-              >
-                {challenge.image_url && (
-                  <img src={challenge.image_url} alt={challenge.title} className="w-full h-32 object-cover rounded-md mb-3" />
-                )}
-                <h3 className="font-bold text-lg mb-1 text-gray-800">{challenge.title}</h3>
-                <p className="text-sm text-gray-600">{challenge.description.substring(0, 100)}...</p>
-              </div>
-            ))
+            challenges.map(challenge => {
+              const submission = submissionStatuses[challenge.id];
+              const hasSubmitted = submission !== null && submission !== undefined;
+              
+              return (
+                <div
+                  key={challenge.id}
+                  className={`challenge-item bg-white p-5 rounded-lg shadow-md cursor-pointer hover:shadow-lg transition-all duration-200 ease-in-out relative ${
+                    hasSubmitted ? 'border-2 border-green-500' : ''
+                  }`}
+                  onClick={() => handleChallengeClick(challenge.id)}
+                >
+                  {/* Submission Status Badge - Always Visible */}
+                  <div className={`absolute top-3 right-3 px-2 py-1 rounded-full text-xs font-semibold flex items-center ${
+                    hasSubmitted 
+                      ? 'bg-green-500 text-white' 
+                      : 'bg-gray-300 text-gray-700'
+                  }`}>
+                    <span className="mr-1">
+                      {hasSubmitted ? '✅' : '⏳'}
+                    </span>
+                    {hasSubmitted ? 'Submitted' : 'Not Submitted'}
+                  </div>
+                  
+                  {challenge.image_url && (
+                    <img src={challenge.image_url} alt={challenge.title} className="w-full h-32 object-cover rounded-md mb-3" />
+                  )}
+                  
+                  <h3 className="font-bold text-lg mb-1 text-gray-800">{challenge.title}</h3>
+                  <p className="text-sm text-gray-600">{challenge.description.substring(0, 100)}...</p>
+                  
+                  {/* Submission Status Text - Always Visible */}
+                  <div className={`mt-2 text-xs font-medium ${
+                    hasSubmitted ? 'text-green-600' : 'text-gray-500'
+                  }`}>
+                    Status: {hasSubmitted ? (submission?.status || 'Submitted') : 'Not Submitted'}
+                    {hasSubmitted && submission?.submitted_at && (
+                      <span className="ml-2">
+                        | {new Date(submission.submitted_at).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })
           )}
         </div>
       )}
