@@ -84,7 +84,6 @@ function AthleteSignUpForm() {
     let profilePictureContentType = null;
     if (selectedFile) {
       if (imageError) {
-          console.log("Image validation error present, preventing submission.");
           setIsLoading(false);
           return;
       }
@@ -128,7 +127,6 @@ function AthleteSignUpForm() {
         RefreshToken: refreshToken
       });
 
-      console.log('User auto-logged in. Redirecting to home...');
       navigate('/home');
 
     } catch (err) {

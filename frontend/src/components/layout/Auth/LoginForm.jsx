@@ -40,8 +40,6 @@ function LoginForm() {
         password: data.password,
       });
 
-      console.log('🔍 Login response:', response.data); // Debug log
-
       const { idToken, accessToken, refreshToken, userProfile } = response.data;
 
       // Extract all tokens from the response

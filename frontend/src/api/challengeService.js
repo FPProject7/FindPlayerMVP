@@ -33,12 +33,9 @@ export const fetchChallenges = async () => {
  */
 export const generateUploadUrl = async (challengeId) => {
   try {
-    console.log(`Generating upload URL for challenge: ${challengeId}`);
-    
     // Send challenge ID as query parameter
     const response = await apiClient.get(`${API_ENDPOINTS.generateUploadUrl}?challengeId=${challengeId}`);
     
-    console.log('Upload URL response:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error generating upload URL:', error);
@@ -62,13 +59,6 @@ export const generateUploadUrl = async (challengeId) => {
 export const uploadVideoToS3 = async (uploadUrl, videoFile, onProgress = null) => {
   return new Promise((resolve, reject) => {
     try {
-      console.log('Uploading video to S3:', {
-        uploadUrl: uploadUrl.substring(0, 100) + '...',
-        fileName: videoFile.name,
-        fileSize: videoFile.size,
-        fileType: videoFile.type
-      });
-
       const xhr = new XMLHttpRequest();
 
       // Track upload progress
@@ -84,7 +74,6 @@ export const uploadVideoToS3 = async (uploadUrl, videoFile, onProgress = null) =
         if (xhr.status >= 200 && xhr.status < 300) {
           // Extract the file URL from the upload URL
           const urlParts = uploadUrl.split('?')[0];
-          console.log('Video uploaded successfully to:', urlParts);
           resolve(urlParts);
         } else {
           reject(new Error(`Upload failed with status: ${xhr.status}`));
@@ -120,13 +109,10 @@ export const uploadVideoToS3 = async (uploadUrl, videoFile, onProgress = null) =
  */
 export const submitChallenge = async (challengeId, videoUrl) => {
   try {
-    console.log('Submitting challenge:', { challengeId, videoUrl });
-    
     const response = await apiClient.post(API_ENDPOINTS.submitChallenge(challengeId), {
       video_url: videoUrl
     });
     
-    console.log('Challenge submission response:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error submitting challenge:', error);
@@ -144,28 +130,22 @@ export const completeChallengeSubmission = async (challengeId, videoFile) => {
   const uploadStore = useUploadStore.getState();
   
   try {
-    console.log('Starting complete challenge submission for:', challengeId);
-    
     // Start tracking the upload
     uploadStore.startUpload(challengeId);
     
     // Step 1: Generate pre-signed URL
     uploadStore.updateStatus(challengeId, 'preparing');
     const { uploadUrl, fileUrl } = await generateUploadUrl(challengeId);
-    console.log('Generated upload URL successfully');
     
     // Step 2: Upload video to S3 with progress tracking
     uploadStore.updateStatus(challengeId, 'uploading');
     await uploadVideoToS3(uploadUrl, videoFile, (progress) => {
       uploadStore.updateProgress(challengeId, progress);
-      console.log(`Upload progress: ${progress}%`);
     });
-    console.log('Video uploaded to S3 successfully');
     
     // Step 3: Submit challenge with video URL
     uploadStore.updateStatus(challengeId, 'submitting');
     const submission = await submitChallenge(challengeId, fileUrl);
-    console.log('Challenge submitted successfully');
     
     // Mark as completed
     uploadStore.updateStatus(challengeId, 'completed');

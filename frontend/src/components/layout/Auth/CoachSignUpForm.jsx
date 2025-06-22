@@ -83,8 +83,7 @@ function CoachSignUpForm() {
     let profilePictureContentType = null;
     if (selectedFile) {
       if (imageError) {
-          console.log("Image validation error present, preventing submission.");
-          setIsLoading(false); // <--- Reset loading if validation error prevents processing
+          setIsLoading(false);
           return;
       }
 
@@ -109,7 +108,7 @@ function CoachSignUpForm() {
 
     if (profilePictureBase64 === null && selectedFile) {
         setApiError('Failed to process profile picture. Please try another image.');
-        setIsLoading(false); // <--- Reset loading if file processing fails
+        setIsLoading(false);
         return;
     }
 
@@ -127,8 +126,6 @@ function CoachSignUpForm() {
 
       const response = await api.post('/signup', payload);
 
-      console.log('Coach signup successful:', response.data);
-
       const { idToken, accessToken, refreshToken, userProfile } = response.data;
 
       login(userProfile, {
@@ -137,7 +134,6 @@ function CoachSignUpForm() {
         RefreshToken: refreshToken
       });
 
-      console.log('Auto-login successful. Redirecting to home...');
       navigate('/home');
 
     } catch (err) {

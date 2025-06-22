@@ -105,17 +105,11 @@ const AthleteChallengesView = () => {
       }
       setError(null);
       
-      console.log("AthleteChallengesView: Fetching challenges from API...");
-      console.log("Auth state before fetch:", { isAuthenticated, hasToken: !!token });
-      
       const challengesData = await fetchChallenges();
       setChallenges(challengesData);
-      console.log("AthleteChallengesView: Challenges loaded successfully from API.");
-      console.log("Challenges data:", challengesData);
       
       // Re-enable submission status checking with the new endpoint
       const challengeIds = challengesData.map(challenge => challenge.id);
-      console.log("Challenge IDs to check:", challengeIds);
       await fetchSubmissionStatuses(challengeIds);
       
     } catch (err) {
@@ -129,7 +123,6 @@ const AthleteChallengesView = () => {
     } finally {
       setLoading(false);
       setRefreshing(false);
-      console.log("AthleteChallengesView: Loading/refreshing completed.");
     }
   };
 
@@ -166,7 +159,6 @@ const AthleteChallengesView = () => {
     if (selectedChallenge || loading) return;
     
     if (pullDistance >= PULL_THRESHOLD) {
-      console.log("AthleteChallengesView: Pull to refresh triggered");
       fetchChallengesData(true);
     }
     
@@ -181,7 +173,6 @@ const AthleteChallengesView = () => {
     // 2. The location.key has changed (indicating a new history entry, often from re-clicking NavLink)
     // 3. And a challenge is currently selected (meaning we are in the detail view)
     if (location.pathname === '/challenges' && location.key !== prevLocationKey.current && selectedChallenge) {
-        console.log("AthleteChallengesView: NavLink re-click detected, resetting detail view.");
         setSelectedChallenge(null);
         setSubmissionStatus('idle');
         setVideoFile(null);
@@ -194,14 +185,12 @@ const AthleteChallengesView = () => {
 
   // --- Initial Load and Auto-refresh on Navigation ---
   useEffect(() => {
-    console.log("AthleteChallengesView: useEffect triggered, starting fetchChallenges.");
     fetchChallengesData();
   }, []); // Empty dependency array means this runs once on mount
 
   // --- Auto-refresh when navigating to challenges page ---
   useEffect(() => {
     if (location.pathname === '/challenges') {
-      console.log("AthleteChallengesView: Navigating to challenges page, refreshing data.");
       fetchChallengesData(true);
     }
   }, [location.pathname]);
@@ -267,10 +256,8 @@ const AthleteChallengesView = () => {
       const submission = submissionStatuses[challengeId];
       if (submission) {
         setSubmissionStatus('already_submitted');
-        console.log('User has already submitted for this challenge:', submission);
       } else {
         setSubmissionStatus('idle');
-        console.log('No existing submission found for this challenge');
       }
       
     } catch (err) {
@@ -312,14 +299,12 @@ const AthleteChallengesView = () => {
       return;
     }
     if (videoError) {
-      console.log("Video file validation error present, preventing submission.");
       return;
     }
 
     setError(null);
 
     try {
-      console.log("AthleteChallengesView: Starting challenge submission process...");
       
       // Use the complete submission flow (upload tracking is now handled globally)
       await completeChallengeSubmission(
@@ -327,7 +312,6 @@ const AthleteChallengesView = () => {
         videoFile
       );
 
-      console.log("AthleteChallengesView: Challenge submission completed successfully");
       setVideoFile(null);
 
       // Update the submission status for this challenge
@@ -366,7 +350,6 @@ const AthleteChallengesView = () => {
     }
     
     setSubmissionStatuses(statuses);
-    console.log('Submission statuses loaded:', statuses);
   };
 
   if (loading) {
@@ -459,6 +442,15 @@ const AthleteChallengesView = () => {
 
               <p className="mb-3 text-gray-700"><strong>Description:</strong> {selectedChallenge.description}</p>
               <p className="mb-5 text-gray-700"><strong>Instructions:</strong> {selectedChallenge.instructions}</p>
+
+              {/* Coach Information in Detail View */}
+              {selectedChallenge.coach_name && (
+                <div className="mb-5 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                  <p className="text-gray-700">
+                    <strong>Created by:</strong> {selectedChallenge.coach_name}
+                  </p>
+                </div>
+              )}
 
               <div className="video-upload-section bg-gray-50 border border-gray-200 p-5 rounded-lg">
                 <h3 className="text-lg font-bold mb-3 text-gray-800">Upload Your Video</h3>
@@ -608,7 +600,6 @@ const AthleteChallengesView = () => {
                   {/* Coach Information */}
                   {challenge.coach_name && (
                     <div className="flex items-center mb-3 text-sm text-gray-500">
-                      <span className="mr-1">👨‍</span>
                       <span>Coach: {challenge.coach_name}</span>
                     </div>
                   )}

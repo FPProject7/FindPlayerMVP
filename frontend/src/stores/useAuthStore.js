@@ -24,7 +24,6 @@ export const useAuthStore = create(
        */
       login: (userProfile, tokenData) => {
         const expiryTime = new Date(Date.now() + 3600000); // 1 hour (3600000 ms)
-        console.log('🔐 Login - Setting token expiry to:', expiryTime.toLocaleTimeString());
         
         set({
           token: tokenData.IdToken,
@@ -65,20 +64,12 @@ export const useAuthStore = create(
       isTokenExpired: () => {
         const state = get();
         if (!state.tokenExpiry) {
-          console.log('❌ No token expiry set');
           return true;
         }
         
         const now = new Date();
         const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000);
         const isExpired = state.tokenExpiry <= now;
-        
-        console.log('⏰ Token expiry check:', {
-          now: now.toLocaleTimeString(),
-          expiry: state.tokenExpiry.toLocaleTimeString(),
-          fiveMinutesFromNow: fiveMinutesFromNow.toLocaleTimeString(),
-          isExpired: isExpired
-        });
         
         return isExpired;
       },
@@ -96,7 +87,6 @@ export const useAuthStore = create(
         }
 
         // Token is expired, try to refresh
-        console.log('Token expired, attempting refresh...');
         return await get().refreshTokenAsync();
       },
 
@@ -109,8 +99,6 @@ export const useAuthStore = create(
         }
 
         try {
-          console.log('Attempting to refresh token...');
-          
           const response = await fetch('https://x0pskxuai7.execute-api.us-east-1.amazonaws.com/default/refreshToken', {
             method: 'POST',
             headers: {
@@ -127,7 +115,6 @@ export const useAuthStore = create(
           }
 
           const data = await response.json();
-          console.log('Token refresh successful');
           
           // Update tokens with 1 hour expiry
           set({
