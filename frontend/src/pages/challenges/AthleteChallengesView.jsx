@@ -192,6 +192,49 @@ const AthleteChallengesView = () => {
     }
   }, [location.pathname]);
 
+  // Add this useEffect to set up non-passive event listeners
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Set up non-passive touch event listeners
+    const handleTouchStartNonPassive = (e) => {
+      handleTouchStart(e);
+    };
+
+    const handleTouchMoveNonPassive = (e) => {
+      const touch = e.touches[0];
+      const distance = touch.clientY - pullStartY;
+      
+      // 1. We have a valid start position
+      // 2. We're pulling down (distance > 0)
+      // 3. We're on the challenges list (not in detail view)
+      if (distance > 0 && window.scrollY === 0 && !selectedChallenge) {
+        e.preventDefault();
+        setPullDistance(Math.min(distance, MAX_PULL_DISTANCE));
+      } else {
+        // Allow normal scrolling in all other cases
+        setPullDistance(0);
+      }
+    };
+
+    const handleTouchEndNonPassive = (e) => {
+      handleTouchEnd(e);
+    };
+
+    // Add event listeners with passive: false
+    container.addEventListener('touchstart', handleTouchStartNonPassive, { passive: false });
+    container.addEventListener('touchmove', handleTouchMoveNonPassive, { passive: false });
+    container.addEventListener('touchend', handleTouchEndNonPassive, { passive: false });
+
+    // Cleanup function
+    return () => {
+      container.removeEventListener('touchstart', handleTouchStartNonPassive);
+      container.removeEventListener('touchmove', handleTouchMoveNonPassive);
+      container.removeEventListener('touchend', handleTouchEndNonPassive);
+    };
+  }, [selectedChallenge, loading, pullDistance]); // Add dependencies
+
   const handleChallengeClick = async (challengeId) => {
     try {
       setLoading(true);
@@ -293,9 +336,6 @@ const AthleteChallengesView = () => {
     <div 
       className="py-4"
       ref={containerRef}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
       style={{ 
         transform: `translateY(${pullDistance}px)`,
         transition: pullDistance === 0 ? 'transform 0.3s ease-out' : 'none'
