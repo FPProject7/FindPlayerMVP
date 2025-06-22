@@ -40,9 +40,16 @@ function LoginForm() {
         password: data.password,
       });
 
-      const { idToken, userProfile } = response.data;
+      console.log('🔍 Login response:', response.data); // Debug log
 
-      login(userProfile, { IdToken: idToken });
+      const { idToken, accessToken, refreshToken, userProfile } = response.data;
+
+      // Extract all tokens from the response
+      login(userProfile, {
+        IdToken: idToken,
+        AccessToken: accessToken,
+        RefreshToken: refreshToken
+      });
 
       navigate('/home');
 

@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import ChallengeLoader from '../../components/common/ChallengeLoader';
+import { useAuthStore } from '../../stores/useAuthStore';
+import { fetchChallenges, completeChallengeSubmission } from '../../api/challengeService';
 
 // --- Mock Data for Challenge List ---
 const MOCK_CHALLENGES = [
@@ -60,7 +62,6 @@ const MOCK_CHALLENGE_DETAILS = {
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
 const MAX_VIDEO_SIZE_BYTES = 50 * 1024 * 1024;
 
-
 const AthleteChallengesView = () => {
   const [challenges, setChallenges] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -73,6 +74,7 @@ const AthleteChallengesView = () => {
   const [pullStartY, setPullStartY] = useState(0);
   const [pullDistance, setPullDistance] = useState(0);
   const location = useLocation();
+  const { user, isAuthenticated, token } = useAuthStore();
 
   // --- Ref to track previous location key (for re-click detection) ---
   const prevLocationKey = React.useRef(location.key);
@@ -82,8 +84,8 @@ const AthleteChallengesView = () => {
   const PULL_THRESHOLD = 80;
   const MAX_PULL_DISTANCE = 120;
 
-  // --- Fetch Challenges Function (will be replaced with actual API call) ---
-  const fetchChallenges = async (isRefresh = false) => {
+  // --- Fetch Challenges Function (now using real API) ---
+  const fetchChallengesData = async (isRefresh = false) => {
     try {
       if (isRefresh) {
         setRefreshing(true);
@@ -92,23 +94,24 @@ const AthleteChallengesView = () => {
       }
       setError(null);
       
-      console.log("AthleteChallengesView: Fetching challenges...");
+      console.log("AthleteChallengesView: Fetching challenges from API...");
+      console.log("Auth state before fetch:", { isAuthenticated, hasToken: !!token });
       
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, isRefresh ? 1000 : 800));
-      
-      // TODO: Replace with actual API call when backend is ready
-      // const response = await fetch('/api/challenges');
-      // const data = await response.json();
-      // setChallenges(data);
-      
-      // For now, use mock data
-      setChallenges(MOCK_CHALLENGES);
-      console.log("AthleteChallengesView: Challenges loaded successfully.");
+      const challengesData = await fetchChallenges();
+      setChallenges(challengesData);
+      console.log("AthleteChallengesView: Challenges loaded successfully from API.");
       
     } catch (err) {
       console.error('AthleteChallengesView: Failed to fetch challenges:', err);
-      setError('Failed to load challenges. Please try again.');
+      
+      // Handle authentication errors specifically
+      if (err.message.includes('Authentication expired') || err.message.includes('Unauthorized')) {
+        setError('Your session has expired. Please log in again.');
+        // Optionally redirect to login
+        // window.location.href = '/login';
+      } else {
+        setError(err.message || 'Failed to load challenges. Please try again.');
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -150,7 +153,7 @@ const AthleteChallengesView = () => {
     
     if (pullDistance >= PULL_THRESHOLD) {
       console.log("AthleteChallengesView: Pull to refresh triggered");
-      fetchChallenges(true);
+      fetchChallengesData(true);
     }
     
     setPullDistance(0);
@@ -178,14 +181,14 @@ const AthleteChallengesView = () => {
   // --- Initial Load and Auto-refresh on Navigation ---
   useEffect(() => {
     console.log("AthleteChallengesView: useEffect triggered, starting fetchChallenges.");
-    fetchChallenges();
+    fetchChallengesData();
   }, []); // Empty dependency array means this runs once on mount
 
   // --- Auto-refresh when navigating to challenges page ---
   useEffect(() => {
     if (location.pathname === '/challenges') {
       console.log("AthleteChallengesView: Navigating to challenges page, refreshing data.");
-      fetchChallenges(true);
+      fetchChallengesData(true);
     }
   }, [location.pathname]);
 
@@ -193,8 +196,14 @@ const AthleteChallengesView = () => {
     try {
       setLoading(true);
       setError(null);
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setSelectedChallenge(MOCK_CHALLENGE_DETAILS[challengeId]);
+      
+      // Find the challenge in the challenges array
+      const challenge = challenges.find(c => c.id === challengeId);
+      if (!challenge) {
+        throw new Error('Challenge not found');
+      }
+      
+      setSelectedChallenge(challenge);
       setSubmissionStatus('idle');
       setVideoFile(null);
       setVideoError(null);
@@ -245,16 +254,22 @@ const AthleteChallengesView = () => {
     setError(null);
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log("AthleteChallengesView: Starting challenge submission process...");
+      
+      // Use the complete submission flow (athlete_id will be extracted from JWT token)
+      await completeChallengeSubmission(
+        selectedChallenge.id, 
+        videoFile
+      );
 
+      console.log("AthleteChallengesView: Challenge submission completed successfully");
       setSubmissionStatus('waiting_approval');
-
       setVideoFile(null);
 
     } catch (err) {
       console.error('Video submission failed:', err);
       setSubmissionStatus('idle');
-      setError('Video submission failed. Please try again.');
+      setError(err.message || 'Video submission failed. Please try again.');
     }
   };
 
@@ -339,10 +354,10 @@ const AthleteChallengesView = () => {
                 {selectedChallenge.title}
               </h2>
 
-              {selectedChallenge.imageUrl && (
+              {selectedChallenge.image_url && (
                 <div className="challenge-image-container mb-4">
                   <img 
-                    src={selectedChallenge.imageUrl} 
+                    src={selectedChallenge.image_url} 
                     alt={selectedChallenge.title}
                     className="w-full h-48 object-cover rounded-lg shadow-md"
                   />
@@ -398,8 +413,8 @@ const AthleteChallengesView = () => {
                 className="challenge-item bg-white p-5 rounded-lg shadow-md cursor-pointer hover:shadow-lg transition-shadow duration-200 ease-in-out"
                 onClick={() => handleChallengeClick(challenge.id)}
               >
-                {challenge.imageUrl && (
-                  <img src={challenge.imageUrl} alt={challenge.title} className="w-full h-32 object-cover rounded-md mb-3" />
+                {challenge.image_url && (
+                  <img src={challenge.image_url} alt={challenge.title} className="w-full h-32 object-cover rounded-md mb-3" />
                 )}
                 <h3 className="font-bold text-lg mb-1 text-gray-800">{challenge.title}</h3>
                 <p className="text-sm text-gray-600">{challenge.description.substring(0, 100)}...</p>

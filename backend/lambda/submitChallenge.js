@@ -1,20 +1,30 @@
 const { Client } = require('pg');
 
 exports.handler = async (event) => {
- const claims = event?.requestContext?.authorizer?.jwt?.claims;
-const groups = claims?.["cognito:groups"] || [];
-const customRole = claims?.["custom:role"] || "";
+  const claims = event?.requestContext?.authorizer?.jwt?.claims;
+  const groups = claims?.["cognito:groups"] || [];
+  const customRole = claims?.["custom:role"] || "";
 
-if (!groups.includes("athletes") && customRole !== "athlete") {
-  return {
-    statusCode: 403,
-    body: JSON.stringify({ message: "Forbidden: Only athletes can submit challenges" })
-  };
-}
+  if (!groups.includes("athletes") && customRole !== "athlete") {
+    return {
+      statusCode: 403,
+      body: JSON.stringify({ message: "Forbidden: Only athletes can submit challenges" })
+    };
+  }
 
   const challengeId = event.pathParameters.id;
   const body = JSON.parse(event.body);
-  const { athlete_id, video_url } = body;
+  const { video_url } = body;
+
+  // Extract user ID from JWT claims
+  const athleteId = claims?.sub; // Cognito user ID (sub claim)
+
+  if (!athleteId) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ message: "User ID not found in token" })
+    };
+  }
 
   const client = new Client({
     host: process.env.DB_HOST,
@@ -31,7 +41,7 @@ if (!groups.includes("athletes") && customRole !== "athlete") {
       `INSERT INTO challenge_submissions (challenge_id, athlete_id, video_url)
        VALUES ($1, $2, $3)
        RETURNING *`,
-      [challengeId, athlete_id, video_url]
+      [challengeId, athleteId, video_url]
     );
 
     await client.end();
