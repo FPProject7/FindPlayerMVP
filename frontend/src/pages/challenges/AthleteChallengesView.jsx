@@ -6,6 +6,7 @@ import ChallengeLoader from '../../components/common/ChallengeLoader';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { fetchChallenges, completeChallengeSubmission } from '../../api/challengeService';
 import apiClient from '../../api/axiosConfig';
+import useUploadStore from '../../stores/useUploadStore';
 
 // --- Mock Data for Challenge List ---
 const MOCK_CHALLENGES = [
@@ -80,9 +81,11 @@ const AthleteChallengesView = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [pullStartY, setPullStartY] = useState(0);
   const [pullDistance, setPullDistance] = useState(0);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const location = useLocation();
   const { user, isAuthenticated, token } = useAuthStore();
   const [submissionStatuses, setSubmissionStatuses] = useState({});
+  const { activeUploads, getUploadStatus } = useUploadStore();
 
   // --- Ref to track previous location key (for re-click detection) ---
   const prevLocationKey = React.useRef(location.key);
@@ -313,20 +316,18 @@ const AthleteChallengesView = () => {
       return;
     }
 
-    setSubmissionStatus('uploading');
     setError(null);
 
     try {
       console.log("AthleteChallengesView: Starting challenge submission process...");
       
-      // Use the complete submission flow
+      // Use the complete submission flow (upload tracking is now handled globally)
       await completeChallengeSubmission(
         selectedChallenge.id, 
         videoFile
       );
 
       console.log("AthleteChallengesView: Challenge submission completed successfully");
-      setSubmissionStatus('waiting_approval');
       setVideoFile(null);
 
       // Update the submission status for this challenge
@@ -338,7 +339,6 @@ const AthleteChallengesView = () => {
 
     } catch (err) {
       console.error('Video submission failed:', err);
-      setSubmissionStatus('idle');
       setError(err.message || 'Video submission failed. Please try again.');
     }
   };
@@ -465,15 +465,19 @@ const AthleteChallengesView = () => {
 
                 {videoError && <div className="text-red-600 mb-3">{videoError}</div>}
 
-                {/* Check if user has already submitted for this challenge */}
                 {(() => {
                   const existingSubmission = submissionStatuses[selectedChallenge.id];
                   const hasSubmitted = existingSubmission !== null && existingSubmission !== undefined;
+                  const uploadStatus = getUploadStatus(selectedChallenge.id);
                   
                   if (hasSubmitted) {
                     return (
-                      <div className="status-message text-green-700 font-bold mb-4 border border-green-300 p-4 rounded-lg bg-green-50 flex items-center justify-center">
-                        <span className="mr-2 text-2xl">✅</span> 
+                      <div className="status-message text-red-700 font-bold mb-4 border border-red-300 p-4 rounded-lg bg-red-50 flex items-center justify-center">
+                        <span className="mr-2 text-2xl">
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-red-600">
+                            <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </span> 
                         <div>
                           <div>Your video has been submitted!</div>
                           <div className="text-sm font-normal mt-1">
@@ -483,35 +487,86 @@ const AthleteChallengesView = () => {
                         </div>
                       </div>
                     );
-                  } else if (submissionStatus === 'waiting_approval') {
+                  } else if (uploadStatus) {
+                    // Show upload progress from global store
                     return (
-                      <div className="status-message text-green-700 font-bold mb-4 border border-green-300 p-4 rounded-lg bg-green-50 flex items-center justify-center">
-                        <span className="mr-2 text-2xl">✅</span> Your video is submitted and waiting for approval!
-                      </div>
-                    );
-                  } else if (submissionStatus === 'uploading') {
-                    return (
-                      <div className="status-message text-blue-700 font-bold mb-4 border border-blue-300 p-4 rounded-lg bg-blue-50 flex items-center justify-center">
-                        <span className="mr-2 text-2xl">⏳</span> Uploading video... Please wait.
+                      <div className="status-message text-red-700 font-bold mb-4 border border-red-300 p-4 rounded-lg bg-red-50">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="mr-2 text-2xl">
+                            {uploadStatus.status === 'uploading' ? (
+                              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-red-600"></div>
+                            ) : uploadStatus.status === 'submitting' ? (
+                              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-red-600"></div>
+                            ) : (
+                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-red-600">
+                                <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            )}
+                          </span>
+                          <div className="flex-1 ml-2">
+                            <div className="font-bold">
+                              {uploadStatus.status === 'preparing' && 'Preparing upload...'}
+                              {uploadStatus.status === 'uploading' && 'Uploading video...'}
+                              {uploadStatus.status === 'submitting' && 'Submitting challenge...'}
+                              {uploadStatus.status === 'completed' && 'Upload completed!'}
+                              {uploadStatus.status === 'error' && 'Upload failed'}
+                            </div>
+                            {uploadStatus.error && (
+                              <div className="text-sm font-normal text-red-600 mt-1">
+                                Error: {uploadStatus.error}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Progress bar */}
+                        {(uploadStatus.status === 'uploading' || uploadStatus.status === 'submitting') && (
+                          <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                            <div 
+                              className="bg-red-600 h-2 rounded-full transition-all duration-300 ease-out"
+                              style={{ width: `${uploadStatus.progress || 0}%` }}
+                            ></div>
+                          </div>
+                        )}
+                        
+                        {uploadStatus.status === 'uploading' && (
+                          <div className="text-sm text-gray-600 mt-1 text-center">
+                            {uploadStatus.progress || 0}% complete
+                          </div>
+                        )}
                       </div>
                     );
                   } else {
-                    // Show upload controls only if no submission exists
+                    // Show upload form
                     return (
                       <>
-                        <input
-                          type="file"
-                          accept="video/*"
-                          onChange={handleVideoFileChange}
-                          className="block w-full text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 mb-3"
-                        />
-                        {videoFile && <p className="text-sm text-gray-600 mb-3">Selected: {videoFile.name}</p>}
+                        <div className="mb-4">
+                          <label htmlFor="video-upload" className="block text-sm font-medium text-gray-700 mb-2">
+                            Select Video File
+                          </label>
+                          <input
+                            id="video-upload"
+                            type="file"
+                            accept="video/*"
+                            onChange={handleVideoFileChange}
+                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100"
+                          />
+                        </div>
+
+                        {videoFile && (
+                          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
+                            <p className="text-sm text-green-800">
+                              <strong>Selected:</strong> {videoFile.name} ({(videoFile.size / (1024 * 1024)).toFixed(2)} MB)
+                            </p>
+                          </div>
+                        )}
+
                         <button
                           onClick={handleVideoSubmit}
-                          disabled={!videoFile}
-                          className="submit-video-button mt-2 bg-red-500 text-white py-2 px-5 rounded-lg font-semibold hover:bg-red-600 transition-colors duration-200 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={!videoFile || submissionStatus === 'uploading'}
+                          className="w-full bg-red-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors duration-200"
                         >
-                          Submit Video
+                          Submit Challenge
                         </button>
                       </>
                     );
@@ -529,43 +584,64 @@ const AthleteChallengesView = () => {
             challenges.map(challenge => {
               const submission = submissionStatuses[challenge.id];
               const hasSubmitted = submission !== null && submission !== undefined;
+              const uploadStatus = getUploadStatus(challenge.id);
               
               return (
                 <div
                   key={challenge.id}
-                  className={`challenge-item bg-white p-5 rounded-lg shadow-md cursor-pointer hover:shadow-lg transition-all duration-200 ease-in-out relative ${
-                    hasSubmitted ? 'border-2 border-green-500' : ''
-                  }`}
                   onClick={() => handleChallengeClick(challenge.id)}
-                >
-                  {/* Submission Status Badge - Always Visible */}
-                  <div className={`absolute top-3 right-3 px-2 py-1 rounded-full text-xs font-semibold flex items-center ${
+                  className={`challenge-card bg-white p-4 rounded-lg shadow-md cursor-pointer transition-all duration-200 hover:shadow-lg border-2 ${
                     hasSubmitted 
-                      ? 'bg-green-500 text-white' 
-                      : 'bg-gray-300 text-gray-700'
-                  }`}>
-                    <span className="mr-1">
-                      {hasSubmitted ? '✅' : '⏳'}
-                    </span>
-                    {hasSubmitted ? 'Submitted' : 'Not Submitted'}
+                      ? 'border-red-300 bg-red-50' 
+                      : uploadStatus 
+                        ? 'border-red-400 bg-red-50' 
+                        : 'border-gray-200 hover:border-red-300'
+                  }`}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="text-lg font-semibold text-gray-800">{challenge.title}</h3>
+                    <span className="text-sm font-medium text-red-600">{challenge.xp_value} XP</span>
                   </div>
                   
-                  {challenge.image_url && (
-                    <img src={challenge.image_url} alt={challenge.title} className="w-full h-32 object-cover rounded-md mb-3" />
-                  )}
+                  <p className="text-gray-600 text-sm mb-3 line-clamp-2">{challenge.description}</p>
                   
-                  <h3 className="font-bold text-lg mb-1 text-gray-800">{challenge.title}</h3>
-                  <p className="text-sm text-gray-600">{challenge.description.substring(0, 100)}...</p>
-                  
-                  {/* Submission Status Text - Always Visible */}
-                  <div className={`mt-2 text-xs font-medium ${
-                    hasSubmitted ? 'text-green-600' : 'text-gray-500'
-                  }`}>
-                    Status: {hasSubmitted ? (submission?.status || 'Submitted') : 'Not Submitted'}
-                    {hasSubmitted && submission?.submitted_at && (
-                      <span className="ml-2">
-                        | {new Date(submission.submitted_at).toLocaleDateString()}
-                      </span>
+                  {/* Submission Status */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      {hasSubmitted ? (
+                        <>
+                          <span className="mr-1 text-red-600">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-red-600">
+                              <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          </span>
+                          <span className="text-sm font-medium text-red-700">Submitted</span>
+                        </>
+                      ) : uploadStatus ? (
+                        <>
+                          <span className="mr-1">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+                          </span>
+                          <span className="text-sm font-medium text-red-700">
+                            {uploadStatus.status === 'preparing' && 'Preparing...'}
+                            {uploadStatus.status === 'uploading' && 'Uploading...'}
+                            {uploadStatus.status === 'submitting' && 'Submitting...'}
+                            {uploadStatus.status === 'completed' && 'Completed!'}
+                            {uploadStatus.status === 'error' && 'Failed'}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="mr-1 text-gray-400">○</span>
+                          <span className="text-sm text-gray-500">Not Submitted</span>
+                        </>
+                      )}
+                    </div>
+                    
+                    {uploadStatus && uploadStatus.status === 'uploading' && (
+                      <div className="text-xs text-gray-500">
+                        {uploadStatus.progress || 0}%
+                      </div>
                     )}
                   </div>
                 </div>

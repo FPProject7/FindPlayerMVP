@@ -1,6 +1,7 @@
 // frontend/src/api/challengeService.js
 
 import apiClient from './axiosConfig';
+import useUploadStore from '../stores/useUploadStore';
 
 // API endpoint URLs
 const API_ENDPOINTS = {
@@ -52,40 +53,63 @@ export const generateUploadUrl = async (challengeId) => {
 };
 
 /**
- * Upload video file directly to S3 using pre-signed URL
+ * Upload video file directly to S3 using pre-signed URL with progress tracking
  * @param {string} uploadUrl - Pre-signed URL from generateUploadUrl
  * @param {File} videoFile - Video file to upload
+ * @param {Function} onProgress - Callback function to track upload progress (0-100)
  * @returns {Promise<string>} The final file URL
  */
-export const uploadVideoToS3 = async (uploadUrl, videoFile) => {
-  try {
-    console.log('Uploading video to S3:', {
-      uploadUrl: uploadUrl.substring(0, 100) + '...',
-      fileName: videoFile.name,
-      fileSize: videoFile.size,
-      fileType: videoFile.type
-    });
+export const uploadVideoToS3 = async (uploadUrl, videoFile, onProgress = null) => {
+  return new Promise((resolve, reject) => {
+    try {
+      console.log('Uploading video to S3:', {
+        uploadUrl: uploadUrl.substring(0, 100) + '...',
+        fileName: videoFile.name,
+        fileSize: videoFile.size,
+        fileType: videoFile.type
+      });
 
-    const response = await fetch(uploadUrl, {
-      method: 'PUT',
-      body: videoFile,
-      headers: {
-        'Content-Type': videoFile.type,
-      },
-    });
+      const xhr = new XMLHttpRequest();
 
-    if (!response.ok) {
-      throw new Error(`Upload failed with status: ${response.status}`);
+      // Track upload progress
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable && onProgress) {
+          const percentComplete = Math.round((event.loaded / event.total) * 100);
+          onProgress(percentComplete);
+        }
+      });
+
+      // Handle completion
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          // Extract the file URL from the upload URL
+          const urlParts = uploadUrl.split('?')[0];
+          console.log('Video uploaded successfully to:', urlParts);
+          resolve(urlParts);
+        } else {
+          reject(new Error(`Upload failed with status: ${xhr.status}`));
+        }
+      });
+
+      // Handle errors
+      xhr.addEventListener('error', () => {
+        reject(new Error('Upload failed due to network error'));
+      });
+
+      xhr.addEventListener('abort', () => {
+        reject(new Error('Upload was aborted'));
+      });
+
+      // Start the upload
+      xhr.open('PUT', uploadUrl);
+      xhr.setRequestHeader('Content-Type', videoFile.type);
+      xhr.send(videoFile);
+
+    } catch (error) {
+      console.error('Error uploading video to S3:', error);
+      reject(new Error('Failed to upload video file'));
     }
-
-    // Extract the file URL from the upload URL
-    const urlParts = uploadUrl.split('?')[0];
-    console.log('Video uploaded successfully to:', urlParts);
-    return urlParts;
-  } catch (error) {
-    console.error('Error uploading video to S3:', error);
-    throw new Error('Failed to upload video file');
-  }
+  });
 };
 
 /**
@@ -117,24 +141,50 @@ export const submitChallenge = async (challengeId, videoUrl) => {
  * @returns {Promise<Object>} Final submission response
  */
 export const completeChallengeSubmission = async (challengeId, videoFile) => {
+  const uploadStore = useUploadStore.getState();
+  
   try {
     console.log('Starting complete challenge submission for:', challengeId);
     
+    // Start tracking the upload
+    uploadStore.startUpload(challengeId);
+    
     // Step 1: Generate pre-signed URL
+    uploadStore.updateStatus(challengeId, 'preparing');
     const { uploadUrl, fileUrl } = await generateUploadUrl(challengeId);
     console.log('Generated upload URL successfully');
     
-    // Step 2: Upload video to S3
-    await uploadVideoToS3(uploadUrl, videoFile);
+    // Step 2: Upload video to S3 with progress tracking
+    uploadStore.updateStatus(challengeId, 'uploading');
+    await uploadVideoToS3(uploadUrl, videoFile, (progress) => {
+      uploadStore.updateProgress(challengeId, progress);
+      console.log(`Upload progress: ${progress}%`);
+    });
     console.log('Video uploaded to S3 successfully');
     
-    // Step 3: Submit challenge with video URL (athlete_id extracted from JWT)
+    // Step 3: Submit challenge with video URL
+    uploadStore.updateStatus(challengeId, 'submitting');
     const submission = await submitChallenge(challengeId, fileUrl);
     console.log('Challenge submitted successfully');
+    
+    // Mark as completed
+    uploadStore.updateStatus(challengeId, 'completed');
+    
+    // Clean up after a short delay to show completion
+    setTimeout(() => {
+      uploadStore.completeUpload(challengeId);
+    }, 2000);
     
     return submission;
   } catch (error) {
     console.error('Error in complete challenge submission:', error);
+    uploadStore.updateStatus(challengeId, 'error', error.message);
+    
+    // Clean up error state after a delay
+    setTimeout(() => {
+      uploadStore.completeUpload(challengeId);
+    }, 5000);
+    
     throw error;
   }
 };
