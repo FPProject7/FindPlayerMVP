@@ -7,6 +7,7 @@ import {
     AdminUpdateUserAttributesCommand
 } from "@aws-sdk/client-cognito-identity-provider";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { Client } from "pg";
 
 const REGION = process.env.REGION || "us-east-1";
 const CLIENT_ID = process.env.CLIENT_ID;
@@ -142,6 +143,42 @@ export const handler = async (event) => {
             position: position,
             profilePictureUrl: profilePictureUrl
         };
+
+        // --- Sync user to users table in PostgreSQL ---
+        try {
+            // Extract Cognito sub (user id) from the idToken
+            let cognitoSub = null;
+            if (idToken) {
+                const payload = JSON.parse(Buffer.from(idToken.split('.')[1], 'base64').toString());
+                cognitoSub = payload.sub;
+            }
+            if (cognitoSub) {
+                const client = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+                await client.connect();
+                await client.query(
+                    `INSERT INTO users (id, email, name, role, profile_picture_url)
+                     VALUES ($1, $2, $3, $4, $5)
+                     ON CONFLICT (id) DO UPDATE SET
+                       email = EXCLUDED.email,
+                       name = EXCLUDED.name,
+                       role = EXCLUDED.role,
+                       profile_picture_url = EXCLUDED.profile_picture_url,
+                       updated_at = CURRENT_TIMESTAMP`,
+                    [
+                        cognitoSub,
+                        email,
+                        firstName,
+                        role,
+                        profilePictureUrl
+                    ]
+                );
+                await client.end();
+            } else {
+                console.error("Could not extract Cognito sub from idToken for DB sync.");
+            }
+        } catch (dbError) {
+            console.error("Error syncing user to users table:", dbError);
+        }
 
         return {
             statusCode: 200,

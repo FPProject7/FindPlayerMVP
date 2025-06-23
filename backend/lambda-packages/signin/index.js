@@ -1,17 +1,43 @@
 // backend/functions/signin.js
 
-import { CognitoIdentityProviderClient, InitiateAuthCommand } from "@aws-sdk/client-cognito-identity-provider";
-const REGION = "us-east-1";
-const CLIENT_ID = "29ae68avp4t8mvcg30fr97j3o2";
+import { 
+    CognitoIdentityProviderClient, 
+    InitiateAuthCommand,
+    AdminGetUserCommand 
+} from "@aws-sdk/client-cognito-identity-provider";
+import { Client } from "pg";
+
+const REGION = process.env.REGION || "us-east-1";
+const CLIENT_ID = process.env.CLIENT_ID;
+const USER_POOL_ID = process.env.USER_POOL_ID;
 
 const client = new CognitoIdentityProviderClient({ region: REGION });
 
 export const handler = async (event) => {
-    const { email, password } = JSON.parse(event.body);
+    let body;
+    try {
+        body = JSON.parse(event.body);
+    } catch (parseError) {
+        console.error("Failed to parse event body:", parseError);
+        return {
+            statusCode: 400,
+            headers: { "Access-Control-Allow-Origin": "*" },
+            body: JSON.stringify({ message: "Invalid request body format." }),
+        };
+    }
 
+    const { email, password } = body;
 
-    const params = {
-        AuthFlow: "USER_PASSWORD_AUTH",
+    if (!email || !password) {
+        return {
+            statusCode: 400,
+            headers: { "Access-Control-Allow-Origin": "*" },
+            body: JSON.stringify({ message: "Missing required fields (email, password)." }),
+        };
+    }
+
+    const authParams = {
+        AuthFlow: "USER_PASSWORD_AUTH", // <--- CHANGED BACK TO USER_PASSWORD_AUTH
         ClientId: CLIENT_ID,
         AuthParameters: {
             USERNAME: email,
@@ -20,22 +46,120 @@ export const handler = async (event) => {
     };
 
     try {
-        const command = new InitiateAuthCommand(params);
-        const { AuthenticationResult } = await client.send(command);
+        const command = new InitiateAuthCommand(authParams);
+        const authResponse = await client.send(command);
+        const authenticationResult = authResponse.AuthenticationResult;
+
+        const idToken = authenticationResult.IdToken;
+        const accessToken = authenticationResult.AccessToken;
+        const refreshToken = authenticationResult.RefreshToken;
+
+        let userProfile = {}; 
+        let profilePictureUrl = null;
+
+        try {
+            const adminGetUserCommand = new AdminGetUserCommand({
+                UserPoolId: USER_POOL_ID,
+                Username: email 
+            });
+            const userDetails = await client.send(adminGetUserCommand);
+
+            if (userDetails.UserAttributes) {
+                userDetails.UserAttributes.forEach(attr => {
+                    switch(attr.Name) {
+                        case 'sub': userProfile.id = attr.Value; break;
+                        case 'name': userProfile.name = attr.Value; break;
+                        case 'email': userProfile.email = attr.Value; break;
+                        case 'gender': userProfile.gender = attr.Value; break;
+                        case 'custom:role': userProfile.role = attr.Value; break;
+                        case 'custom:sport': userProfile.sport = attr.Value; break;
+                        case 'custom:position': userProfile.position = attr.Value; break;
+                        case 'custom:profilePictureUrl': 
+                            profilePictureUrl = attr.Value;
+                            userProfile.profilePictureUrl = attr.Value; 
+                            break;
+                        default:
+                            break;
+                    }
+                });
+            }
+            console.log(`User attributes fetched for ${email}. Profile URL: ${profilePictureUrl}`);
+        } catch (getUserError) {
+            console.error("Error fetching user details with AdminGetUserCommand for login:", getUserError);
+        }
+
+        // --- Sync user to users table in PostgreSQL ---
+        try {
+            // Use Cognito sub (user id) from userProfile.id if available, otherwise extract from idToken
+            let cognitoSub = userProfile.id;
+            if (!cognitoSub && idToken) {
+                const payload = JSON.parse(Buffer.from(idToken.split('.')[1], 'base64').toString());
+                cognitoSub = payload.sub;
+            }
+            if (cognitoSub) {
+                const dbClient = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+                await dbClient.connect();
+                await dbClient.query(
+                    `INSERT INTO users (id, email, name, role, profile_picture_url)
+                     VALUES ($1, $2, $3, $4, $5)
+                     ON CONFLICT (id) DO UPDATE SET
+                       email = EXCLUDED.email,
+                       name = EXCLUDED.name,
+                       role = EXCLUDED.role,
+                       profile_picture_url = EXCLUDED.profile_picture_url,
+                       updated_at = CURRENT_TIMESTAMP`,
+                    [
+                        cognitoSub,
+                        userProfile.email,
+                        userProfile.name,
+                        userProfile.role,
+                        userProfile.profilePictureUrl
+                    ]
+                );
+                await dbClient.end();
+            } else {
+                console.error("Could not extract Cognito sub from userProfile or idToken for DB sync.");
+            }
+        } catch (dbError) {
+            console.error("Error syncing user to users table:", dbError);
+        }
+
         return {
             statusCode: 200,
-            headers: { "Access-Control-Allow-Origin": "*" },
+            headers: { 
+                "Access-Control-Allow-Origin": "*", 
+                "Content-Type": "application/json"
+            },
             body: JSON.stringify({
                 message: "User signed in successfully",
-                tokens: AuthenticationResult,
+                idToken: idToken,
+                accessToken: accessToken,
+                refreshToken: refreshToken,
+                userProfile: userProfile 
             }),
         };
     } catch (error) {
-        console.error(error);
+        console.error("Login error:", error);
+        let errorMessage = "An unknown error occurred during login.";
+        let statusCode = 500;
+
+        if (error.name === 'NotAuthorizedException') {
+            errorMessage = "Incorrect username or password.";
+            statusCode = 401;
+        } else if (error.name === 'UserNotConfirmedException') {
+            errorMessage = "User is not confirmed. Please confirm your account.";
+            statusCode = 403;
+        } else if (error.name === 'UserNotFoundException') { 
+            errorMessage = "User not found.";
+            statusCode = 404; 
+        } else if (error.message) {
+            errorMessage = error.message;
+        }
+
         return {
-            statusCode: 401,
+            statusCode: statusCode,
             headers: { "Access-Control-Allow-Origin": "*" },
-            body: JSON.stringify({ message: error.message }),
+            body: JSON.stringify({ message: errorMessage }),
         };
     }
 };
