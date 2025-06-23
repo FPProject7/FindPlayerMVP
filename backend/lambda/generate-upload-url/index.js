@@ -17,9 +17,17 @@ exports.handler = async (event) => {
     const uploadUrl = await s3.getSignedUrlPromise('putObject', params);
     const fileUrl = `https://${bucketName}.s3.amazonaws.com/${fileName}`;
     
+    // Generate a pre-signed GET URL for playback
+    const getParams = {
+      Bucket: bucketName,
+      Key: fileName,
+      Expires: 600 // 10 minutes
+    };
+    const signedGetUrl = await s3.getSignedUrlPromise('getObject', getParams);
+    
     return {
       statusCode: 200,
-      body: JSON.stringify({ uploadUrl, fileUrl })
+      body: JSON.stringify({ uploadUrl, fileUrl, signedGetUrl })
     };
   } catch (err) {
     console.error("S3 error", err);

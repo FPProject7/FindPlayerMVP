@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import challengeClient from "../../api/challengeApi";
 import ReviewModal from "./ReviewModal";
 
@@ -12,6 +12,12 @@ export default function CoachChallengesView() {
   });
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [pullStartY, setPullStartY] = useState(0);
+  const [pullDistance, setPullDistance] = useState(0);
+  const containerRef = useRef(null);
+  const PULL_THRESHOLD = 80;
+  const MAX_PULL_DISTANCE = 120;
 
   // Fetch submissions when view tab is active
   useEffect(() => {
@@ -20,8 +26,39 @@ export default function CoachChallengesView() {
     }
   }, [activeTab]);
 
-  const fetchSubmissions = async () => {
-    setLoading(true);
+  // Pull-to-refresh handlers
+  const handleTouchStart = (e) => {
+    if (loading) return;
+    const touch = e.touches[0];
+    setPullStartY(touch.clientY);
+    setPullDistance(0);
+  };
+
+  const handleTouchMove = (e) => {
+    if (loading) return;
+    const touch = e.touches[0];
+    const currentY = touch.clientY;
+    const distance = Math.max(0, currentY - pullStartY);
+    if (distance > 0 && window.scrollY === 0) {
+      e.preventDefault();
+      setPullDistance(Math.min(distance, MAX_PULL_DISTANCE));
+    } else {
+      setPullDistance(0);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (loading) return;
+    if (pullDistance >= PULL_THRESHOLD) {
+      setRefreshing(true);
+      fetchSubmissions(true);
+    }
+    setPullDistance(0);
+  };
+
+  // Modified fetchSubmissions to support refresh
+  const fetchSubmissions = async (isRefresh = false) => {
+    if (!isRefresh) setLoading(true);
     try {
       console.log('Fetching submissions from:', challengeClient.defaults.baseURL + '/submissions');
       const response = await challengeClient.get("/submissions");
@@ -38,6 +75,7 @@ export default function CoachChallengesView() {
       alert(`Failed to fetch submissions: ${error.response?.data?.message || error.message}`);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -76,13 +114,13 @@ export default function CoachChallengesView() {
       <div className="flex space-x-4 mb-4">
         <button
           onClick={() => setActiveTab("post")}
-          className={`px-4 py-2 rounded ${activeTab === "post" ? "bg-blue-500 text-white" : "bg-gray-200"}`}
+          className={`flex-1 px-4 py-2 rounded font-semibold transition-colors duration-200 ${activeTab === "post" ? "bg-red-500 text-white" : "bg-gray-200 text-gray-800"}`}
         >
           Post New Challenge
         </button>
         <button
           onClick={() => setActiveTab("view")}
-          className={`px-4 py-2 rounded ${activeTab === "view" ? "bg-blue-500 text-white" : "bg-gray-200"}`}
+          className={`flex-1 px-4 py-2 rounded font-semibold transition-colors duration-200 ${activeTab === "view" ? "bg-red-500 text-white" : "bg-gray-200 text-gray-800"}`}
         >
           View Athlete Submissions
         </button>
@@ -129,39 +167,79 @@ export default function CoachChallengesView() {
 
       {/* View Submissions */}
       {activeTab === "view" && (
-        <div>
+        <div
+          ref={containerRef}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          style={{
+            transform: `translateY(${pullDistance}px)`,
+            transition: pullDistance === 0 ? 'transform 0.3s ease-out' : 'none'
+          }}
+        >
+          {pullDistance > 0 && (
+            <div className="flex justify-center items-center py-4 text-gray-500">
+              {pullDistance >= PULL_THRESHOLD ? (
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500 mr-2"></div>
+                  Release to refresh
+                </div>
+              ) : (
+                <div className="flex items-center">
+                  <div className="mr-2">↓</div>
+                  Pull down to refresh
+                </div>
+              )}
+            </div>
+          )}
+          {refreshing && (
+            <div className="flex justify-center items-center py-2 text-gray-500">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500 mr-2"></div>
+              Refreshing submissions...
+            </div>
+          )}
           <div className="flex justify-between items-center mb-2">
             <h2 className="text-lg font-semibold">Athlete Submissions</h2>
-            <button
-              onClick={fetchSubmissions}
-              className="text-sm text-blue-500"
-            >
-              Refresh
-            </button>
           </div>
           {loading ? (
             <p>Loading submissions...</p>
           ) : (
-            <ul className="space-y-2">
+            <div className="submissions-list grid grid-cols-1 gap-4">
               {submissions.length === 0 ? (
-                <p>No submissions yet.</p>
+                <p className="text-gray-600 col-span-full text-center">No submissions yet.</p>
               ) : (
                 submissions.map((submission) => (
-                  <li
+                  <div
                     key={submission.id}
-                    className="border p-2 rounded shadow-sm cursor-pointer"
+                    className="bg-white p-5 rounded-lg shadow-md flex items-center space-x-4 mb-2 border border-gray-100 hover:shadow-lg transition-shadow duration-200 ease-in-out"
                     onClick={() => setSelectedSubmission(submission)}
                   >
-                    <p className="font-medium">
-                      Submission #{submission.id} - {submission.status}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      Submitted at: {new Date(submission.submitted_at).toLocaleString()}
-                    </p>
-                  </li>
+                    {/* Profile picture avatar if present */}
+                    {submission.athlete_profile_picture_url ? (
+                      <img
+                        src={submission.athlete_profile_picture_url}
+                        alt={submission.athlete_name}
+                        className="w-12 h-12 rounded-full object-cover border border-gray-200 shadow-sm"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 font-bold text-xl">
+                        <span>{(submission.athlete_name || 'U').charAt(0)}</span>
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <span className="font-bold text-lg text-gray-800 truncate">{submission.athlete_name || "Unknown"}</span>
+                        {/* Status badge */}
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${submission.status === 'pending' ? 'bg-red-100 text-red-600' : submission.status === 'approved' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'}`}>
+                          {submission.status.charAt(0).toUpperCase() + submission.status.slice(1)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500">Submitted at: {new Date(submission.submitted_at).toLocaleString()}</p>
+                    </div>
+                  </div>
                 ))
               )}
-            </ul>
+            </div>
           )}
         </div>
       )}
