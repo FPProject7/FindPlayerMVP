@@ -5,6 +5,7 @@ import {
     InitiateAuthCommand,
     AdminGetUserCommand 
 } from "@aws-sdk/client-cognito-identity-provider";
+import { Client } from "pg";
 const REGION = "us-east-1";
 const CLIENT_ID = "29ae68avp4t8mvcg30fr97j3o2";
 
@@ -64,6 +65,7 @@ export const handler = async (event) => {
             if (userDetails.UserAttributes) {
                 userDetails.UserAttributes.forEach(attr => {
                     switch(attr.Name) {
+                        case 'sub': userProfile.id = attr.Value; break;
                         case 'name': userProfile.name = attr.Value; break;
                         case 'email': userProfile.email = attr.Value; break;
                         case 'gender': userProfile.gender = attr.Value; break;
@@ -82,6 +84,42 @@ export const handler = async (event) => {
             console.log(`User attributes fetched for ${email}. Profile URL: ${profilePictureUrl}`);
         } catch (getUserError) {
             console.error("Error fetching user details with AdminGetUserCommand for login:", getUserError);
+        }
+
+        // --- Sync user to users table in PostgreSQL ---
+        try {
+            // Use Cognito sub (user id) from userProfile.id if available, otherwise extract from idToken
+            let cognitoSub = userProfile.id;
+            if (!cognitoSub && idToken) {
+                const payload = JSON.parse(Buffer.from(idToken.split('.')[1], 'base64').toString());
+                cognitoSub = payload.sub;
+            }
+            if (cognitoSub) {
+                const dbClient = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+                await dbClient.connect();
+                await dbClient.query(
+                    `INSERT INTO users (id, email, name, role, profile_picture_url)
+                     VALUES ($1, $2, $3, $4, $5)
+                     ON CONFLICT (id) DO UPDATE SET
+                       email = EXCLUDED.email,
+                       name = EXCLUDED.name,
+                       role = EXCLUDED.role,
+                       profile_picture_url = EXCLUDED.profile_picture_url,
+                       updated_at = CURRENT_TIMESTAMP`,
+                    [
+                        cognitoSub,
+                        userProfile.email,
+                        userProfile.name,
+                        userProfile.role,
+                        userProfile.profilePictureUrl
+                    ]
+                );
+                await dbClient.end();
+            } else {
+                console.error("Could not extract Cognito sub from userProfile or idToken for DB sync.");
+            }
+        } catch (dbError) {
+            console.error("Error syncing user to users table:", dbError);
         }
 
         return {
