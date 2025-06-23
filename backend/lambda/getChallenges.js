@@ -9,11 +9,6 @@ exports.handler = async (event) => {
   if (!groups.includes("athletes") && customRole !== "athlete") {
     return {
       statusCode: 403,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization"
-      },
       body: JSON.stringify({ message: "Forbidden: Only athletes can fetch challenges" })
     };
   }
@@ -28,21 +23,27 @@ exports.handler = async (event) => {
 
   try {
     await client.connect();
-    const res = await client.query('SELECT * FROM challenges ORDER BY created_at DESC');
+
+    // Fetch challenges and join with users for coach info
+    const query = `
+      SELECT 
+        c.id, c.title, c.description, c.xp_value, c.created_at, c.coach_id,
+        u.name AS coach_name,
+        u.profile_picture_url AS coach_avatar
+      FROM challenges c
+      LEFT JOIN users u ON c.coach_id = u.id::varchar
+      ORDER BY c.created_at DESC
+    `;
+    const result = await client.query(query);
     await client.end();
 
     return {
       statusCode: 200,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(res.rows)
+      body: JSON.stringify(result.rows),
+      headers: { 'Content-Type': 'application/json' },
     };
+
   } catch (err) {
-    console.error('DB error:', err);
     await client.end();
     return {
       statusCode: 500,

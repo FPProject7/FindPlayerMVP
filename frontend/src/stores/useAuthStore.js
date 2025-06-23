@@ -9,9 +9,12 @@ export const useAuthStore = create(
   persist(
     (set, get) => ({ // get is added here for potential future use (e.g., getting current state)
       // --- STATE ---
-      token: null,          // This will hold the JWT IdToken (e.g., for Authorization header)
-      user: null,           // This will hold the user's profile information
-      isAuthenticated: false, // This will be true if the user is logged in
+      token: null,          // JWT IdToken
+      accessToken: null,    // Access token for API calls
+      refreshToken: null,   // Refresh token for getting new tokens
+      user: null,           // User profile information
+      isAuthenticated: false,
+      tokenExpiry: null,    // When the token expires
 
       // --- ACTIONS ---
       /**
@@ -20,10 +23,15 @@ export const useAuthStore = create(
        * @param {object} tokenData - Contains token details, e.g., { IdToken: 'jwt_string', AccessToken: '...', RefreshToken: '...' }
        */
       login: (userProfile, tokenData) => {
+        const expiryTime = new Date(Date.now() + 3600000); // 1 hour (3600000 ms)
+        
         set({
-          token: tokenData.IdToken, // Store the IdToken
+          token: tokenData.IdToken,
+          accessToken: tokenData.AccessToken,
+          refreshToken: tokenData.RefreshToken,
           user: userProfile,
           isAuthenticated: true,
+          tokenExpiry: expiryTime,
         });
         // Zustand persist middleware will automatically save this to localStorage
       },
@@ -32,16 +40,103 @@ export const useAuthStore = create(
       logout: () => {
         set({
           token: null,
+          accessToken: null,
+          refreshToken: null,
           user: null,
           isAuthenticated: false,
+          tokenExpiry: null,
         });
         // Zustand persist middleware will automatically clear from localStorage
       },
 
       // You might add an action here to update the token or user profile later
       // For example, if you get a new IdToken after refreshing
-      updateToken: (newToken) => {
-        set({ token: newToken });
+      updateToken: (newToken, newAccessToken, newRefreshToken) => {
+        set({
+          token: newToken,
+          accessToken: newAccessToken,
+          refreshToken: newRefreshToken || get().refreshToken,
+          tokenExpiry: new Date(Date.now() + 3600000), // 1 hour
+        });
+      },
+
+      // Check if token is expired or about to expire (within 5 minutes)
+      isTokenExpired: () => {
+        const state = get();
+        if (!state.tokenExpiry) {
+          return true;
+        }
+        
+        const now = new Date();
+        const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000);
+        const isExpired = state.tokenExpiry <= now;
+        
+        return isExpired;
+      },
+
+      // Get valid token (refresh if needed)
+      getValidToken: async () => {
+        const state = get();
+        
+        if (!state.isAuthenticated || !state.token) {
+          throw new Error('User not authenticated');
+        }
+
+        if (!state.isTokenExpired()) {
+          return state.token;
+        }
+
+        // Token is expired, try to refresh
+        return await get().refreshTokenAsync();
+      },
+
+      // Refresh token function - RENAMED to avoid conflict
+      refreshTokenAsync: async () => {
+        const state = get();
+        
+        if (!state.refreshToken) {
+          throw new Error('No refresh token available');
+        }
+
+        try {
+          const response = await fetch('https://x0pskxuai7.execute-api.us-east-1.amazonaws.com/default/refreshToken', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              refreshToken: state.refreshToken
+            })
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Token refresh failed with status: ${response.status}`);
+          }
+
+          const data = await response.json();
+          
+          // Update tokens with 1 hour expiry
+          set({
+            token: data.idToken,
+            accessToken: data.accessToken,
+            refreshToken: data.refreshToken || state.refreshToken,
+            tokenExpiry: new Date(Date.now() + 3600000), // 1 hour
+          });
+
+          return data.idToken;
+        } catch (error) {
+          console.error('Token refresh failed:', error);
+          set({
+            token: null,
+            accessToken: null,
+            refreshToken: null,
+            user: null,
+            isAuthenticated: false,
+            tokenExpiry: null,
+          });
+          throw new Error('Authentication expired. Please log in again.');
+        }
       },
     }),
     {

@@ -4,7 +4,16 @@ exports.handler = async (event) => {
   const claims = event?.requestContext?.authorizer?.jwt?.claims;
   const groups = claims?.["cognito:groups"] || [];
   const customRole = claims?.["custom:role"] || "";
+  const claims = event?.requestContext?.authorizer?.jwt?.claims;
+  const groups = claims?.["cognito:groups"] || [];
+  const customRole = claims?.["custom:role"] || "";
 
+  if (!groups.includes("athletes") && customRole !== "athlete") {
+    return {
+      statusCode: 403,
+      body: JSON.stringify({ message: "Forbidden: Only athletes can submit challenges" })
+    };
+  }
   if (!groups.includes("athletes") && customRole !== "athlete") {
     return {
       statusCode: 403,

@@ -10,6 +10,7 @@ import SignUpPage from './pages/Auth/SignUpPage';
 import ResetPasswordPage from './pages/Auth/ResetPasswordPage';
 import LoginPromptModal from "./components/common/LoginPromptModal";
 import { useAuthStore } from './stores/useAuthStore';
+import { useTokenRefresh } from './hooks/useTokenRefresh';
 
 // Existing new page imports
 import UserProfilePage from './pages/UserProfilePage';
@@ -66,6 +67,8 @@ function App() {
       setShowModal(false);
     }
   }, [location.pathname, isAuthenticated]);
+
+  useTokenRefresh();
 
   return (
     <>
