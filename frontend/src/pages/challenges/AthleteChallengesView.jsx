@@ -561,8 +561,22 @@ const AthleteChallengesView = () => {
                   
                   {/* Coach Information */}
                   {challenge.coach_name && (
-                    <div className="flex items-center mb-3 text-sm text-gray-500">
-                      <span>Coach: {challenge.coach_name}</span>
+                    <div className="flex items-center mb-4">
+                      {challenge.coach_profile_picture_url ? (
+                        <img
+                          src={challenge.coach_profile_picture_url}
+                          alt={challenge.coach_name}
+                          className="w-14 h-14 rounded-full object-cover border border-gray-200 shadow-sm mr-4"
+                        />
+                      ) : (
+                        <div className="w-14 h-14 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 font-bold text-2xl mr-4">
+                          <span>{(challenge.coach_name || 'C').charAt(0)}</span>
+                        </div>
+                      )}
+                      <div>
+                        <span className="font-bold text-xl text-gray-800">{challenge.coach_name || "Unknown"}</span>
+                        <span className="ml-2 text-gray-500 text-base font-normal">Coach</span>
+                      </div>
                     </div>
                   )}
                   

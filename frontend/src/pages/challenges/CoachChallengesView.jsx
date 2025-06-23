@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import challengeClient from "../../api/challengeApi";
 import ReviewModal from "./ReviewModal";
+import ChallengeLoader from "../../components/common/ChallengeLoader";
 
 export default function CoachChallengesView() {
   const [selectedSubmission, setSelectedSubmission] = useState(null);
@@ -108,22 +109,42 @@ export default function CoachChallengesView() {
     }
   };
 
+  // Attach non-passive event listeners for pull-to-refresh in the view tab
+  useEffect(() => {
+    if (activeTab !== 'view') return;
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Attach listeners with passive: false
+    container.addEventListener('touchstart', handleTouchStart, { passive: false });
+    container.addEventListener('touchmove', handleTouchMove, { passive: false });
+    container.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+    return () => {
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchmove', handleTouchMove);
+      container.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [activeTab, loading, pullStartY, pullDistance]);
+
   return (
-    <div className="p-4">
-      {/* Tabs */}
-      <div className="flex space-x-4 mb-4">
-        <button
-          onClick={() => setActiveTab("post")}
-          className={`flex-1 px-4 py-2 rounded font-semibold transition-colors duration-200 ${activeTab === "post" ? "bg-red-500 text-white" : "bg-gray-200 text-gray-800"}`}
-        >
-          Post New Challenge
-        </button>
-        <button
-          onClick={() => setActiveTab("view")}
-          className={`flex-1 px-4 py-2 rounded font-semibold transition-colors duration-200 ${activeTab === "view" ? "bg-red-500 text-white" : "bg-gray-200 text-gray-800"}`}
-        >
-          View Athlete Submissions
-        </button>
+    <div className="p-4 pt-24">
+      {/* Fixed Tabs */}
+      <div className="fixed top-16 left-0 right-0 z-50 px-4 py-3 pointer-events-none">
+        <div className="flex space-x-4 max-w-lg mx-auto pointer-events-auto">
+          <button
+            onClick={() => setActiveTab('post')}
+            className={`flex-1 px-4 py-2 rounded-xl font-semibold transition-colors duration-200 shadow-md border border-white/30 backdrop-blur-md bg-white/30 ${activeTab === 'post' ? 'ring-2 ring-red-400 text-red-700' : 'text-gray-800'}`}
+          >
+            New Challenge
+          </button>
+          <button
+            onClick={() => setActiveTab('view')}
+            className={`flex-1 px-4 py-2 rounded-xl font-semibold transition-colors duration-200 shadow-md border border-white/30 backdrop-blur-md bg-white/30 ${activeTab === 'view' ? 'ring-2 ring-red-400 text-red-700' : 'text-gray-800'}`}
+          >
+            Athlete Submissions
+          </button>
+        </div>
       </div>
 
       {/* Post Challenge Form */}
@@ -169,9 +190,6 @@ export default function CoachChallengesView() {
       {activeTab === "view" && (
         <div
           ref={containerRef}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
           style={{
             transform: `translateY(${pullDistance}px)`,
             transition: pullDistance === 0 ? 'transform 0.3s ease-out' : 'none'
@@ -198,46 +216,66 @@ export default function CoachChallengesView() {
               Refreshing submissions...
             </div>
           )}
-          <div className="flex justify-between items-center mb-2">
-            <h2 className="text-lg font-semibold">Athlete Submissions</h2>
-          </div>
           {loading ? (
-            <p>Loading submissions...</p>
+            <div className="py-4 flex flex-col justify-center items-center bg-white" style={{ minHeight: 'calc(100vh - 120px)' }}>
+              <ChallengeLoader />
+            </div>
           ) : (
-            <div className="submissions-list grid grid-cols-1 gap-4">
+            <div className="submissions-list flex flex-col">
               {submissions.length === 0 ? (
                 <p className="text-gray-600 col-span-full text-center">No submissions yet.</p>
               ) : (
-                submissions.map((submission) => (
-                  <div
-                    key={submission.id}
-                    className="bg-white p-5 rounded-lg shadow-md flex items-center space-x-4 mb-2 border border-gray-100 hover:shadow-lg transition-shadow duration-200 ease-in-out"
-                    onClick={() => setSelectedSubmission(submission)}
-                  >
-                    {/* Profile picture avatar if present */}
-                    {submission.athlete_profile_picture_url ? (
-                      <img
-                        src={submission.athlete_profile_picture_url}
-                        alt={submission.athlete_name}
-                        className="w-12 h-12 rounded-full object-cover border border-gray-200 shadow-sm"
-                      />
-                    ) : (
-                      <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 font-bold text-xl">
-                        <span>{(submission.athlete_name || 'U').charAt(0)}</span>
+                submissions.map((submission) => {
+                  const profilePicUrl = submission.athlete_profile_picture_url || submission.profilePictureUrl;
+                  return (
+                    <div
+                      key={submission.id}
+                      className={`challenge-card bg-white p-6 rounded-lg shadow-md cursor-pointer transition-all duration-200 hover:shadow-lg mb-6
+                        ${submission.status === 'pending' ? 'border-none' : (submission.status === 'approved' || submission.status === 'denied') ? 'border-2 border-red-300' : 'border-2 border-gray-200'}
+                      `}
+                      onClick={() => setSelectedSubmission(submission)}
+                    >
+                      <div className="flex items-center mb-4">
+                        {profilePicUrl ? (
+                          <img
+                            src={profilePicUrl}
+                            alt={submission.athlete_name}
+                            className="w-14 h-14 rounded-full object-cover border border-gray-200 shadow-sm mr-4"
+                          />
+                        ) : (
+                          <div className="w-14 h-14 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 font-bold text-2xl mr-4">
+                            <span>{(submission.athlete_name || 'U').charAt(0)}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center">
+                          <span className="font-bold text-xl text-gray-800 mr-2">{submission.athlete_name || "Unknown"}</span>
+                          {submission.status === 'approved' && (
+                            <span className="mr-1 text-red-600">
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            </span>
+                          )}
+                          {submission.status === 'denied' && (
+                            <span className="mr-1 text-red-600">
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                <path d="M6 6L18 18M6 18L18 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            </span>
+                          )}
+                          <span className={`ml-1 px-3 py-1 rounded-full text-sm font-semibold
+                            ${submission.status === 'pending' ? 'bg-gray-100 text-gray-500' : (submission.status === 'approved' || submission.status === 'denied') ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500'}
+                          `}>
+                            {submission.status.charAt(0).toUpperCase() + submission.status.slice(1)}
+                          </span>
+                        </div>
                       </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <span className="font-bold text-lg text-gray-800 truncate">{submission.athlete_name || "Unknown"}</span>
-                        {/* Status badge */}
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${submission.status === 'pending' ? 'bg-red-100 text-red-600' : submission.status === 'approved' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'}`}>
-                          {submission.status.charAt(0).toUpperCase() + submission.status.slice(1)}
-                        </span>
+                      <div className="text-gray-600 text-sm">
+                        Submitted at: {new Date(submission.submitted_at).toLocaleString()}
                       </div>
-                      <p className="text-xs text-gray-500">Submitted at: {new Date(submission.submitted_at).toLocaleString()}</p>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           )}

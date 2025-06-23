@@ -6,18 +6,23 @@ const challengeClient = axios.create({
 });
 
 challengeClient.interceptors.request.use(
-  (config) => {
-    const token = useAuthStore.getState().token;
-    console.log("Current token:", token);  // ✅ Add this line for debugging
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    } else {
-      console.warn("No token found in useAuthStore");
+  async (config) => {
+    try {
+      // Get a valid token (will refresh if needed)
+      const token = await useAuthStore.getState().getValidToken();
+      
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      } else {
+        console.warn("No token found in useAuthStore");
+      }
+    } catch (error) {
+      console.error('Failed to get valid token:', error);
+      // Don't throw here, let the request fail naturally
     }
     return config;
   },
   (error) => Promise.reject(error)
 );
-
 
 export default challengeClient;
