@@ -19,6 +19,7 @@ import ScoutDashboardPage from './pages/ScoutDashboardPage';
 import NotificationsPage from './pages/NotificationsPage'; // <--- New page import
 import MessagesPage from './pages/MessagesPage';         // <--- New page import
 // --- END NEW ---
+import ReviewSubmissionPage from './pages/challenges/ReviewModal';
 
 // ProtectedRoute Component (remains unchanged)
 const ProtectedRoute = ({ children }) => {
@@ -89,6 +90,7 @@ function App() {
           <Route path="/home" element={<HomePage />} />
           <Route path="/challenges" element={<ChallengesPage />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
+          <Route path="/coach/challenges/:challengeId/submissions/:submissionId" element={<ProtectedRoute><ReviewSubmissionPage /></ProtectedRoute>} />
         </Route>
 
         {/* Truly Protected Routes (Requires authentication, no modal overlay) */}
