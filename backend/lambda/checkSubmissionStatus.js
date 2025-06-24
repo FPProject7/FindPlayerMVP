@@ -81,7 +81,7 @@ exports.handler = async (event) => {
 
     // Updated query to match your actual table structure
     const query = `
-      SELECT id, challenge_id, athlete_id, video_url, status, submitted_at
+      SELECT id, challenge_id, athlete_id, video_url, status, submitted_at, review_comment
       FROM challenge_submissions 
       WHERE challenge_id = $1 AND athlete_id = $2
       ORDER BY submitted_at DESC
@@ -109,7 +109,8 @@ exports.handler = async (event) => {
             athlete_id: submission.athlete_id,
             video_url: submission.video_url,
             status: submission.status,
-            submitted_at: submission.submitted_at
+            submitted_at: submission.submitted_at,
+            review_comment: submission.review_comment || null
           }
         })
       };
