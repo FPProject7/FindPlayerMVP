@@ -3,6 +3,7 @@ import ReactDOM from "react-dom";
 
 function ReviewModal({ submission, onClose, onApprove, onDeny }) {
   const [comment, setComment] = useState("");
+  const COMMENT_CHAR_LIMIT = 500;
 
   if (!submission) return null;
 
@@ -67,12 +68,14 @@ function ReviewModal({ submission, onClose, onApprove, onDeny }) {
         {/* Comment box */}
         <label className="block mb-1 text-sm font-medium text-gray-700">Coach's Comment</label>
         <textarea
-          className="w-full border border-gray-300 rounded p-2 mb-3 focus:outline-none focus:ring-2 focus:ring-red-400 text-sm"
+          className="w-full border border-gray-300 rounded p-2 mb-1 focus:outline-none focus:ring-2 focus:ring-red-400 text-sm"
           rows={3}
           placeholder="Write your feedback or comment here..."
           value={comment}
           onChange={e => setComment(e.target.value)}
+          maxLength={COMMENT_CHAR_LIMIT}
         />
+        <div className="text-xs text-gray-400 text-right mb-2">{comment.length}/{COMMENT_CHAR_LIMIT}</div>
         {/* Approve/Deny buttons */}
         <div className="flex space-x-3 pt-2 pb-0 mb-2">
           <button

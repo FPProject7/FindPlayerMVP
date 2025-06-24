@@ -24,6 +24,11 @@ export default function CoachChallengesView() {
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
+  // Character limits
+  const TITLE_CHAR_LIMIT = 50;
+  const DESC_CHAR_LIMIT = 500;
+  const COMMENT_CHAR_LIMIT = 500;
+
   // Fetch coach's challenges
   const fetchChallenges = async () => {
     setChallengeLoading(true);
@@ -110,6 +115,16 @@ export default function CoachChallengesView() {
   // Handle new challenge submission
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (formData.title.length > TITLE_CHAR_LIMIT) {
+      setErrorMessage(`Title cannot exceed ${TITLE_CHAR_LIMIT} characters.`);
+      setTimeout(() => setErrorMessage(""), 2000);
+      return;
+    }
+    if (formData.description.length > DESC_CHAR_LIMIT) {
+      setErrorMessage(`Description cannot exceed ${DESC_CHAR_LIMIT} characters.`);
+      setTimeout(() => setErrorMessage(""), 2000);
+      return;
+    }
     try {
       const response = await challengeClient.post("/challenges", {
         title: formData.title,
@@ -119,13 +134,21 @@ export default function CoachChallengesView() {
       setFormData({ title: "", description: "", xp_value: 1 });
       // Optionally refresh challenge list if on view tab
       if (activeTab === "view") fetchChallenges();
+      setSuccessMessage("Challenge created!");
+      setTimeout(() => setSuccessMessage(""), 1200);
     } catch (error) {
-      alert(`Failed to create challenge: ${error.response?.data?.message || error.message}`);
+      setErrorMessage(error.response?.data?.message || error.message);
+      setTimeout(() => setErrorMessage(""), 2000);
     }
   };
 
   // Handle submission approval
   const handleApprove = async (submissionId, comment) => {
+    if (comment.length > COMMENT_CHAR_LIMIT) {
+      setErrorMessage(`Comment cannot exceed ${COMMENT_CHAR_LIMIT} characters.`);
+      setTimeout(() => setErrorMessage(""), 2000);
+      return;
+    }
     try {
       await reviewSubmission(submissionId, "approve", comment);
       fetchSubmissions(selectedChallenge.id);
@@ -142,6 +165,11 @@ export default function CoachChallengesView() {
   const handleDeny = async (submissionId, comment) => {
     if (!comment || comment.trim() === "") {
       setErrorMessage("Please provide a comment to deny a submission.");
+      setTimeout(() => setErrorMessage(""), 2000);
+      return;
+    }
+    if (comment.length > COMMENT_CHAR_LIMIT) {
+      setErrorMessage(`Comment cannot exceed ${COMMENT_CHAR_LIMIT} characters.`);
       setTimeout(() => setErrorMessage(""), 2000);
       return;
     }
@@ -186,10 +214,16 @@ export default function CoachChallengesView() {
             New Challenge
           </button>
           <button
-            onClick={() => setActiveTab('view')}
+            onClick={() => {
+              if (selectedChallenge) {
+                setSelectedChallenge(null);
+                setSubmissions([]);
+              }
+              setActiveTab('view');
+            }}
             className={`flex-1 px-4 py-2 rounded-xl font-semibold transition-colors duration-200 shadow-md border border-white/30 backdrop-blur-md bg-white/30 ${activeTab === 'view' ? 'ring-2 ring-red-400 text-red-700' : 'text-gray-800'}`}
           >
-            Athlete Submissions
+            My Challenges
           </button>
         </div>
       </div>
@@ -206,9 +240,11 @@ export default function CoachChallengesView() {
               value={formData.title}
               onChange={handleFormChange}
               placeholder="Enter challenge title"
+              maxLength={TITLE_CHAR_LIMIT}
               className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 text-gray-800 text-base"
               required
             />
+            <div className="text-xs text-gray-400 text-right">{formData.title.length}/{TITLE_CHAR_LIMIT}</div>
           </div>
           <div>
             <label htmlFor="description" className="block text-sm font-semibold text-gray-700 mb-1">Challenge Description</label>
@@ -218,12 +254,14 @@ export default function CoachChallengesView() {
               value={formData.description}
               onChange={handleFormChange}
               placeholder="Describe the challenge..."
+              maxLength={DESC_CHAR_LIMIT}
               className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 text-gray-800 text-base min-h-[80px]"
               required
             />
+            <div className="text-xs text-gray-400 text-right">{formData.description.length}/{DESC_CHAR_LIMIT}</div>
           </div>
           <div>
-            <label htmlFor="xp_value" className="block text-sm font-semibold text-gray-700 mb-1">XP Value: <span className="font-bold text-red-500">{formData.xp_value}</span></label>
+            <div className="block text-base font-bold text-red-500 mb-1">{formData.xp_value} XP</div>
             <input
               type="range"
               id="xp_value"
@@ -232,19 +270,13 @@ export default function CoachChallengesView() {
               max="5"
               value={formData.xp_value}
               onChange={handleFormChange}
-              className="w-full accent-red-500"
+              className="w-full focus:outline-none focus:ring-2 focus:ring-red-400 accent-red-500"
+              style={{ accentColor: '#ef4444' }}
             />
-            <div className="flex justify-between text-xs text-gray-400 mt-1">
-              <span>1</span>
-              <span>2</span>
-              <span>3</span>
-              <span>4</span>
-              <span>5</span>
-            </div>
           </div>
           <button
             type="submit"
-            className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-lg shadow transition-colors duration-200 text-lg"
+            className="w-full bg-white text-red-600 border-2 border-red-500 hover:bg-red-100 font-bold py-3 rounded-full text-base uppercase transition-colors duration-200"
           >
             Submit Challenge
           </button>
@@ -277,8 +309,7 @@ export default function CoachChallengesView() {
             <div className="py-4 text-center text-red-600">{challengeError}</div>
           ) : selectedChallenge ? (
             <>
-              <button onClick={() => { setSelectedChallenge(null); setSubmissions([]); }} className="mb-4 px-4 py-2 bg-gray-100 rounded-lg shadow hover:bg-gray-200">← Back to Challenges</button>
-              {/* Challenge title heading removed as requested */}
+              {/* Removed 'Back to Challenges' button. Navigation handled by 'My Challenges' tab. */}
               {submissionsLoading ? (
                 <ChallengeLoader />
               ) : submissionsError ? (
