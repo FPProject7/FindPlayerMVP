@@ -26,3 +26,11 @@ challengeClient.interceptors.request.use(
 );
 
 export default challengeClient;
+
+// Review a submission (approve or deny)
+export const reviewSubmission = async (submissionId, action, comment) => {
+  return challengeClient.post(`/submissions/${submissionId}/review`, {
+    action,
+    comment,
+  });
+};

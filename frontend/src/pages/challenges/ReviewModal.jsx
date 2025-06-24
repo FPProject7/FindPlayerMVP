@@ -17,9 +17,9 @@ function ReviewModal({ submission, onClose, onApprove, onDeny }) {
         </button>
         <h2 className="text-xl font-bold mb-4 text-gray-800">Review Submission</h2>
         {/* Video */}
-        {(submission.signedGetUrl || submission.video_url) ? (
+        {submission.video_url ? (
           <video
-            src={submission.signedGetUrl || submission.video_url}
+            src={submission.video_url}
             controls
             className="w-full rounded mb-4 bg-black"
             style={{ maxHeight: 240 }}

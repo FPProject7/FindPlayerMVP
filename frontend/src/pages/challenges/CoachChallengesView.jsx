@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import challengeClient from "../../api/challengeApi";
+import challengeClient, { reviewSubmission } from "../../api/challengeApi";
 import ReviewModal from "./ReviewModal";
 import ChallengeLoader from "../../components/common/ChallengeLoader";
 
@@ -106,6 +106,30 @@ export default function CoachChallengesView() {
         message: error.message
       });
       alert(`Failed to create challenge: ${error.response?.data?.message || error.message}`);
+    }
+  };
+
+  // Approve handler
+  const handleApprove = async (submissionId, comment) => {
+    try {
+      await reviewSubmission(submissionId, "approve", comment);
+      alert("Submission approved!");
+      setSelectedSubmission(null);
+      fetchSubmissions(); // Refresh list
+    } catch (error) {
+      alert("Failed to approve: " + (error.response?.data?.message || error.message));
+    }
+  };
+
+  // Deny handler
+  const handleDeny = async (submissionId, comment) => {
+    try {
+      await reviewSubmission(submissionId, "deny", comment);
+      alert("Submission denied!");
+      setSelectedSubmission(null);
+      fetchSubmissions(); // Refresh list
+    } catch (error) {
+      alert("Failed to deny: " + (error.response?.data?.message || error.message));
     }
   };
 
@@ -287,6 +311,8 @@ export default function CoachChallengesView() {
         <ReviewModal
           submission={selectedSubmission}
           onClose={() => setSelectedSubmission(null)}
+          onApprove={handleApprove}
+          onDeny={handleDeny}
         />
       )}
     </div>
