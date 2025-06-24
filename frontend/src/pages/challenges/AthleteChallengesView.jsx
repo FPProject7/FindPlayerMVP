@@ -87,11 +87,9 @@ const AthleteChallengesView = () => {
   const [submissionStatuses, setSubmissionStatuses] = useState({});
   const { activeUploads, getUploadStatus } = useUploadStore();
 
-  // --- Ref to track previous location key (for re-click detection) ---
   const prevLocationKey = React.useRef(location.key);
   const containerRef = useRef(null);
 
-  // --- Pull to refresh constants ---
   const PULL_THRESHOLD = 80;
   const MAX_PULL_DISTANCE = 120;
 
@@ -126,10 +124,8 @@ const AthleteChallengesView = () => {
     }
   };
 
-  // --- Pull to Refresh Handlers ---
   const handleTouchStart = (e) => {
-    if (selectedChallenge || loading) return; // Don't allow pull when in detail view or loading
-    
+    if (selectedChallenge || loading) return;
     const touch = e.touches[0];
     setPullStartY(touch.clientY);
     setPullDistance(0);
@@ -137,41 +133,29 @@ const AthleteChallengesView = () => {
 
   const handleTouchMove = (e) => {
     if (selectedChallenge || loading) return;
-    
     const touch = e.touches[0];
     const currentY = touch.clientY;
     const distance = Math.max(0, currentY - pullStartY);
-    
-    // Only prevent default and handle pull-to-refresh if:
-    // 1. We're at the top of the page (scrollY === 0)
-    // 2. We're pulling down (distance > 0)
-    // 3. We're on the challenges list (not in detail view)
+
     if (distance > 0 && window.scrollY === 0 && !selectedChallenge) {
       e.preventDefault();
       setPullDistance(Math.min(distance, MAX_PULL_DISTANCE));
     } else {
-      // Allow normal scrolling in all other cases
       setPullDistance(0);
     }
   };
 
   const handleTouchEnd = () => {
     if (selectedChallenge || loading) return;
-    
+
     if (pullDistance >= PULL_THRESHOLD) {
       fetchChallengesData(true);
     }
-    
+
     setPullDistance(0);
   };
 
-  // --- Effect to Reset Detail View on NavLink Re-click (main fix) ---
   useEffect(() => {
-    // This effect runs whenever location.pathname or location.key changes.
-    // We want to reset ONLY if:
-    // 1. The path is currently '/challenges'
-    // 2. The location.key has changed (indicating a new history entry, often from re-clicking NavLink)
-    // 3. And a challenge is currently selected (meaning we are in the detail view)
     if (location.pathname === '/challenges' && location.key !== prevLocationKey.current && selectedChallenge) {
         setSelectedChallenge(null);
         setSubmissionStatus('idle');
@@ -179,16 +163,13 @@ const AthleteChallengesView = () => {
         setVideoError(null);
         setError(null);
     }
-    // Always update the ref to the current key for the next render cycle
     prevLocationKey.current = location.key;
-  }, [location.pathname, location.key, selectedChallenge]); // Include selectedChallenge so it re-checks if selection changes while on /challenges
+  }, [location.pathname, location.key, selectedChallenge]);
 
-  // --- Initial Load and Auto-refresh on Navigation ---
   useEffect(() => {
     fetchChallengesData();
   }, []); // Empty dependency array means this runs once on mount
 
-  // --- Auto-refresh when navigating to challenges page ---
   useEffect(() => {
     if (location.pathname === '/challenges') {
       fetchChallengesData(true);
@@ -261,7 +242,7 @@ const AthleteChallengesView = () => {
       }
       
     } catch (err) {
-      console.error('Failed to fetch challenge details:', err);
+      console.error('Failed to load challenge details:', err);
       setError('Failed to load challenge details. Please try again.');
     } finally {
       setLoading(false);
@@ -274,9 +255,7 @@ const AthleteChallengesView = () => {
 
     const file = e.target.files[0];
 
-    if (!file) {
-      return;
-    }
+    if (!file) return;
 
     if (!ALLOWED_VIDEO_TYPES.includes(file.type)) {
       setVideoError('Unsupported video format. Please use MP4, WebM, or MOV.');
@@ -377,7 +356,6 @@ const AthleteChallengesView = () => {
         transition: pullDistance === 0 ? 'transform 0.3s ease-out' : 'none'
       }}
     >
-      {/* Pull to refresh indicator */}
       {pullDistance > 0 && (
         <div className="flex justify-center items-center py-4 text-gray-500">
           {pullDistance >= PULL_THRESHOLD ? (
@@ -394,7 +372,6 @@ const AthleteChallengesView = () => {
         </div>
       )}
 
-      {/* Refresh indicator */}
       {refreshing && (
         <div className="flex justify-center items-center py-2 text-gray-500">
           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500 mr-2"></div>
@@ -402,12 +379,8 @@ const AthleteChallengesView = () => {
         </div>
       )}
 
-      {error && <div className="text-red-600 bg-red-100 p-3 rounded-md mb-4">{error}</div>}
-
       {selectedChallenge ? (
-        // --- Challenge Detail View ---
         <div className="challenge-detail-view bg-white p-6 rounded-lg shadow-xl relative">
-          {/* Glassy Back Button */}
           <button
             onClick={() => { setSelectedChallenge(null); setSubmissionStatus('idle'); setVideoFile(null); setVideoError(null); }}
             className="absolute top-4 left-4 z-50 px-4 py-2 bg-white/20 backdrop-blur-md border border-white/30 text-gray-800 rounded-xl shadow-lg hover:bg-white/30 transition-all duration-200 font-medium"
@@ -416,19 +389,9 @@ const AthleteChallengesView = () => {
           </button>
 
           <div className="pt-12">
-              <h2 
-                className="mb-3 text-red-600 text-center challenge-heading"
-                style={{ 
-                  fontFamily: '"Monoton", sans-serif',
-                  fontWeight: "400",
-                  fontStyle: "normal",
-                  fontSize: "2rem",
-                  letterSpacing: "1px",
-                  textTransform: "uppercase"
-                }}
-              >
-                {selectedChallenge.title}
-              </h2>
+            <h2 className="mb-3 text-red-600 text-center" style={{ fontFamily: '"Monoton", sans-serif', fontWeight: 400, fontSize: '2rem', letterSpacing: '1px', textTransform: 'uppercase' }}>
+              {selectedChallenge.title}
+            </h2>
 
               {selectedChallenge.image_url && (
                 <div className="challenge-image-container mb-4">
@@ -452,10 +415,10 @@ const AthleteChallengesView = () => {
                 </div>
               )}
 
-              <div className="video-upload-section bg-gray-50 border border-gray-200 p-5 rounded-lg">
-                <h3 className="text-lg font-bold mb-3 text-gray-800">Upload Your Video</h3>
+            <div className="video-upload-section bg-gray-50 border border-gray-200 p-5 rounded-lg">
+              <h3 className="text-lg font-bold mb-3 text-gray-800">Upload Your Video</h3>
 
-                {videoError && <div className="text-red-600 mb-3">{videoError}</div>}
+              {videoError && <div className="text-red-600 mb-3">{videoError}</div>}
 
                 {(() => {
                   const existingSubmission = submissionStatuses[selectedChallenge.id];
@@ -566,7 +529,6 @@ const AthleteChallengesView = () => {
                 })()}
               </div>
           </div>
-
         </div>
       ) : (
         <div className="challenges-list grid grid-cols-1 gap-4">
@@ -598,11 +560,23 @@ const AthleteChallengesView = () => {
                   <p className="text-gray-600 text-sm mb-3 line-clamp-2">{challenge.description}</p>
                   
                   {/* Coach Information */}
-                  {challenge.coach_name && (
-                    <div className="flex items-center mb-3 text-sm text-gray-500">
-                      <span>Coach: {challenge.coach_name}</span>
+                  <div className="flex items-center mb-4">
+                    {challenge.coach_profile_picture_url ? (
+                      <img
+                        src={challenge.coach_profile_picture_url}
+                        alt={challenge.coach_name || 'Coach'}
+                        className="w-14 h-14 rounded-full object-cover border border-gray-200 shadow-sm mr-4"
+                      />
+                    ) : (
+                      <div className="w-14 h-14 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 font-bold text-2xl mr-4">
+                        <span>{challenge.coach_name && challenge.coach_name.trim() ? challenge.coach_name.trim().charAt(0).toUpperCase() : 'C'}</span>
+                      </div>
+                    )}
+                    <div>
+                      <span className="font-bold text-xl text-gray-800">{challenge.coach_name || "Unknown"}</span>
+                      <span className="ml-2 text-gray-500 text-base font-normal">Coach</span>
                     </div>
-                  )}
+                  </div>
                   
                   {/* Submission Status */}
                   <div className="flex items-center justify-between">
