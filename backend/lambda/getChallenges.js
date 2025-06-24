@@ -23,7 +23,7 @@ exports.handler = async (event) => {
 
   try {
     await client.connect();
-
+    
     // Fetch challenges and join with users for coach info
     const query = `
       SELECT 
@@ -42,7 +42,7 @@ exports.handler = async (event) => {
       body: JSON.stringify(result.rows),
       headers: { 'Content-Type': 'application/json' },
     };
-
+    
   } catch (err) {
     await client.end();
     return {
