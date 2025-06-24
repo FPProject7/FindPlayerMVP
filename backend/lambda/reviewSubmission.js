@@ -103,15 +103,53 @@ exports.handler = async (event) => {
 
     const updatedSubmission = updateRes.rows[0];
 
-    // --- 5. Award XP if approved ---
-    if (action === "approve") {
-      await client.query(
-        `INSERT INTO user_experience_points 
-         (user_id, challenge_id, submission_id, points_earned, earned_at, earned_for)
-         VALUES ($1, $2, $3, $4, NOW(), 'challenge_submission')`,
-        [submission.athlete_id, submission.challenge_id, submissionId, submission.xp_value]
+    // --- 5. Award XP via remote Lambda, but only if not already awarded ---
+    const xpLambdaUrl = 'https://rnf66y24gb.execute-api.us-east-1.amazonaws.com/default/xp/award';
+    const xpCalls = [];
+    // Check if coach has already received XP for this review
+    const coachXPRes = await client.query(
+      `SELECT 1 FROM user_experience_points WHERE user_id = $1 AND challenge_id = $2 AND submission_id = $3 AND earned_for = 'challenge_review'`,
+      [coachId, submission.challenge_id, submissionId]
+    );
+    if (coachXPRes.rows.length === 0) {
+      xpCalls.push(
+        fetch(xpLambdaUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: coachId,
+            challengeId: submission.challenge_id,
+            submissionId: submissionId,
+            points: 2,
+            earnedFor: 'challenge_review'
+          })
+        }).then(res => res.json()).catch(e => { console.error('Coach XP error:', e); return null; })
       );
     }
+    // If approved, check if athlete has already received XP for this approval
+    if (action === "approve") {
+      const athleteXPRes = await client.query(
+        `SELECT 1 FROM user_experience_points WHERE user_id = $1 AND challenge_id = $2 AND submission_id = $3 AND earned_for = 'challenge_submission'`,
+        [submission.athlete_id, submission.challenge_id, submissionId]
+      );
+      if (athleteXPRes.rows.length === 0) {
+        xpCalls.push(
+          fetch(xpLambdaUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: submission.athlete_id,
+              challengeId: submission.challenge_id,
+              submissionId: submissionId,
+              points: submission.xp_value,
+              earnedFor: 'challenge_submission'
+            })
+          }).then(res => res.json()).catch(e => { console.error('Athlete XP error:', e); return null; })
+        );
+      }
+    }
+    // Wait for all XP calls to finish (but don't block main logic on error)
+    await Promise.all(xpCalls);
 
     await client.end();
     return buildResponse(200, updatedSubmission);
