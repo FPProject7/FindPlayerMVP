@@ -42,6 +42,13 @@ function ReviewModal({ submission, onClose, onApprove, onDeny }) {
             No video available
           </div>
         )}
+        {/* Current review comment (if any) */}
+        {submission.review_comment && submission.review_comment.trim() !== '' && (
+          <div className="mb-3 p-2 bg-gray-50 border-l-4 border-red-300 rounded">
+            <span className="font-semibold text-gray-700">Current Comment:</span>
+            <div className="text-gray-700 mt-1 whitespace-pre-line">{submission.review_comment}</div>
+          </div>
+        )}
         {/* Comment box */}
         <label className="block mb-2 text-sm font-medium text-gray-700">Coach's Comment</label>
         <textarea

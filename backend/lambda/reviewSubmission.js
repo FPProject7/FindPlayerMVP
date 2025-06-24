@@ -103,6 +103,26 @@ exports.handler = async (event) => {
 
     const updatedSubmission = updateRes.rows[0];
 
+    // If denied, revoke athlete XP if previously awarded
+    if (action === "deny") {
+      const xpRes = await client.query(
+        `SELECT * FROM user_experience_points WHERE user_id = $1 AND challenge_id = $2 AND submission_id = $3 AND earned_for = 'challenge_submission'`,
+        [submission.athlete_id, submission.challenge_id, submissionId]
+      );
+      if (xpRes.rows.length > 0) {
+        // Remove XP record
+        await client.query(
+          `DELETE FROM user_experience_points WHERE id = $1`,
+          [xpRes.rows[0].id]
+        );
+        // Subtract XP from athlete's total
+        await client.query(
+          `UPDATE users SET xp_total = xp_total - $1 WHERE id = $2`,
+          [submission.xp_value, submission.athlete_id]
+        );
+      }
+    }
+
     // --- 5. Award XP via remote Lambda, but only if not already awarded ---
     const xpLambdaUrl = 'https://rnf66y24gb.execute-api.us-east-1.amazonaws.com/default/xp/award';
     const xpCalls = [];
