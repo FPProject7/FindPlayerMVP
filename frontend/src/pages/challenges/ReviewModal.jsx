@@ -16,6 +16,19 @@ function ReviewModal({ submission, onClose, onApprove, onDeny }) {
           ×
         </button>
         <h2 className="text-xl font-bold mb-4 text-gray-800">Review Submission</h2>
+        {/* Current Status */}
+        {submission.status && (
+          <div className="mb-4 flex items-center">
+            <span className="font-semibold text-gray-700 mr-2">Current status:</span>
+            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold 
+              ${submission.status === 'pending' ? 'bg-gray-100 text-gray-500' : 
+                submission.status === 'approved' ? 'bg-green-100 text-green-600' : 
+                submission.status === 'denied' ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500'}`}
+            >
+              {submission.status.charAt(0).toUpperCase() + submission.status.slice(1)}
+            </span>
+          </div>
+        )}
         {/* Video */}
         {submission.video_url ? (
           <video

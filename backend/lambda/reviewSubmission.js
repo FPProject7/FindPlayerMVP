@@ -1,6 +1,33 @@
 const { Client } = require('pg');
 
+// Helper to build responses with CORS headers
+const buildResponse = (statusCode, bodyObj) => ({
+  statusCode,
+  headers: {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': 'http://localhost:5173', // Adjust for production
+    'Access-Control-Allow-Credentials': true,
+    'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+    'Access-Control-Allow-Methods': 'OPTIONS,POST,GET,PUT,DELETE'
+  },
+  body: JSON.stringify(bodyObj)
+});
+
 exports.handler = async (event) => {
+  // --- 0. Handle CORS preflight ---
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': 'http://localhost:5173',
+        'Access-Control-Allow-Credentials': true,
+        'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+        'Access-Control-Allow-Methods': 'OPTIONS,POST,GET,PUT,DELETE'
+      },
+      body: ''
+    };
+  }
+
   // --- 1. Auth check ---
   const claims = event?.requestContext?.authorizer?.jwt?.claims;
   console.log('JWT Claims:', JSON.stringify(claims));
@@ -10,44 +37,29 @@ exports.handler = async (event) => {
   const coachId = claims?.sub;
 
   if (!(groups.includes("coaches") || customRole === "coach")) {
-    return {
-      statusCode: 403,
-      body: JSON.stringify({ message: "Forbidden: Only coaches can review submissions" })
-    };
+    return buildResponse(403, { message: "Forbidden: Only coaches can review submissions" });
   }
 
   // --- 2. Parse path param and body ---
   const submissionId = event.pathParameters?.id;
   if (!submissionId) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ message: "Missing submission id in path" })
-    };
+    return buildResponse(400, { message: "Missing submission id in path" });
   }
 
   let body;
   try {
     body = JSON.parse(event.body);
   } catch (e) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ message: "Invalid JSON body" })
-    };
+    return buildResponse(400, { message: "Invalid JSON body" });
   }
 
   const { action, comment } = body;
   if (!["approve", "deny"].includes(action)) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ message: "Action must be 'approve' or 'deny'" })
-    };
+    return buildResponse(400, { message: "Action must be 'approve' or 'deny'" });
   }
-  // Only require comment for denial
+
   if (action === "deny" && (!comment || comment.trim() === "")) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ message: "Comment is required for denial" })
-    };
+    return buildResponse(400, { message: "Comment is required for denial" });
   }
 
   const client = new Client({
@@ -69,24 +81,18 @@ exports.handler = async (event) => {
        WHERE s.id = $1 AND c.coach_id = $2::text`,
       [submissionId, coachId]
     );
+
     if (submissionRes.rows.length === 0) {
       await client.end();
-      return {
-        statusCode: 404,
-        body: JSON.stringify({ message: "Submission not found or not owned by coach" })
-      };
+      return buildResponse(404, { message: "Submission not found or not owned by coach" });
     }
+
     const submission = submissionRes.rows[0];
 
     // --- 4. Update submission ---
-    let newStatus, reviewComment;
-    if (action === "approve") {
-      newStatus = "approved";
-      reviewComment = comment || null;
-    } else {
-      newStatus = "denied";
-      reviewComment = comment;
-    }
+    let newStatus = action === "approve" ? "approved" : "denied";
+    let reviewComment = action === "approve" ? (comment || null) : comment;
+
     const updateRes = await client.query(
       `UPDATE challenge_submissions
        SET status = $1, reviewed_at = NOW(), reviewed_by = $2, review_comment = $3
@@ -94,28 +100,25 @@ exports.handler = async (event) => {
        RETURNING *`,
       [newStatus, coachId, reviewComment, submissionId]
     );
+
     const updatedSubmission = updateRes.rows[0];
 
     // --- 5. Award XP if approved ---
     if (action === "approve") {
       await client.query(
-        `INSERT INTO user_experience_points (user_id, challenge_id, submission_id, points_earned, earned_at, earned_for)
+        `INSERT INTO user_experience_points 
+         (user_id, challenge_id, submission_id, points_earned, earned_at, earned_for)
          VALUES ($1, $2, $3, $4, NOW(), 'challenge_submission')`,
         [submission.athlete_id, submission.challenge_id, submissionId, submission.xp_value]
       );
     }
 
     await client.end();
-    return {
-      statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updatedSubmission)
-    };
+    return buildResponse(200, updatedSubmission);
+
   } catch (err) {
+    console.error('Error reviewing submission:', err);
     await client.end();
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ message: 'Error reviewing submission', error: err.message })
-    };
+    return buildResponse(500, { message: 'Error reviewing submission', error: err.message });
   }
 }; 

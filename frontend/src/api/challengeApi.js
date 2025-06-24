@@ -1,35 +1,32 @@
 import axios from "axios";
 import { useAuthStore } from "../stores/useAuthStore"; // adjust path if needed
 
+// For challenge and submission actions
 const challengeClient = axios.create({
   baseURL: "https://stpw2c9b5b.execute-api.us-east-1.amazonaws.com/default",
 });
 
-challengeClient.interceptors.request.use(
-  async (config) => {
-    try {
-      // Get a valid token (will refresh if needed)
-      const token = await useAuthStore.getState().getValidToken();
-      
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      } else {
-        console.warn("No token found in useAuthStore");
-      }
-    } catch (error) {
-      console.error('Failed to get valid token:', error);
-      // Don't throw here, let the request fail naturally
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+// For review (approve/deny) actions
+const reviewClient = axios.create({
+  baseURL: "https://2onjezcqo2.execute-api.us-east-1.amazonaws.com/default",
+});
+
+// Attach token to both clients
+const attachAuth = async (config) => {
+  try {
+    const token = await useAuthStore.getState().getValidToken();
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+  } catch {}
+  return config;
+};
+challengeClient.interceptors.request.use(attachAuth, (error) => Promise.reject(error));
+reviewClient.interceptors.request.use(attachAuth, (error) => Promise.reject(error));
 
 export default challengeClient;
 
 // Review a submission (approve or deny)
 export const reviewSubmission = async (submissionId, action, comment) => {
-  return challengeClient.post(`/submissions/${submissionId}/review`, {
+  return reviewClient.post(`/submissions/${submissionId}/review`, {
     action,
     comment,
   });
