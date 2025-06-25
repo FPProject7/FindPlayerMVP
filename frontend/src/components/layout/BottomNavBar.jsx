@@ -1,7 +1,7 @@
 // frontend/src/components/layout/BottomNavBar.jsx
 
 import React, { useEffect } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { 
     IoHomeOutline, IoHome, 
     IoPodiumOutline, IoPodium, 
@@ -17,6 +17,7 @@ import navBackground from '../../assets/nav-bg-responsive.svg';
 const BottomNavBar = () => {
     const { user, isAuthenticated } = useAuthStore();
     const userRole = isAuthenticated && user ? user.role : null; 
+    const navigate = useNavigate();
 
     const navContainerStyle = {
         backgroundImage: `url(${navBackground})`,
@@ -28,7 +29,7 @@ const BottomNavBar = () => {
         userRole?.toLowerCase() === 'scout' ? 
             // CHANGED: Use magnifying glass icons here
             { to: "/scout-dashboard", icon: <IoSearchOutline size={28} />, activeIcon: <IoSearch size={28} />, label: 'Dashboard' } : 
-            { to: "/challenges", icon: <LiaClipboardCheckSolid size={30} />, activeIcon: <LiaClipboardSolid size={30} />, label: 'Challenges' },
+            { to: "/challenges", icon: <LiaClipboardCheckSolid size={30} />, activeIcon: <LiaClipboardSolid size={30} />, label: 'Challenges', isChallenge: true },
         
         { to: "/upload", icon: <FaPlus size={24} />, label: 'Add', isCenter: true },
 
@@ -52,6 +53,27 @@ const BottomNavBar = () => {
                         <NavLink key={index} to={item.to} className="nav-center-button" aria-label={item.label}>
                             {item.icon}
                         </NavLink>
+                    );
+                }
+                if (item.isChallenge) {
+                    // Always go to /challenges root, force reload if already there
+                    return (
+                        <button
+                            key={index}
+                            type="button"
+                            className="nav-button"
+                            style={navLinkStyle({ isActive: window.location.pathname.startsWith('/challenges') })}
+                            aria-label={item.label}
+                            onClick={() => {
+                                if (window.location.pathname === '/challenges') {
+                                    window.location.reload();
+                                } else {
+                                    navigate('/challenges');
+                                }
+                            }}
+                        >
+                            {window.location.pathname.startsWith('/challenges') ? item.activeIcon : item.icon}
+                        </button>
                     );
                 }
                 return (

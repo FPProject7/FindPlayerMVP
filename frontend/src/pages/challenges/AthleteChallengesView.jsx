@@ -427,19 +427,37 @@ const AthleteChallengesView = () => {
                   
                   if (hasSubmitted) {
                     return (
-                      <div className="status-message text-red-700 font-bold mb-4 border border-red-300 p-4 rounded-lg bg-red-50 flex items-center justify-center">
-                        <span className="mr-2 text-2xl">
-                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-red-600">
-                            <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </span> 
-                        <div>
+                      <div className="status-message text-red-700 font-bold mb-4 border border-red-300 p-4 rounded-lg bg-red-50 flex flex-col items-center justify-center">
+                        <div className="flex items-center mb-2">
+                          <span className="mr-2 text-2xl">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-red-600">
+                              <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          </span>
                           <div>Your video has been submitted!</div>
-                          <div className="text-sm font-normal mt-1">
-                            Status: {existingSubmission?.status || 'Submitted'} | 
-                            Submitted: {existingSubmission?.submitted_at ? new Date(existingSubmission.submitted_at).toLocaleDateString() : 'N/A'}
-                          </div>
                         </div>
+                        {/* Status pill styled like CoachChallengesView.jsx */}
+                        {existingSubmission?.status && (
+                          <div className="mb-2 flex items-center justify-center">
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide
+                              ${existingSubmission.status === 'pending' ? 'bg-gray-100 text-gray-500 border border-gray-300' :
+                                existingSubmission.status === 'approved' ? 'bg-white text-red-600 border-2 border-red-500' :
+                                existingSubmission.status === 'denied' ? 'bg-red-500 text-white border-2 border-red-500' : 'bg-gray-100 text-gray-500 border border-gray-300'}`}
+                            >
+                              {existingSubmission.status.charAt(0).toUpperCase() + existingSubmission.status.slice(1)}
+                            </span>
+                          </div>
+                        )}
+                        <div className="text-sm font-normal mt-1 text-gray-700">
+                          Submitted: {existingSubmission?.submitted_at ? new Date(existingSubmission.submitted_at).toLocaleDateString() : 'N/A'}
+                        </div>
+                        {/* Coach's Comment (if any) */}
+                        {existingSubmission?.review_comment && existingSubmission.review_comment.trim() !== '' && (
+                          <div className="mt-2 w-full">
+                            <div className="text-xs text-gray-500 font-semibold mb-1">Coach's Comment</div>
+                            <div className="p-2 bg-gray-50 border-l-4 border-red-300 rounded text-gray-700 whitespace-pre-line text-sm break-words w-full">{existingSubmission.review_comment}</div>
+                          </div>
+                        )}
                       </div>
                     );
                   } else if (uploadStatus) {
@@ -531,7 +549,7 @@ const AthleteChallengesView = () => {
           </div>
         </div>
       ) : (
-        <div className="challenges-list grid grid-cols-1 gap-4">
+        <div className="challenges-list flex flex-col max-w-lg w-full mx-auto">
           {challenges.length === 0 ? (
             <p className="text-gray-600 col-span-full text-center">No challenges available at the moment.</p>
           ) : (
@@ -544,7 +562,7 @@ const AthleteChallengesView = () => {
                 <div
                   key={challenge.id}
                   onClick={() => handleChallengeClick(challenge.id)}
-                  className={`challenge-card bg-white p-4 rounded-lg shadow-md cursor-pointer transition-all duration-200 hover:shadow-lg border-2 ${
+                  className={`challenge-card bg-white p-6 rounded-lg shadow-md mb-6 cursor-pointer transition-all duration-200 hover:shadow-lg border-2 ${
                     hasSubmitted 
                       ? 'border-red-300 bg-red-50' 
                       : uploadStatus 

@@ -11,6 +11,8 @@ exports.handler = async (event) => {
   const customRole = claims?.["custom:role"] || "";
   const coachId = claims?.sub;  // Assuming sub is the coach ID
   
+  const challengeId = event.pathParameters?.id;
+  
   console.log('Groups:', groups);
   console.log('Custom Role:', customRole);
   console.log('Coach ID:', coachId);
@@ -36,21 +38,40 @@ exports.handler = async (event) => {
 
     let query, values;
     if (groups.includes("coaches") || customRole === "coach") {
-      query = `
-        SELECT 
-          s.*, 
-          c.title AS challenge_title,
-          u.name AS athlete_name,
-          u.profile_picture_url AS athlete_profile_picture_url
-        FROM challenge_submissions s
-        JOIN challenges c ON s.challenge_id = c.id
-        LEFT JOIN users u ON s.athlete_id = u.id
-        WHERE c.coach_id = $1::text
-          AND s.status = 'pending'
-        ORDER BY s.submitted_at DESC
-      `;
-      values = [coachId];
-      console.log('Executing query with coachId:', coachId);
+      if (challengeId) {
+        // Fetch submissions for a specific challenge
+        query = `
+          SELECT 
+            s.*, 
+            c.title AS challenge_title,
+            u.name AS athlete_name,
+            u.profile_picture_url AS athlete_profile_picture_url
+          FROM challenge_submissions s
+          JOIN challenges c ON s.challenge_id = c.id
+          LEFT JOIN users u ON s.athlete_id = u.id
+          WHERE c.coach_id = $1::text
+            AND s.challenge_id = $2
+          ORDER BY s.submitted_at DESC
+        `;
+        values = [coachId, challengeId];
+        console.log('Executing query for specific challengeId:', challengeId);
+      } else {
+        // Fetch all submissions for the coach
+        query = `
+          SELECT 
+            s.*, 
+            c.title AS challenge_title,
+            u.name AS athlete_name,
+            u.profile_picture_url AS athlete_profile_picture_url
+          FROM challenge_submissions s
+          JOIN challenges c ON s.challenge_id = c.id
+          LEFT JOIN users u ON s.athlete_id = u.id
+          WHERE c.coach_id = $1::text
+          ORDER BY s.submitted_at DESC
+        `;
+        values = [coachId];
+        console.log('Executing query with coachId:', coachId);
+      }
     } else {
       console.log('User is not a coach. Groups:', groups, 'Custom role:', customRole);
       return {
@@ -65,7 +86,7 @@ exports.handler = async (event) => {
 
     console.log('Executing query:', query);
     console.log('Query values:', values);
-    
+
     const res = await client.query(query, values);
     console.log('Query executed successfully. Rows returned:', res.rows.length);
     
@@ -74,8 +95,8 @@ exports.handler = async (event) => {
 
     // Return submissions with athlete info (without pre-signed URLs for now)
     const submissionsWithInfo = res.rows.map((row) => ({
-      ...row,
-      athlete_name: row.athlete_name || 'Unknown',
+        ...row,
+        athlete_name: row.athlete_name || 'Unknown',
     }));
 
     console.log('Returning submissions:', submissionsWithInfo);
@@ -96,7 +117,7 @@ exports.handler = async (event) => {
     console.error('Error stack:', err.stack);
     
     if (client) {
-      await client.end();
+    await client.end();
       console.log('Database connection closed due to error');
     }
     
