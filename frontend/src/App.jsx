@@ -95,6 +95,7 @@ function App() {
         {/* These routes load only if authenticated, and are also wrapped by MainLayout. */}
         <Route element={<MainLayout />}>
             <Route path="/profile" element={<ProtectedRoute><UserProfilePage /></ProtectedRoute>} /> 
+            <Route path="/profile/:profileUserId" element={<ProtectedRoute><UserProfilePage /></ProtectedRoute>} /> 
             <Route path="/scout-dashboard" element={<RoleProtectedRoute allowedRoles={['Scout']}><ScoutDashboardPage /></RoleProtectedRoute>} /> 
             {/* --- NEW: Protected Notifications & Messages Routes --- */}
             <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} /> {/* <--- New Route */}
