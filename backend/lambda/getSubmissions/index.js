@@ -57,19 +57,19 @@ exports.handler = async (event) => {
         console.log('Executing query for specific challengeId:', challengeId);
       } else {
         // Fetch all submissions for the coach
-        query = `
-          SELECT 
-            s.*, 
-            c.title AS challenge_title,
-            u.name AS athlete_name,
-            u.profile_picture_url AS athlete_profile_picture_url
-          FROM challenge_submissions s
-          JOIN challenges c ON s.challenge_id = c.id
-          LEFT JOIN users u ON s.athlete_id = u.id
-          WHERE c.coach_id = $1::text
-          ORDER BY s.submitted_at DESC
-        `;
-        values = [coachId];
+      query = `
+        SELECT 
+          s.*, 
+          c.title AS challenge_title,
+          u.name AS athlete_name,
+          u.profile_picture_url AS athlete_profile_picture_url
+        FROM challenge_submissions s
+        JOIN challenges c ON s.challenge_id = c.id
+        LEFT JOIN users u ON s.athlete_id = u.id
+        WHERE c.coach_id = $1::text
+        ORDER BY s.submitted_at DESC
+      `;
+      values = [coachId];
         console.log('Executing query with coachId:', coachId);
       }
     } else {
