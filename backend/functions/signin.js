@@ -6,8 +6,10 @@ import {
     AdminGetUserCommand 
 } from "@aws-sdk/client-cognito-identity-provider";
 import { Client } from "pg";
-const REGION = "us-east-1";
-const CLIENT_ID = "29ae68avp4t8mvcg30fr97j3o2";
+
+const REGION = process.env.REGION || "us-east-1";
+const CLIENT_ID = process.env.CLIENT_ID;
+const USER_POOL_ID = process.env.USER_POOL_ID;
 
 const client = new CognitoIdentityProviderClient({ region: REGION });
 

@@ -50,8 +50,11 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest);
       } catch (refreshError) {
         // Refresh failed, redirect to login
-        useAuthStore.getState().logout();
-        window.location.href = '/login';
+        // BUT don't redirect if this is already a login request
+        if (!originalRequest.url?.includes('/signin') && !originalRequest.url?.includes('/login')) {
+          useAuthStore.getState().logout();
+          window.location.href = '/login';
+        }
         return Promise.reject(refreshError);
       }
     }

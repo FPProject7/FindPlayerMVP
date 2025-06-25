@@ -52,7 +52,15 @@ function LoginForm() {
       navigate('/home');
 
     } catch (err) {
-      const errorMessage = err.response?.data?.message || err.message || 'Login failed. Please check your credentials and try again.';
+      // Prefer backend message, but fallback to a generic one if it's technical or missing
+      let errorMessage = err.response?.data?.message;
+      if (
+        !errorMessage ||
+        errorMessage.toLowerCase().includes('useauthstore') ||
+        errorMessage.toLowerCase().includes('not a function')
+      ) {
+        errorMessage = 'Incorrect email or password. Please try again.';
+      }
       setApiError(errorMessage);
     } finally {
       setIsLoading(false);
