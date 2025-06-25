@@ -95,7 +95,6 @@ function CoachSignUpForm() {
           resolve(reader.result.split(',')[1]);
         };
         reader.onerror = (error) => {
-          console.error("FileReader error:", error);
           setApiError('Failed to read profile picture file.');
           reject(error);
         };

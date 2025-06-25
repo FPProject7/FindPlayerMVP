@@ -20,7 +20,6 @@ apiClient.interceptors.request.use(
         config.headers.Authorization = `Bearer ${token}`;
       }
     } catch (error) {
-      console.error('Failed to get valid token:', error);
       // Don't throw here, let the request fail naturally
     }
 

@@ -26,7 +26,6 @@ export const fetchChallenges = async () => {
     const response = await apiClient.get(API_ENDPOINTS.getChallenges);
     return response.data;
   } catch (error) {
-    console.error('Error fetching challenges:', error);
     throw new Error(error.response?.data?.message || 'Failed to fetch challenges');
   }
 };
@@ -58,13 +57,6 @@ export const generateMultipartUploadUrl = async (challengeId, uploadId = null, p
     const response = await apiClient.get(url);
     return response.data;
   } catch (error) {
-    console.error('Error generating multipart upload URL:', error);
-    console.error('Error details:', {
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      data: error.response?.data,
-      config: error.config
-    });
     throw new Error(error.response?.data?.message || 'Failed to generate upload URL');
   }
 };
@@ -113,7 +105,6 @@ export const uploadPartToS3 = async (uploadUrl, partBlob, onProgress = null) => 
       xhr.send(partBlob);
 
     } catch (error) {
-      console.error('Error uploading part to S3:', error);
       reject(new Error('Failed to upload part'));
     }
   });
@@ -137,7 +128,6 @@ export const completeMultipartUpload = async (challengeId, uploadId, fileName, p
     
     return response.data.fileUrl;
   } catch (error) {
-    console.error('Error completing multipart upload:', error);
     throw new Error(error.response?.data?.message || 'Failed to complete multipart upload');
   }
 };
@@ -157,8 +147,6 @@ export const uploadVideoWithMultipart = async (challengeId, videoFile, onProgres
     const initiateResponse = await generateMultipartUploadUrl(challengeId);
     const { uploadId, fileName, fileUrl } = initiateResponse;
     
-    console.log('Multipart upload initiated:', { uploadId, fileName });
-    
     // Step 2: Split file into chunks
     const chunks = [];
     let start = 0;
@@ -171,8 +159,6 @@ export const uploadVideoWithMultipart = async (challengeId, videoFile, onProgres
       start = end;
       partNumber++;
     }
-    
-    console.log(`File split into ${chunks.length} chunks`);
     
     // Step 3: Upload parts with progress tracking
     const uploadedParts = [];
@@ -209,7 +195,6 @@ export const uploadVideoWithMultipart = async (challengeId, videoFile, onProgres
             ETag: partResult.etag
           };
         } catch (error) {
-          console.error(`Error uploading part ${partNumber}:`, error);
           throw error;
         }
       });
@@ -222,11 +207,9 @@ export const uploadVideoWithMultipart = async (challengeId, videoFile, onProgres
     // Step 4: Complete the multipart upload
     const finalFileUrl = await completeMultipartUpload(challengeId, uploadId, fileName, uploadedParts);
     
-    console.log('Multipart upload completed successfully');
     return finalFileUrl;
     
   } catch (error) {
-    console.error('Error in multipart upload:', error);
     throw error;
   }
 };
@@ -245,7 +228,6 @@ export const submitChallenge = async (challengeId, videoUrl) => {
     
     return response.data;
   } catch (error) {
-    console.error('Error submitting challenge:', error);
     throw new Error(error.response?.data?.message || 'Failed to submit challenge');
   }
 };
@@ -283,7 +265,6 @@ export const completeChallengeSubmission = async (challengeId, videoFile) => {
     
     return submission;
   } catch (error) {
-    console.error('Error in complete challenge submission:', error);
     uploadStore.updateStatus(challengeId, 'error', error.message);
     
     // Clean up error state after a delay
