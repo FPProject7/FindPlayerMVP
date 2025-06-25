@@ -1,10 +1,11 @@
 // backend/functions/signup.js
 
-import {
-    CognitoIdentityProviderClient,
-    SignUpCommand,
+import { 
+    CognitoIdentityProviderClient, 
+    SignUpCommand, 
     AdminInitiateAuthCommand,
-    AdminUpdateUserAttributesCommand
+    AdminUpdateUserAttributesCommand,
+    AdminGetUserCommand
 } from "@aws-sdk/client-cognito-identity-provider";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { Client } from "pg";
@@ -31,7 +32,7 @@ export const handler = async (event) => {
     }
 
     // Destructure new profilePictureContentType
-    const { email, password, role, firstName, gender, sport, position, profilePictureBase64, profilePictureContentType } = body; // <--- New field
+    const { email, password, role, firstName, gender, sport, position, profilePictureBase64, profilePictureContentType } = body;
 
     if (!email || !password || !firstName || !role) {
         return {
@@ -62,59 +63,58 @@ export const handler = async (event) => {
     };
 
     let profilePictureUrl = null;
+    let cognitoSub = null;
+    let signupSucceeded = false;
+    let idToken = null, accessToken = null, refreshToken = null;
 
     try {
+        // Step 1: Sign up the user
         const signUpCommand = new SignUpCommand(signUpParams);
         await cognitoClient.send(signUpCommand);
+        signupSucceeded = true;
 
-        console.log(`User ${email} signed up successfully.`);
+        // Step 2: Try to auto-login
+        try {
+            const initiateAuthParams = {
+                AuthFlow: "ADMIN_NO_SRP_AUTH",
+                UserPoolId: USER_POOL_ID,
+                ClientId: CLIENT_ID,
+                AuthParameters: {
+                    USERNAME: email,
+                    PASSWORD: password,
+                },
+            };
+            const initiateAuthCommand = new AdminInitiateAuthCommand(initiateAuthParams);
+            const authResponse = await cognitoClient.send(initiateAuthCommand);
+            const authenticationResult = authResponse.AuthenticationResult;
+            idToken = authenticationResult.IdToken;
+            accessToken = authenticationResult.AccessToken;
+            refreshToken = authenticationResult.RefreshToken;
+        } catch (autoLoginError) {
+            // Auto-login failed, but signup succeeded
+            idToken = null;
+            accessToken = null;
+            refreshToken = null;
+        }
 
-        const initiateAuthParams = {
-            AuthFlow: "ADMIN_NO_SRP_AUTH",
-            UserPoolId: USER_POOL_ID,
-            ClientId: CLIENT_ID,
-            AuthParameters: {
-                USERNAME: email,
-                PASSWORD: password,
-            },
-        };
-
-        const initiateAuthCommand = new AdminInitiateAuthCommand(initiateAuthParams);
-        const authResponse = await cognitoClient.send(initiateAuthCommand);
-
-        console.log(`User ${email} auto-authenticated successfully.`);
-
-        const authenticationResult = authResponse.AuthenticationResult;
-        const idToken = authenticationResult.IdToken;
-        const accessToken = authenticationResult.AccessToken;
-        const refreshToken = authenticationResult.RefreshToken;
-
-        // STEP 3: Handle Profile Picture Upload to S3 (if provided)
+        // Step 3: Handle Profile Picture Upload to S3 (if provided)
         if (profilePictureBase64 && S3_BUCKET_NAME) {
             try {
-                // Use profilePictureContentType directly
-                const contentType = profilePictureContentType || 'application/octet-stream'; // <--- Use provided content type
-                const base64Data = profilePictureBase64; // No need to remove prefix here, frontend does it
+                const contentType = profilePictureContentType || 'application/octet-stream';
+                const base64Data = profilePictureBase64;
                 const imageBuffer = Buffer.from(base64Data, 'base64');
-
-                // Generate a unique file name (e.g., user_email-timestamp.ext)
                 const fileExtension = contentType.split('/')[1] || 'jpeg';
                 const s3Key = `profile-pictures/${email.replace(/[^a-zA-Z0-9]/g, '_')}-${Date.now()}.${fileExtension}`;
-
                 const s3UploadParams = {
                     Bucket: S3_BUCKET_NAME,
                     Key: s3Key,
                     Body: imageBuffer,
-                    ContentType: contentType, // <--- Use provided content type
+                    ContentType: contentType,
                 };
-
                 const putObjectCommand = new PutObjectCommand(s3UploadParams);
                 await s3Client.send(putObjectCommand);
-
                 profilePictureUrl = `https://${S3_BUCKET_NAME}.s3.${REGION}.amazonaws.com/${s3Key}`;
-                console.log(`Profile picture uploaded to S3: ${profilePictureUrl}`);
-
-                // STEP 4: Update Cognito User Attributes with Profile Picture URL
+                // Update Cognito User Attributes with Profile Picture URL
                 const updateUserAttributesParams = {
                     UserPoolId: USER_POOL_ID,
                     Username: email,
@@ -124,34 +124,37 @@ export const handler = async (event) => {
                 };
                 const updateUserAttributesCommand = new AdminUpdateUserAttributesCommand(updateUserAttributesParams);
                 await cognitoClient.send(updateUserAttributesCommand);
-                console.log(`Cognito user attributes updated with profile picture URL for ${email}`);
-
             } catch (s3Error) {
-                console.error("Error uploading profile picture to S3 or updating Cognito attributes:", s3Error);
                 profilePictureUrl = null;
             }
-        } else {
-            console.log("No profile picture provided or S3 bucket not configured.");
         }
 
-        const userProfile = {
-            name: firstName,
-            email: email,
-            role: role,
-            gender: gender,
-            sport: sport,
-            position: position,
-            profilePictureUrl: profilePictureUrl
-        };
-
-        // --- Sync user to users table in PostgreSQL ---
+        // Step 4: Get Cognito sub (user id) for DB sync
         try {
-            // Extract Cognito sub (user id) from the idToken
-            let cognitoSub = null;
             if (idToken) {
                 const payload = JSON.parse(Buffer.from(idToken.split('.')[1], 'base64').toString());
                 cognitoSub = payload.sub;
+            } else {
+                // If no idToken (auto-login failed), fetch user from Cognito
+                const adminGetUserCommand = new AdminGetUserCommand({
+                    UserPoolId: USER_POOL_ID,
+                    Username: email
+                });
+                const userDetails = await cognitoClient.send(adminGetUserCommand);
+                if (userDetails.UserAttributes) {
+                    const subAttr = userDetails.UserAttributes.find(attr => attr.Name === 'sub');
+                    if (subAttr) cognitoSub = subAttr.Value;
+                }
             }
+        } catch (getUserError) {
+            cognitoSub = null;
+        }
+
+        // Before DB sync
+        console.log("Attempting to sync user to users table:", { cognitoSub, email, firstName, role, profilePictureUrl });
+
+        // Step 5: Sync user to users table in PostgreSQL (even if auto-login failed)
+        try {
             if (cognitoSub) {
                 const client = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
                 await client.connect();
@@ -173,12 +176,22 @@ export const handler = async (event) => {
                     ]
                 );
                 await client.end();
-            } else {
-                console.error("Could not extract Cognito sub from idToken for DB sync.");
+                console.log("User successfully synced to users table.");
             }
         } catch (dbError) {
-            console.error("Error syncing user to users table:", dbError);
+            console.error("DB sync failed:", dbError);
+            throw dbError; // Optionally re-throw to surface in Lambda logs
         }
+
+        const userProfile = {
+            name: firstName,
+            email: email,
+            role: role,
+            gender: gender,
+            sport: sport,
+            position: position,
+            profilePictureUrl: profilePictureUrl
+        };
 
         return {
             statusCode: 200,

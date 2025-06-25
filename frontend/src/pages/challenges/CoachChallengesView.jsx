@@ -207,13 +207,13 @@ export default function CoachChallengesView() {
       {/* Fixed Tabs */}
       <div className="fixed top-16 left-0 right-0 z-50 px-4 py-3 pointer-events-none">
         <div className="flex space-x-4 max-w-lg w-full mx-auto pointer-events-auto">
-          <button
+        <button
             onClick={() => setActiveTab('post')}
             className={`flex-1 px-4 py-2 rounded-xl font-semibold transition-colors duration-200 shadow-md border border-white/30 backdrop-blur-md bg-white/30 ${activeTab === 'post' ? 'ring-2 ring-red-400 text-red-700' : 'text-gray-800'}`}
-          >
+        >
             New Challenge
-          </button>
-          <button
+        </button>
+        <button
             onClick={() => {
               if (selectedChallenge) {
                 setSelectedChallenge(null);
@@ -222,9 +222,9 @@ export default function CoachChallengesView() {
               setActiveTab('view');
             }}
             className={`flex-1 px-4 py-2 rounded-xl font-semibold transition-colors duration-200 shadow-md border border-white/30 backdrop-blur-md bg-white/30 ${activeTab === 'view' ? 'ring-2 ring-red-400 text-red-700' : 'text-gray-800'}`}
-          >
+        >
             My Challenges
-          </button>
+        </button>
         </div>
       </div>
 
@@ -233,43 +233,43 @@ export default function CoachChallengesView() {
         <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-lg shadow-md max-w-lg mx-auto">
           <div>
             <label htmlFor="title" className="block text-sm font-semibold text-gray-700 mb-1">Challenge Title</label>
-            <input
-              type="text"
+          <input
+            type="text"
               id="title"
-              name="title"
-              value={formData.title}
-              onChange={handleFormChange}
+            name="title"
+            value={formData.title}
+            onChange={handleFormChange}
               placeholder="Enter challenge title"
               maxLength={TITLE_CHAR_LIMIT}
               className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 text-gray-800 text-base"
-              required
-            />
+            required
+          />
             <div className="text-xs text-gray-400 text-right">{formData.title.length}/{TITLE_CHAR_LIMIT}</div>
           </div>
           <div>
             <label htmlFor="description" className="block text-sm font-semibold text-gray-700 mb-1">Challenge Description</label>
-            <textarea
+          <textarea
               id="description"
-              name="description"
-              value={formData.description}
-              onChange={handleFormChange}
+            name="description"
+            value={formData.description}
+            onChange={handleFormChange}
               placeholder="Describe the challenge..."
               maxLength={DESC_CHAR_LIMIT}
               className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 text-gray-800 text-base min-h-[80px]"
-              required
-            />
+            required
+          />
             <div className="text-xs text-gray-400 text-right">{formData.description.length}/{DESC_CHAR_LIMIT}</div>
           </div>
           <div>
             <div className="block text-base font-bold text-red-500 mb-1">{formData.xp_value} XP</div>
-            <input
+          <input
               type="range"
               id="xp_value"
-              name="xp_value"
+            name="xp_value"
               min="1"
               max="5"
-              value={formData.xp_value}
-              onChange={handleFormChange}
+            value={formData.xp_value}
+            onChange={handleFormChange}
               className="w-full focus:outline-none focus:ring-2 focus:ring-red-400 accent-red-500"
               style={{ accentColor: '#ef4444' }}
             />
@@ -314,33 +314,33 @@ export default function CoachChallengesView() {
                 <ChallengeLoader />
               ) : submissionsError ? (
                 <div className="text-red-600">{submissionsError}</div>
-              ) : (
+          ) : (
                 <div className="submissions-list flex flex-col">
-                  {submissions.length === 0 ? (
-                    <p className="text-gray-600 col-span-full text-center">No submissions yet.</p>
-                  ) : (
+              {submissions.length === 0 ? (
+                <p className="text-gray-600 col-span-full text-center">No submissions yet.</p>
+              ) : (
                     submissions.map((submission) => {
                       const profilePicUrl = submission.athlete_profile_picture_url || submission.profilePictureUrl;
                       return (
-                        <div
-                          key={submission.id}
+                  <div
+                    key={submission.id}
                           className={`challenge-card bg-white p-6 rounded-lg shadow-md cursor-pointer transition-all duration-200 hover:shadow-lg mb-6
                             ${submission.status === 'pending' ? 'border-none' : (submission.status === 'approved' || submission.status === 'denied') ? 'border-2 border-red-300' : 'border-2 border-gray-200'}
                           `}
-                          onClick={() => setSelectedSubmission(submission)}
-                        >
+                    onClick={() => setSelectedSubmission(submission)}
+                  >
                           <div className="flex items-center mb-4">
                             {profilePicUrl ? (
-                              <img
+                      <img
                                 src={profilePicUrl}
-                                alt={submission.athlete_name}
+                        alt={submission.athlete_name}
                                 className="w-14 h-14 rounded-full object-cover border border-gray-200 shadow-sm mr-4"
-                              />
-                            ) : (
+                      />
+                    ) : (
                               <div className="w-14 h-14 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 font-bold text-2xl mr-4">
-                                <span>{(submission.athlete_name || 'U').charAt(0)}</span>
-                              </div>
-                            )}
+                        <span>{(submission.athlete_name || 'U').charAt(0)}</span>
+                      </div>
+                    )}
                             <div className="flex items-center">
                               <span className="font-bold text-xl text-gray-800 mr-2">{submission.athlete_name || "Unknown"}</span>
                               {submission.status === 'approved' && (
@@ -360,9 +360,9 @@ export default function CoachChallengesView() {
                               <span className={`ml-1 px-3 py-1 rounded-full text-sm font-semibold
                                 ${submission.status === 'pending' ? 'bg-gray-100 text-gray-500' : (submission.status === 'approved' || submission.status === 'denied') ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500'}
                               `}>
-                                {submission.status.charAt(0).toUpperCase() + submission.status.slice(1)}
-                              </span>
-                            </div>
+                          {submission.status.charAt(0).toUpperCase() + submission.status.slice(1)}
+                        </span>
+                      </div>
                           </div>
                           <div className="text-gray-600 text-sm">
                             Submitted at: {new Date(submission.submitted_at).toLocaleString()}

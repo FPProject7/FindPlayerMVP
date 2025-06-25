@@ -27,7 +27,7 @@ export const useTokenRefresh = () => {
           await store.refreshTokenAsync();
         }
       } catch (error) {
-        console.error('❌ Token refresh failed:', error);
+        // Remove all console.error statements from this file
       }
     };
 

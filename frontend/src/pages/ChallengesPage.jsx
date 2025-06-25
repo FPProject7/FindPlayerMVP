@@ -27,7 +27,6 @@ const ChallengesPage = () => {
     if (!userRoleLower || (userRoleLower !== 'athlete' && userRoleLower !== 'coach')) {
         // Redirect scouts or other roles away from this specific challenges page content
         // This is based on the ticket focusing on Athlete/Coach for this page's content
-        console.warn(`ChallengesPage: User role '${userRoleLower}' is not an athlete or coach. Redirecting.`);
         navigate('/home'); // Redirect to a generic authenticated page
     }
 
@@ -52,7 +51,6 @@ const ChallengesPage = () => {
     default:
       // This case should ideally not be reached due to the useEffect redirect above,
       // but serves as a final fallback.
-      console.error("ChallengesPage: Unexpected role encountered after check. Redirecting.");
       navigate('/home');
       return null; // Or a fallback component
   }
