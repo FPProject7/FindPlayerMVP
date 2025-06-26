@@ -18,13 +18,14 @@ exports.handler = async (event) => {
   try {
     const queryParams = event.queryStringParameters || {};
     const requestedUserId = queryParams.userId;
+    const requestedUsername = queryParams.username;
 
-    // If no userId param, get from token (assuming authorizer sets JWT claims)
+    // If no userId or username param, get from token (assuming authorizer sets JWT claims)
     const currentUserId = event.requestContext?.authorizer?.jwt?.claims?.sub;
 
     const userIdToFetch = requestedUserId || currentUserId;
 
-    if (!userIdToFetch) {
+    if (!userIdToFetch && !requestedUsername) {
       return {
         statusCode: 400,
         headers: {
@@ -32,7 +33,7 @@ exports.handler = async (event) => {
           'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token',
           'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS'
         },
-        body: JSON.stringify({ message: 'No user ID provided or found in token.' }),
+        body: JSON.stringify({ message: 'No user ID or username provided or found in token.' }),
       };
     }
 
@@ -46,12 +47,38 @@ exports.handler = async (event) => {
 
     await client.connect();
 
-    const result = await client.query(
-      `SELECT id, name, email, profile_picture_url AS "profilePictureUrl", role 
-       FROM users 
-       WHERE id = $1`,
-      [userIdToFetch]
-    );
+    let result;
+    if (requestedUsername) {
+      // Normalize the username for better matching
+      const normalizedUsername = requestedUsername
+        .trim()
+        .toLowerCase()
+        .replace(/[-\s_]+/g, ' '); // Replace hyphens, underscores, multiple spaces with single space
+      
+      console.log('Searching for username:', requestedUsername, 'Normalized:', normalizedUsername);
+      
+      // Create a simplified query that handles various name formats
+      const query = `
+        SELECT id, name, email, profile_picture_url AS "profilePictureUrl", role 
+        FROM users 
+        WHERE LOWER(TRIM(name)) = LOWER($1)
+        OR LOWER(REPLACE(TRIM(name), ' ', '')) = LOWER(REPLACE($1, ' ', ''))
+        OR LOWER(REPLACE(TRIM(name), ' ', '-')) = LOWER(REPLACE($1, ' ', '-'))
+        OR LOWER(REPLACE(TRIM(name), ' ', '_')) = LOWER(REPLACE($1, ' ', '_'))
+        OR LOWER(REPLACE(REPLACE(REPLACE(TRIM(name), ' ', ''), '-', ''), '_', '')) = LOWER(REPLACE(REPLACE(REPLACE($1, ' ', ''), '-', ''), '_', ''))
+        LIMIT 1
+      `;
+      
+      result = await client.query(query, [normalizedUsername]);
+    } else {
+      // Query by userId
+      result = await client.query(
+        `SELECT id, name, email, profile_picture_url AS "profilePictureUrl", role 
+         FROM users 
+         WHERE id = $1`,
+        [userIdToFetch]
+      );
+    }
 
     await client.end();
 

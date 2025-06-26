@@ -33,3 +33,7 @@ export const checkFollowing = (followerId, followingId) => {
     params: { followerId, followingId }
   });
 };
+
+export const getNotifications = () => {
+  return followApiClient.get('/notifications');
+};

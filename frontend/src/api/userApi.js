@@ -20,8 +20,9 @@ userApiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-export const getInfoUser = (userId) => {
-  return userApiClient.get('/user-info', {
-    params: userId ? { userId } : {}
-  });
+export const getInfoUser = (userId, username) => {
+  const params = {};
+  if (userId) params.userId = userId;
+  if (username) params.username = username;
+  return userApiClient.get('/user-info', { params });
 };

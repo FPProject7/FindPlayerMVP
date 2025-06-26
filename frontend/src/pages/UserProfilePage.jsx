@@ -3,6 +3,12 @@ import { useParams } from 'react-router-dom';
 import { getInfoUser } from '../api/userApi';
 import { followUser, unfollowUser, checkFollowing } from '../api/followApi';
 import ChallengeLoader from '../components/common/ChallengeLoader';
+import FollowButton from '../components/common/FollowButton';
+import { decodeProfileName } from '../utils/profileUrlUtils';
+
+function isUUID(str) {
+  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(str);
+}
 
 const UserProfilePage = () => {
   const { profileUserId } = useParams();
@@ -18,19 +24,29 @@ const UserProfilePage = () => {
       setLoading(true);
       setError(null);
       try {
+        // Decode the URL parameter to handle special characters
+        const decodedProfileId = profileUserId ? decodeProfileName(profileUserId) : null;
+        console.log('Original profileUserId:', profileUserId);
+        console.log('Decoded profileUserId:', decodedProfileId);
+
         // Always get current user info (for follow logic)
         const res = await getInfoUser();
         console.log('Current user info response:', res);
         setCurrentUserId(res.data.id);
 
         // Fetch profile info for the viewed user
-        const profileRes = await getInfoUser(profileUserId);
+        let profileRes;
+        if (isUUID(decodedProfileId)) {
+          profileRes = await getInfoUser(decodedProfileId);
+        } else {
+          profileRes = await getInfoUser(undefined, decodedProfileId); // pass username
+        }
         console.log('Profile info response:', profileRes);
         setProfile(profileRes.data);
 
         // Optionally preload follow status
-        if (res.data.id !== profileUserId) {
-          const followRes = await checkFollowing(res.data.id, profileUserId);
+        if (res.data.id !== (profileRes.data.id || decodedProfileId)) {
+          const followRes = await checkFollowing(res.data.id, profileRes.data.id);
           console.log('Follow status response:', followRes);
           setIsFollowing(followRes.data.isFollowing);
         }
@@ -39,6 +55,9 @@ const UserProfilePage = () => {
         console.error("Error loading user or follow status", err);
         if (err.response) {
           console.error('Error response:', err.response);
+          if (err.response.status === 404) {
+            setError('Profile not found. The user may not exist or the name may be incorrect.');
+          }
         }
       } finally {
         setLoading(false);
@@ -47,20 +66,26 @@ const UserProfilePage = () => {
     loadUser();
   }, [profileUserId]);
 
-  const handleFollowToggle = async () => {
-    const nextState = !isFollowing;
-    setIsFollowing(nextState);
+  const handleFollow = async () => {
+    setIsFollowing(true);
     setButtonLoading(true);
-
     try {
-      if (nextState) {
-        await followUser(currentUserId, profileUserId);
-      } else {
-        await unfollowUser(currentUserId, profileUserId);
-      }
+      await followUser(currentUserId, profile.id);
     } catch (err) {
-      setIsFollowing(!nextState);
-      console.error("Follow/unfollow failed", err);
+      setIsFollowing(false);
+      alert("Something went wrong, please try again.");
+    } finally {
+      setButtonLoading(false);
+    }
+  };
+
+  const handleUnfollow = async () => {
+    setIsFollowing(false);
+    setButtonLoading(true);
+    try {
+      await unfollowUser(currentUserId, profile.id);
+    } catch (err) {
+      setIsFollowing(true);
       alert("Something went wrong, please try again.");
     } finally {
       setButtonLoading(false);
@@ -89,22 +114,12 @@ const UserProfilePage = () => {
         <div className="text-gray-500 mb-1">{profile.email}</div>
         <div className="text-sm text-gray-400 mb-2">{profile.role}</div>
         {currentUserId && profile.id !== currentUserId && (
-          <button
-            onClick={handleFollowToggle}
-            disabled={buttonLoading}
-            className={`w-full max-w-[200px] font-semibold py-2 rounded transition-colors duration-200 flex items-center justify-center ${
-              isFollowing
-                ? 'bg-red-500 hover:bg-red-600 text-white'
-                : 'bg-green-500 hover:bg-green-600 text-white'
-            }`}
-            style={{ minWidth: 100, minHeight: 40 }}
-          >
-            {buttonLoading ? (
-              <span style={{ width: 32, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <ChallengeLoader />
-              </span>
-            ) : isFollowing ? 'Unfollow' : 'Follow'}
-          </button>
+          <FollowButton
+            isFollowing={isFollowing}
+            loading={buttonLoading}
+            onFollow={handleFollow}
+            onUnfollow={handleUnfollow}
+          />
         )}
       </div>
     </div>

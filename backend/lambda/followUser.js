@@ -23,13 +23,39 @@ exports.handler = async (event) => {
 
     await client.connect();
 
-    // Insert if not exists
-    const query = `
-      INSERT INTO followers (follower_id, following_id)
-      VALUES ($1, $2)
-      ON CONFLICT DO NOTHING
-    `;
-    await client.query(query, [followerId, followingId]);
+    // Check if already following
+    const followCheck = await client.query(
+      `SELECT 1 FROM followers WHERE follower_id = $1 AND following_id = $2`,
+      [followerId, followingId]
+    );
+    if (followCheck.rowCount > 0) {
+      await client.end();
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ message: 'Already following' })
+      };
+    }
+
+    // Insert into followers
+    await client.query(
+      `INSERT INTO followers (follower_id, following_id)
+       VALUES ($1, $2)
+       ON CONFLICT DO NOTHING`,
+      [followerId, followingId]
+    );
+
+    // Prevent duplicate notifications
+    const notifCheck = await client.query(
+      `SELECT 1 FROM notifications WHERE type = 'follow' AND from_user_id = $1 AND to_user_id = $2`,
+      [followerId, followingId]
+    );
+    if (notifCheck.rowCount === 0) {
+      await client.query(
+        `INSERT INTO notifications (type, from_user_id, to_user_id, is_following_back)
+         VALUES ($1, $2, $3, $4)`,
+        ['follow', followerId, followingId, false]
+      );
+    }
 
     await client.end();
 
