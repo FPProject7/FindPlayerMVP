@@ -95,7 +95,6 @@ function ScoutSignUpForm() {
           resolve(reader.result.split(',')[1]);
         };
         reader.onerror = (error) => {
-          console.error("FileReader error:", error);
           setApiError('Failed to read profile picture file.');
           reject(error);
         };
@@ -195,8 +194,6 @@ function ScoutSignUpForm() {
         <option value="" disabled>Gender...</option>
         <option value="Male">Male</option>
         <option value="Female">Female</option>
-        <option value="Other">Other</option>
-        <option value="Prefer Not to Say">Prefer Not to Say</option>
       </select>
       {errors.gender && <p className="login-error">{errors.gender.message}</p>}
 

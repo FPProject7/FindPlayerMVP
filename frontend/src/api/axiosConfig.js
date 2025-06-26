@@ -20,7 +20,6 @@ apiClient.interceptors.request.use(
         config.headers.Authorization = `Bearer ${token}`;
       }
     } catch (error) {
-      console.error('Failed to get valid token:', error);
       // Don't throw here, let the request fail naturally
     }
 
@@ -50,8 +49,11 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest);
       } catch (refreshError) {
         // Refresh failed, redirect to login
-        useAuthStore.getState().logout();
-        window.location.href = '/login';
+        // BUT don't redirect if this is already a login request
+        if (!originalRequest.url?.includes('/signin') && !originalRequest.url?.includes('/login')) {
+          useAuthStore.getState().logout();
+          window.location.href = '/login';
+        }
         return Promise.reject(refreshError);
       }
     }

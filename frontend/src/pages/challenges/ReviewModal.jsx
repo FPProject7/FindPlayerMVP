@@ -1,11 +1,31 @@
 import React, { useState } from "react";
 import ReactDOM from "react-dom";
+import ChallengeLoader from "../../components/common/ChallengeLoader";
 
 function ReviewModal({ submission, onClose, onApprove, onDeny }) {
   const [comment, setComment] = useState("");
+  const [isReviewing, setIsReviewing] = useState(false);
   const COMMENT_CHAR_LIMIT = 500;
 
   if (!submission) return null;
+
+  const handleApprove = async () => {
+    setIsReviewing(true);
+    try {
+      await onApprove(submission.id, comment);
+    } finally {
+      setIsReviewing(false);
+    }
+  };
+
+  const handleDeny = async () => {
+    setIsReviewing(true);
+    try {
+      await onDeny(submission.id, comment);
+    } finally {
+      setIsReviewing(false);
+    }
+  };
 
   return ReactDOM.createPortal(
     <div
@@ -77,19 +97,28 @@ function ReviewModal({ submission, onClose, onApprove, onDeny }) {
         />
         <div className="text-xs text-gray-400 text-right mb-2">{comment.length}/{COMMENT_CHAR_LIMIT}</div>
         {/* Approve/Deny buttons */}
-        <div className="flex space-x-3 pt-2 pb-0 mb-2">
-          <button
-            className="flex-1 bg-white text-red-600 border-2 border-red-500 hover:bg-red-100 font-bold py-2 rounded-full text-sm uppercase transition-colors duration-200"
-            onClick={() => onApprove(submission.id, comment)}
-          >
-            APPROVE
-          </button>
-          <button
-            className="flex-1 bg-red-100 text-red-600 border-2 border-red-500 hover:bg-red-200 font-bold py-2 rounded-full text-sm uppercase transition-colors duration-200"
-            onClick={() => onDeny(submission.id, comment)}
-          >
-            DENY
-          </button>
+        <div className="flex flex-col items-center space-y-2 pt-2 pb-0 mb-2">
+          <div className="flex w-full space-x-3">
+            <button
+              className="flex-1 bg-white text-red-600 border-2 border-red-500 hover:bg-red-100 font-bold py-2 rounded-full text-sm uppercase transition-colors duration-200"
+              onClick={handleApprove}
+              disabled={isReviewing}
+            >
+              APPROVE
+            </button>
+            <button
+              className="flex-1 bg-red-100 text-red-600 border-2 border-red-500 hover:bg-red-200 font-bold py-2 rounded-full text-sm uppercase transition-colors duration-200"
+              onClick={handleDeny}
+              disabled={isReviewing}
+            >
+              DENY
+            </button>
+          </div>
+          {isReviewing && (
+            <div className="mt-2 flex justify-center items-center w-full">
+              <ChallengeLoader />
+            </div>
+          )}
         </div>
       </div>
     </div>,

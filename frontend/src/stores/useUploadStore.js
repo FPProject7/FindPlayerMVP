@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 const useUploadStore = create((set, get) => ({
-  // Active uploads: { challengeId: { progress, status, startTime } }
+  // Active uploads: { challengeId: { progress, status, startTime, chunks, currentChunk, lastProgressUpdate } }
   activeUploads: {},
   
   // Start an upload
@@ -11,25 +11,36 @@ const useUploadStore = create((set, get) => ({
         ...state.activeUploads,
         [challengeId]: {
           progress: 0,
-          status: 'uploading', // 'uploading', 'submitting', 'completed', 'error'
+          status: 'preparing', // 'preparing', 'uploading', 'submitting', 'completed', 'error'
           startTime: Date.now(),
-          error: null
+          error: null,
+          lastProgressUpdate: 0
         }
       }
     }));
   },
   
-  // Update upload progress
+  // Update upload progress with throttling
   updateProgress: (challengeId, progress) => {
-    set((state) => ({
-      activeUploads: {
-        ...state.activeUploads,
-        [challengeId]: {
-          ...state.activeUploads[challengeId],
-          progress
+    const now = Date.now();
+    const currentUpload = get().activeUploads[challengeId];
+    
+    // Only update if enough time has passed (100ms) or if it's a significant change
+    if (currentUpload && (
+      now - currentUpload.lastProgressUpdate > 100 || 
+      Math.abs(progress - currentUpload.progress) > 5
+    )) {
+      set((state) => ({
+        activeUploads: {
+          ...state.activeUploads,
+          [challengeId]: {
+            ...state.activeUploads[challengeId],
+            progress: Math.min(progress, 100),
+            lastProgressUpdate: now
+          }
         }
-      }
-    }));
+      }));
+    }
   },
   
   // Update upload status

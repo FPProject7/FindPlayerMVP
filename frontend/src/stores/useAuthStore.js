@@ -126,7 +126,6 @@ export const useAuthStore = create(
 
           return data.idToken;
         } catch (error) {
-          console.error('Token refresh failed:', error);
           set({
             token: null,
             accessToken: null,

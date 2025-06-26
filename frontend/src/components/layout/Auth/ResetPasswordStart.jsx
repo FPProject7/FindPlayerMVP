@@ -25,7 +25,6 @@ function ResetPasswordStart({ onContinue }) {
       onContinue(data.email);
 
     } catch (err) {
-      console.error('Error requesting reset code:', err);
       setApiError(
         err.response?.data?.message ||
         err.message ||

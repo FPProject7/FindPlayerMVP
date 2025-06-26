@@ -507,6 +507,12 @@ const AthleteChallengesView = () => {
                             {uploadStatus.progress || 0}% complete
                           </div>
                         )}
+                        
+                        {uploadStatus.status === 'submitting' && (
+                          <div className="text-sm text-gray-600 mt-1 text-center">
+                            Finalizing upload and submitting challenge...
+                          </div>
+                        )}
                       </div>
                     );
                   } else {
