@@ -58,11 +58,11 @@ const AthleteProfile = ({
           </span>
         </div>
       </div>
-      <UpgradePremiumButton />
+      {currentUserId === profile.id && <UpgradePremiumButton />}
       <div className="text-xs text-center text-gray-400 mb-4">
         Stand out, get noticed, and unlock exclusive opportunities.
       </div>
-      <ProfileTabs profile={profile} />
+      <ProfileTabs profile={profile} isOwnProfile={currentUserId === profile.id} />
     </div>
   );
 };

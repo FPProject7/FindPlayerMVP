@@ -42,7 +42,7 @@ const ScoutProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
       <div className="text-xs text-center text-gray-400 mb-4">
         Get exclusive scouting insights & priority access to top athletes.
       </div>
-      <ProfileTabs profile={profile} />
+      <ProfileTabs profile={profile} isOwnProfile={currentUserId === profile.id} />
     </div>
   );
 };

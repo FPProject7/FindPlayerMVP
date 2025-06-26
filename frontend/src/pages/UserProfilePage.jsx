@@ -79,6 +79,9 @@ const UserProfilePage = () => {
     setButtonLoading(true);
     try {
       await followUser(currentUserId, profile.id);
+      // Refetch follower count after follow
+      const followerCountRes = await getFollowerCount(profile.id);
+      setFollowerCount(followerCountRes);
     } catch (err) {
       setIsFollowing(false);
       alert("Something went wrong, please try again.");
@@ -92,6 +95,9 @@ const UserProfilePage = () => {
     setButtonLoading(true);
     try {
       await unfollowUser(currentUserId, profile.id);
+      // Refetch follower count after unfollow
+      const followerCountRes = await getFollowerCount(profile.id);
+      setFollowerCount(followerCountRes);
     } catch (err) {
       setIsFollowing(true);
       alert("Something went wrong, please try again.");

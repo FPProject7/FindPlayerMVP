@@ -35,23 +35,22 @@ const ProfileHeader = ({ profile, currentUserId, isFollowing, buttonLoading, onF
         )}
       </div>
       {/* Info and XP Bar */}
-      <div className="flex-1 flex flex-col justify-center h-full">
-        {/* Centered name, share, and level */}
+      <div className="flex-1 flex flex-col justify-center h-full relative">
+        {/* Share button in top right */}
+        {showShareButton && (
+          <button
+            className="absolute top-0 right-0 p-1 bg-transparent border-none shadow-none hover:bg-gray-100 focus:outline-none"
+            onClick={handleShare}
+            title="Share profile"
+            style={{ boxShadow: 'none' }}
+          >
+            <FiShare2 size={22} color="#dc2626" />
+          </button>
+        )}
+        {/* Centered name and level above XP bar */}
         <div className="flex flex-col items-center w-full mb-2">
-          <div className="flex items-center justify-center mb-1">
-            <h1 className="text-2xl font-bold text-gray-900 mr-2 text-center">{profile.name}</h1>
-            {showShareButton && (
-              <button
-                className="ml-1 p-1 bg-transparent border-none shadow-none hover:bg-gray-100 focus:outline-none"
-                onClick={handleShare}
-                title="Share profile"
-                style={{ boxShadow: 'none' }}
-              >
-                <FiShare2 size={18} color="#dc2626" />
-              </button>
-            )}
-          </div>
-          <div className="font-bold text-gray-700 text-lg text-center w-full mb-1">LEVEL {xpDetails.level}</div>
+          <span className="text-2xl font-bold text-gray-900 text-center block w-full">{profile.name}</span>
+          <div className="font-bold text-gray-700 text-lg text-center w-full mt-1">LEVEL {xpDetails.level}</div>
         </div>
         {/* XP Bar: horizontal, fills space to right of image */}
         <div className="w-full h-2 bg-gray-200 rounded-full relative mb-2">
@@ -70,7 +69,7 @@ const ProfileHeader = ({ profile, currentUserId, isFollowing, buttonLoading, onF
         )}
         {/* Only show FollowButton if logged in and not viewing own profile */}
         {currentUserId && profile.id !== currentUserId && (
-          <div className="mt-2">
+          <div className="flex justify-center mt-4 mb-2 w-full">
             <FollowButton
               isFollowing={isFollowing}
               loading={buttonLoading}

@@ -3,9 +3,8 @@ import ProfileHeader from './ProfileHeader';
 import ProfileTabs from './ProfileTabs';
 import { useNavigate } from 'react-router-dom';
 
-const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFollow, onUnfollow }) => {
+const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFollow, onUnfollow, connections }) => {
   const {
-    connections = 0,
     sessionsBooked = 0,
     challengesUploaded = 0,
     sport,
@@ -59,10 +58,12 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
           </button>
         </div>
       )}
-      <div className="text-xs text-center text-gray-400 mb-4">
-        Expand your reach, train more athletes, and grow your influence.
-      </div>
-      <ProfileTabs profile={profile} />
+      {currentUserId === profile.id && (
+        <div className="text-xs text-center text-gray-400 mb-4">
+          Expand your reach, train more athletes, and grow your influence.
+        </div>
+      )}
+      <ProfileTabs profile={profile} isOwnProfile={currentUserId === profile.id} />
     </div>
   );
 };
