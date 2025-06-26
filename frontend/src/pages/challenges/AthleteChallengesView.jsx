@@ -437,16 +437,21 @@ const AthleteChallengesView = () => {
                           <div>Your video has been submitted!</div>
                         </div>
                         {/* Status pill styled like CoachChallengesView.jsx */}
-                        {existingSubmission?.status && (
-                          <div className="mb-2 flex items-center justify-center">
-                            <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide
-                              ${existingSubmission.status === 'pending' ? 'bg-gray-100 text-gray-500 border border-gray-300' :
-                                existingSubmission.status === 'approved' ? 'bg-white text-red-600 border-2 border-red-500' :
-                                existingSubmission.status === 'denied' ? 'bg-red-500 text-white border-2 border-red-500' : 'bg-gray-100 text-gray-500 border border-gray-300'}`}
-                            >
-                              {existingSubmission.status.charAt(0).toUpperCase() + existingSubmission.status.slice(1)}
-                            </span>
-                          </div>
+                        {existingSubmission?.status === 'pending' && (
+                          <span className="px-3 py-1 rounded-full text-xs font-bold tracking-wide bg-gray-100 text-gray-500 border border-gray-300 flex items-center gap-1">
+                            <svg className="inline-block mr-1" width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/><path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            Submitted
+                          </span>
+                        )}
+                        {existingSubmission?.status === 'approved' && (
+                          <span className="px-3 py-1 rounded-full text-xs font-bold tracking-wide bg-white text-red-600 border-2 border-red-500">
+                            Approved
+                          </span>
+                        )}
+                        {existingSubmission?.status === 'denied' && (
+                          <span className="px-3 py-1 rounded-full text-xs font-bold tracking-wide bg-red-500 text-white border-2 border-red-500">
+                            Denied
+                          </span>
                         )}
                         <div className="text-sm font-normal mt-1 text-gray-700">
                           Submitted: {existingSubmission?.submitted_at ? new Date(existingSubmission.submitted_at).toLocaleDateString() : 'N/A'}
@@ -607,12 +612,23 @@ const AthleteChallengesView = () => {
                     <div className="flex items-center">
                       {hasSubmitted ? (
                         <>
-                          <span className="mr-1 text-red-600">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-red-600">
-                              <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                          </span>
-                          <span className="text-sm font-medium text-red-700">Submitted</span>
+                          {/* Status pill for submission status */}
+                          {submission?.status === 'pending' && (
+                            <span className="px-3 py-1 rounded-full text-xs font-bold tracking-wide bg-gray-100 text-gray-500 border border-gray-300 flex items-center gap-1">
+                              <svg className="inline-block mr-1" width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/><path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                              Submitted
+                            </span>
+                          )}
+                          {submission?.status === 'approved' && (
+                            <span className="px-3 py-1 rounded-full text-xs font-bold tracking-wide bg-white text-red-600 border-2 border-red-500">
+                              Approved
+                            </span>
+                          )}
+                          {submission?.status === 'denied' && (
+                            <span className="px-3 py-1 rounded-full text-xs font-bold tracking-wide bg-red-500 text-white border-2 border-red-500">
+                              Denied
+                            </span>
+                          )}
                         </>
                       ) : uploadStatus ? (
                         <>

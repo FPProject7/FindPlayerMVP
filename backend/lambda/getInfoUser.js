@@ -59,7 +59,7 @@ exports.handler = async (event) => {
       
       // Create a simplified query that handles various name formats
       const query = `
-        SELECT id, name, email, profile_picture_url AS "profilePictureUrl", role 
+        SELECT id, name, email, profile_picture_url AS "profilePictureUrl", role, xp_total AS "xpTotal"
         FROM users 
         WHERE LOWER(TRIM(name)) = LOWER($1)
         OR LOWER(REPLACE(TRIM(name), ' ', '')) = LOWER(REPLACE($1, ' ', ''))
@@ -73,7 +73,7 @@ exports.handler = async (event) => {
     } else {
       // Query by userId
       result = await client.query(
-        `SELECT id, name, email, profile_picture_url AS "profilePictureUrl", role 
+        `SELECT id, name, email, profile_picture_url AS "profilePictureUrl", role, xp_total AS "xpTotal"
          FROM users 
          WHERE id = $1`,
         [userIdToFetch]

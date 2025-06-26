@@ -1,7 +1,29 @@
 const { Client } = require('pg');
 
 // Recommended XP milestones for leveling (example: Level 1 at 0 XP, Level 2 at 10 XP, etc.)
-const LEVEL_MILESTONES = [0, 10, 25, 50, 100, 200, 400, 700, 1100, 1600, 2200, 3000, 4000, 5200, 6600, 8200, 10000];
+const LEVEL_MILESTONES = [
+  0,    // Level 0
+  50,   // Level 1
+  200,  // Level 2
+  500,  // Level 3
+  1000, // Level 4
+  1750, // Level 5
+  2850, // Level 6
+  4350, // Level 7
+  6350, // Level 8
+  8950, // Level 9
+  12250, // Level 10
+  16350, // Level 11
+  21350, // Level 12
+  27350, // Level 13
+  34550, // Level 14
+  43050, // Level 15
+  53050, // Level 16
+  64550, // Level 17
+  77550, // Level 18
+  92550, // Level 19
+  109550 // Level 20 (Max/Prestige)
+];
 
 function getLevelFromXP(xp) {
   let level = 1;

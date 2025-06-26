@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { getInfoUser } from '../api/userApi';
+import { getInfoUser, getFollowerCount } from '../api/userApi';
 import { followUser, unfollowUser, checkFollowing } from '../api/followApi';
 import ChallengeLoader from '../components/common/ChallengeLoader';
 import FollowButton from '../components/common/FollowButton';
 import { decodeProfileName } from '../utils/profileUrlUtils';
+import AthleteProfile from '../components/profile/AthleteProfile';
+import CoachProfile from '../components/profile/CoachProfile';
+import ScoutProfile from '../components/profile/ScoutProfile';
 
 function isUUID(str) {
   return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(str);
@@ -18,6 +21,7 @@ const UserProfilePage = () => {
   const [buttonLoading, setButtonLoading] = useState(false);
   const [profile, setProfile] = useState(null);
   const [error, setError] = useState(null);
+  const [followerCount, setFollowerCount] = useState(0);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -43,6 +47,10 @@ const UserProfilePage = () => {
         }
         console.log('Profile info response:', profileRes);
         setProfile(profileRes.data);
+
+        // Fetch follower count for the profile user
+        const followerCountRes = await getFollowerCount(profileRes.data.id);
+        setFollowerCount(followerCountRes);
 
         // Optionally preload follow status
         if (res.data.id !== (profileRes.data.id || decodedProfileId)) {
@@ -92,36 +100,38 @@ const UserProfilePage = () => {
     }
   };
 
-  if (loading) return <div className="p-4 text-center">Loading profile...</div>;
+  if (loading) return <div className="p-4 flex justify-center items-center" style={{minHeight: 200}}><ChallengeLoader /></div>;
   if (error) return <div className="p-4 text-center text-red-500">{error}</div>;
   if (!profile) return <div className="p-4 text-center">Profile not found.</div>;
 
+  // Choose the correct profile layout based on role
+  let ProfileComponent;
+  switch ((profile.role || '').toLowerCase()) {
+    case 'coach':
+      ProfileComponent = CoachProfile;
+      break;
+    case 'scout':
+      ProfileComponent = ScoutProfile;
+      break;
+    case 'athlete':
+    default:
+      ProfileComponent = AthleteProfile;
+      break;
+  }
+
   return (
     <div className="p-4 max-w-md mx-auto bg-white rounded-lg shadow-md mt-6">
-      <div className="flex flex-col items-center mb-4">
-        {profile.profilePictureUrl ? (
-          <img
-            src={profile.profilePictureUrl}
-            alt={profile.name}
-            className="w-24 h-24 rounded-full object-cover border border-gray-200 shadow-sm mb-2"
-          />
-        ) : (
-          <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 font-bold text-4xl mb-2">
-            <span>{(profile.name || 'U').charAt(0)}</span>
-          </div>
-        )}
-        <h1 className="text-2xl font-bold text-gray-900">{profile.name}</h1>
-        <div className="text-gray-500 mb-1">{profile.email}</div>
-        <div className="text-sm text-gray-400 mb-2">{profile.role}</div>
-        {currentUserId && profile.id !== currentUserId && (
-          <FollowButton
-            isFollowing={isFollowing}
-            loading={buttonLoading}
-            onFollow={handleFollow}
-            onUnfollow={handleUnfollow}
-          />
-        )}
-      </div>
+      <ProfileComponent
+        profile={profile}
+        currentUserId={currentUserId}
+        isFollowing={isFollowing}
+        buttonLoading={buttonLoading}
+        onFollow={handleFollow}
+        onUnfollow={handleUnfollow}
+        connections={followerCount}
+        achievements={0}
+        challengesCompleted={profile.challengesCompleted || 0}
+      />
     </div>
   );
 };
