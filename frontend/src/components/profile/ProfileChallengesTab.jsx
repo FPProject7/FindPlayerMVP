@@ -66,7 +66,7 @@ const ProfileChallengesTab = ({ profile }) => {
                   case 'pending':
                   case 'submitted':
                     return (
-                      <span className="px-3 py-1 rounded-full text-xs font-bold tracking-wide bg-gray-100 text-gray-500 border border-gray-300 flex items-center gap-1">
+                      <span className="px-3 py-1 rounded-full text-xs font-bold tracking-wide bg-gray-100 text-gray-500 border border-gray-300 inline-flex items-center">
                         <svg className="inline-block mr-1" width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/><path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                         Submitted
                       </span>

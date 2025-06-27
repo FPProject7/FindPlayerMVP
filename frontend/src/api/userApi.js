@@ -49,6 +49,8 @@ export const getInfoUser = (userId, username) => {
   return userApiClient.get('/user-info', { params });
 };
 
+export { connectionsApiClient };
+
 // Fetch follower count for a user (uses connections client)
 export const getFollowerCount = (userId) => {
   return connectionsApiClient.get('/connections', {

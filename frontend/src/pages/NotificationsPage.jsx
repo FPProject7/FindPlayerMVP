@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import FollowButton from '../components/common/FollowButton';
 import { followUser, getNotifications } from '../api/followApi';
 import { useAuthStore } from '../stores/useAuthStore';
+import ChallengeLoader from '../components/common/ChallengeLoader';
 
 const PULL_THRESHOLD = 80;
 const MAX_PULL_DISTANCE = 120;
@@ -114,7 +115,6 @@ const NotificationsPage = () => {
       transform: `translateY(${pullDistance}px)`,
       transition: pullDistance === 0 ? 'transform 0.3s ease-out' : 'none'
     }}>
-      <h1 className="text-2xl font-bold">Notifications</h1>
       {pullDistance > 0 && (
         <div className="flex justify-center items-center py-4 text-gray-500">
           {pullDistance >= PULL_THRESHOLD ? (
@@ -131,7 +131,7 @@ const NotificationsPage = () => {
         </div>
       )}
       {loading ? (
-        <div className="mt-8 text-center text-gray-500">Loading notifications...</div>
+        <div className="mt-8 flex justify-center"><ChallengeLoader /></div>
       ) : error ? (
         <div className="mt-8 text-center text-red-500">{error}</div>
       ) : notifications.length === 0 ? (

@@ -39,6 +39,7 @@ const TopNavBar = () => {
 
   // --- NEW: Handlers for Notifications and Messages ---
   const handleNotificationsClick = () => {
+    setNotifCount(0);
     navigate('/notifications');
   };
 

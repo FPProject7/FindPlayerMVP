@@ -8,6 +8,7 @@ import { decodeProfileName } from '../utils/profileUrlUtils';
 import AthleteProfile from '../components/profile/AthleteProfile';
 import CoachProfile from '../components/profile/CoachProfile';
 import ScoutProfile from '../components/profile/ScoutProfile';
+import challengeClient, { coachClient } from '../api/challengeApi';
 
 function isUUID(str) {
   return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(str);
@@ -22,6 +23,7 @@ const UserProfilePage = () => {
   const [profile, setProfile] = useState(null);
   const [error, setError] = useState(null);
   const [followerCount, setFollowerCount] = useState(0);
+  const [challengesCompleted, setChallengesCompleted] = useState(0);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -51,6 +53,26 @@ const UserProfilePage = () => {
         // Fetch follower count for the profile user
         const followerCountRes = await getFollowerCount(profileRes.data.id);
         setFollowerCount(followerCountRes);
+
+        // Fetch completed challenges for athletes
+        if ((profileRes.data.role || '').toLowerCase() === 'athlete') {
+          const res = await challengeClient.get('/challenges', {
+            params: { athleteId: profileRes.data.id },
+          });
+          // Count all submitted challenges
+          const submitted = Array.isArray(res.data) ? res.data.length : 0;
+          setChallengesCompleted(submitted);
+        }
+        
+        // Fetch challenges posted by coaches
+        if ((profileRes.data.role || '').toLowerCase() === 'coach') {
+          const res = await coachClient.get('/coach/challenges', {
+            params: { coachId: profileRes.data.id },
+          });
+          console.log('Coach challenges API response:', res.data);
+          const posted = Array.isArray(res.data) ? res.data.length : 0;
+          setChallengesCompleted(posted);
+        }
 
         // Optionally preload follow status
         if (res.data.id !== (profileRes.data.id || decodedProfileId)) {
@@ -127,17 +149,31 @@ const UserProfilePage = () => {
 
   return (
     <div className="p-4 max-w-md mx-auto bg-white rounded-lg shadow-md mt-6">
-      <ProfileComponent
-        profile={profile}
-        currentUserId={currentUserId}
-        isFollowing={isFollowing}
-        buttonLoading={buttonLoading}
-        onFollow={handleFollow}
-        onUnfollow={handleUnfollow}
-        connections={followerCount}
-        achievements={0}
-        challengesCompleted={profile.challengesCompleted || 0}
-      />
+      {ProfileComponent === CoachProfile ? (
+        <CoachProfile
+          profile={profile}
+          currentUserId={currentUserId}
+          isFollowing={isFollowing}
+          buttonLoading={buttonLoading}
+          onFollow={handleFollow}
+          onUnfollow={handleUnfollow}
+          connections={followerCount}
+          challengesUploaded={challengesCompleted}
+          achievements={0}
+        />
+      ) : (
+        <ProfileComponent
+          profile={profile}
+          currentUserId={currentUserId}
+          isFollowing={isFollowing}
+          buttonLoading={buttonLoading}
+          onFollow={handleFollow}
+          onUnfollow={handleUnfollow}
+          connections={followerCount}
+          achievements={0}
+          challengesCompleted={challengesCompleted}
+        />
+      )}
     </div>
   );
 };
