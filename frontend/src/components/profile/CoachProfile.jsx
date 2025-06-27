@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import FollowersModal from './FollowersModal';
 import { useState } from 'react';
 import { useAuthStore } from '../../stores/useAuthStore';
+import UpgradePremiumButton from './UpgradePremiumButton';
 
 const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFollow, onUnfollow, connections, challengesUploaded }) => {
   const {
@@ -18,6 +19,8 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
   const [showFollowers, setShowFollowers] = useState(false);
   const navigate = useNavigate();
   const logout = useAuthStore((state) => state.logout);
+  const { user: currentUser } = useAuthStore();
+  const currentUserRole = currentUser?.role?.toLowerCase();
   // Assume we can get current user's role from profile or context if needed
   // For now, show Book Session if not coach and not viewing own profile
   const isOwnProfile = currentUserId === profile.id;
@@ -63,13 +66,18 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
         </div>
       </div>
       <FollowersModal userId={userId} open={showFollowers} onClose={() => setShowFollowers(false)} />
-      {showBookSession && (
+      {/* Show Book a Session for athletes viewing a coach profile */}
+      {currentUserRole === 'athlete' && !isOwnProfile && (
         <div className="flex justify-center my-4">
-          <button className="bg-red-500 text-white rounded-full px-8 py-2 font-semibold shadow-md" onClick={handleBookSession}>
+          <button
+            className="bg-[#dc2626] hover:bg-[#b91c1c] text-white rounded-full px-8 py-2 font-semibold shadow-md transition-colors duration-150"
+            onClick={handleBookSession}
+          >
             Book a Session
           </button>
         </div>
       )}
+      {currentUserRole !== 'athlete' && currentUserId === profile.id && <UpgradePremiumButton />}
       {currentUserId === profile.id && (
         <div className="text-xs text-center text-gray-400 mb-4">
           Expand your reach, train more athletes, and grow your influence.
