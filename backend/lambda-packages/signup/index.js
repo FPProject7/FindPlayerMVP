@@ -4,9 +4,11 @@ import {
     CognitoIdentityProviderClient, 
     SignUpCommand, 
     AdminInitiateAuthCommand,
-    AdminUpdateUserAttributesCommand 
+    AdminUpdateUserAttributesCommand,
+    DeleteUserCommand
 } from "@aws-sdk/client-cognito-identity-provider";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { Client } from "pg";
 
 const REGION = process.env.REGION || "us-east-1";
 const CLIENT_ID = process.env.CLIENT_ID;
@@ -155,6 +157,18 @@ export const handler = async (event) => {
             if (cognitoSub) {
                 const client = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
                 await client.connect();
+                
+                // First check if email already exists
+                const emailCheck = await client.query(
+                    'SELECT id FROM users WHERE email = $1',
+                    [email]
+                );
+                
+                if (emailCheck.rows.length > 0) {
+                    await client.end();
+                    throw new Error('A user with this email already exists in the database.');
+                }
+                
                 await client.query(
                     `INSERT INTO users (id, email, name, role, profile_picture_url, height)
                      VALUES ($1, $2, $3, $4, $5, $6)
@@ -180,6 +194,27 @@ export const handler = async (event) => {
             }
         } catch (dbError) {
             console.error("Error syncing user to users table:", dbError);
+            
+            // If it's a duplicate email error, we need to clean up the Cognito user
+            if (dbError.message.includes('email already exists') || dbError.message.includes('users_email_key')) {
+                try {
+                    // Delete the Cognito user since we can't insert into the database
+                    const deleteUserParams = {
+                        UserPoolId: USER_POOL_ID,
+                        Username: email
+                    };
+                    const deleteUserCommand = new DeleteUserCommand(deleteUserParams);
+                    await cognitoClient.send(deleteUserCommand);
+                    console.log(`Deleted Cognito user ${email} due to database email conflict`);
+                } catch (deleteError) {
+                    console.error("Error deleting Cognito user:", deleteError);
+                }
+                
+                throw new Error('A user with this email already exists. Please use a different email address.');
+            }
+            
+            // Re-throw other database errors
+            throw dbError;
         }
 
         return {
@@ -215,6 +250,9 @@ export const handler = async (event) => {
         } else if (error.name === 'UserNotConfirmedException') {
             errorMessage = "User is not confirmed. Please confirm your account (if auto-confirmation is off).";
             statusCode = 403;
+        } else if (error.message && error.message.includes('email already exists')) {
+            errorMessage = "A user with this email already exists. Please use a different email address.";
+            statusCode = 409;
         } else if (error.message) {
             errorMessage = error.message;
         }

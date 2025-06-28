@@ -90,4 +90,39 @@ export function getXPDetails(xp) {
     xpNeeded,
     xpTotal: xp
   };
+}
+
+/**
+ * Calculate age from date of birth
+ * @param {string} dateOfBirth - Date of birth string
+ * @returns {string|number} Age in years or 'N/A' if invalid
+ */
+export function calculateAge(dateOfBirth) {
+  if (!dateOfBirth) return 'N/A';
+  
+  try {
+    const birthDate = new Date(dateOfBirth);
+    const today = new Date();
+    
+    // Check if the date is valid
+    if (isNaN(birthDate.getTime())) {
+      return 'N/A';
+    }
+    
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    
+    // If age is negative (future date) or unreasonably high, return N/A
+    if (age < 0 || age > 120) {
+      return 'N/A';
+    }
+    
+    return age;
+  } catch (error) {
+    return 'N/A';
+  }
 } 

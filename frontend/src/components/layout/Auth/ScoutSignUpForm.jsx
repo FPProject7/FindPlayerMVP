@@ -114,7 +114,7 @@ function ScoutSignUpForm() {
 
     try {
       const payload = {
-        firstName: data.fullName,
+        name: data.fullName,
         gender: data.gender,
         sport: data.expertise,
         country: data.country,

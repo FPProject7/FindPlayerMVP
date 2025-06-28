@@ -60,6 +60,14 @@ exports.awardExperiencePoints = async ({
     [points, userId]
   );
 
+  // ✅ Insert into user_completed_challenges (if not already completed)
+  await client.query(
+    `INSERT INTO user_completed_challenges (user_id, challenge_id, completed_at)
+     VALUES ($1, $2, NOW())
+     ON CONFLICT DO NOTHING`,
+    [userId, challengeId]
+  );
+
   // Fetch new XP and level
   const userRes = await client.query(`SELECT xp_total FROM users WHERE id = $1`, [userId]);
   const xpTotal = userRes.rows[0]?.xp_total || 0;

@@ -43,6 +43,11 @@ exports.handler = async (event) => {
     const country = query.country;
     const sport = query.sport;
     const position = query.position;
+    const ageMin = parseInt(query.ageMin, 10);
+    const ageMax = parseInt(query.ageMax, 10);
+    const timeFrame = query.timeFrame || 'all'; // 'today', 'week', 'month', 'year', 'all'
+    const sortBy = query.sortBy || 'xpTotal'; // 'xpTotal', 'height', 'challengesSubmitted', 'coachApprovals'
+    const sortOrder = query.sortOrder || 'DESC'; // 'ASC' or 'DESC'
     const limit = parseInt(query.limit || '20', 10);
     const offset = parseInt(query.offset || '0', 10);
 
@@ -62,50 +67,172 @@ exports.handler = async (event) => {
     const queryParams = [];
     let paramCount = 1;
 
+    // Time-based filtering
+    let timeFilter = '';
+    if (timeFrame !== 'all') {
+      const now = new Date();
+      let startDate;
+      
+      switch (timeFrame) {
+        case 'today':
+          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          break;
+        case 'week':
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case 'month':
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          break;
+        case 'year':
+          startDate = new Date(now.getFullYear(), 0, 1);
+          break;
+        default:
+          startDate = null;
+      }
+      
+      if (startDate) {
+        timeFilter = `AND cs.submitted_at >= $${paramCount}`;
+        queryParams.push(startDate.toISOString());
+        paramCount++;
+      }
+    }
+
+    // Height filtering
     if (!isNaN(heightMin)) {
-      whereConditions.push(`CAST(height AS INTEGER) >= $${paramCount}`);
+      whereConditions.push(`CAST(u.height AS INTEGER) >= $${paramCount}`);
       queryParams.push(heightMin);
       paramCount++;
     }
 
     if (!isNaN(heightMax)) {
-      whereConditions.push(`CAST(height AS INTEGER) <= $${paramCount}`);
+      whereConditions.push(`CAST(u.height AS INTEGER) <= $${paramCount}`);
       queryParams.push(heightMax);
       paramCount++;
     }
 
+    // Country filtering
     if (country) {
-      whereConditions.push(`country ILIKE $${paramCount}`);
+      whereConditions.push(`u.country ILIKE $${paramCount}`);
       queryParams.push(`%${country}%`);
       paramCount++;
     }
 
+    // Sport filtering
     if (sport) {
-      whereConditions.push(`sport ILIKE $${paramCount}`);
+      whereConditions.push(`u.sport ILIKE $${paramCount}`);
       queryParams.push(`%${sport}%`);
       paramCount++;
     }
 
+    // Position filtering
     if (position) {
-      whereConditions.push(`position ILIKE $${paramCount}`);
+      whereConditions.push(`u.position ILIKE $${paramCount}`);
       queryParams.push(`%${position}%`);
       paramCount++;
     }
 
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    // Age filtering
+    if (!isNaN(ageMin) || !isNaN(ageMax)) {
+      const currentDate = new Date();
+      if (!isNaN(ageMin)) {
+        const maxBirthDate = new Date(currentDate.getFullYear() - ageMin, currentDate.getMonth(), currentDate.getDate());
+        whereConditions.push(`u.date_of_birth <= $${paramCount}`);
+        queryParams.push(maxBirthDate.toISOString());
+        paramCount++;
+      }
+      if (!isNaN(ageMax)) {
+        const minBirthDate = new Date(currentDate.getFullYear() - ageMax - 1, currentDate.getMonth(), currentDate.getDate());
+        whereConditions.push(`u.date_of_birth >= $${paramCount}`);
+        queryParams.push(minBirthDate.toISOString());
+        paramCount++;
+      }
+    }
 
-    const leaderboardQuery = `
-      SELECT id, name, profile_picture_url AS "profilePictureUrl", xp_total AS "xpTotal", height, country, sport, position
-      FROM users
-      ${whereClause}
-      ORDER BY xp_total DESC
-      LIMIT $${paramCount}
-      OFFSET $${paramCount + 1}
+    // Validate sortBy parameter
+    const validSortFields = ['xpTotal', 'height', 'challengesSubmitted', 'coachApprovals', 'name'];
+    const sortField = validSortFields.includes(sortBy) ? sortBy : 'xpTotal';
+    const validSortOrders = ['ASC', 'DESC'];
+    const orderDirection = validSortOrders.includes(sortOrder.toUpperCase()) ? sortOrder.toUpperCase() : 'DESC';
+
+    // Build the base query without complex sorting first
+    let leaderboardQuery = `
+      SELECT 
+        u.id, 
+        u.name, 
+        u.profile_picture_url AS "profilePictureUrl", 
+        u.xp_total AS "xpTotal", 
+        u.height, 
+        u.weight, 
+        u.country, 
+        u.sport, 
+        u.position, 
+        u.date_of_birth AS "dateOfBirth",
+        u.role,
+        COALESCE(COUNT(cs.id), 0) AS "challengesSubmitted",
+        COALESCE(COUNT(CASE WHEN cs.status = 'approved' THEN cs.id END), 0) AS "coachApprovals"
+      FROM users u
+      LEFT JOIN challenge_submissions cs ON u.id = cs.athlete_id ${timeFilter}
+      WHERE (u.role = 'athlete' OR u.role IS NULL)
+      ${whereConditions.length > 0 ? `AND ${whereConditions.join(' AND ')}` : ''}
+      GROUP BY u.id, u.name, u.profile_picture_url, u.xp_total, u.height, u.weight, u.country, u.sport, u.position, u.date_of_birth, u.role
     `;
+
+    // Add sorting based on field type
+    if (sortField === 'challengesSubmitted') {
+      leaderboardQuery += ` ORDER BY COUNT(cs.id) ${orderDirection}`;
+    } else if (sortField === 'coachApprovals') {
+      leaderboardQuery += ` ORDER BY COUNT(CASE WHEN cs.status = 'approved' THEN cs.id END) ${orderDirection}`;
+    } else if (sortField === 'xpTotal') {
+      leaderboardQuery += ` ORDER BY u.xp_total ${orderDirection}`;
+    } else if (sortField === 'height') {
+      leaderboardQuery += ` ORDER BY CAST(u.height AS INTEGER) ${orderDirection}`;
+    } else {
+      leaderboardQuery += ` ORDER BY u.name ${orderDirection}`;
+    }
+
+    leaderboardQuery += ` LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+
+    console.log('Generated SQL Query:', leaderboardQuery);
+    console.log('Query parameters:', queryParams);
+    console.log('Parameter count:', paramCount);
 
     queryParams.push(limit, offset);
 
-    const result = await client.query(leaderboardQuery, queryParams);
+    let result;
+    try {
+      result = await client.query(leaderboardQuery, queryParams);
+      console.log('Leaderboard query executed successfully');
+      console.log('Result count:', result.rows.length);
+    } catch (dbError) {
+      console.error('Database query error:', dbError);
+      console.error('SQL Query that failed:', leaderboardQuery);
+      
+      // Try a simpler fallback query
+      const fallbackQuery = `
+        SELECT 
+          u.id, 
+          u.name, 
+          u.profile_picture_url AS "profilePictureUrl", 
+          u.xp_total AS "xpTotal", 
+          u.height, 
+          u.weight, 
+          u.country, 
+          u.sport, 
+          u.position, 
+          u.date_of_birth AS "dateOfBirth",
+          u.role,
+          0 AS "challengesSubmitted",
+          0 AS "coachApprovals"
+        FROM users u
+        WHERE (u.role = 'athlete' OR u.role IS NULL)
+        ORDER BY u.xp_total DESC
+        LIMIT 20
+      `;
+      
+      result = await client.query(fallbackQuery);
+      console.log('Fallback query executed successfully');
+    }
+
     await client.end();
 
     return {
@@ -113,23 +240,40 @@ exports.handler = async (event) => {
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token',
-        'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS'
+        'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+        'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ users: result.rows })
+      body: JSON.stringify({
+        users: result.rows,
+        total: result.rows.length,
+        filters: {
+          timeFrame,
+          sport,
+          position,
+          ageMin,
+          ageMax,
+          country,
+          sortBy,
+          sortOrder
+        }
+      })
     };
-
-  } catch (err) {
-    console.error('Error in getLeaderboard:', err);
+  } catch (error) {
+    console.error('Leaderboard error:', error);
+    console.error('Error stack:', error.stack);
+    
     return {
       statusCode: 500,
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token',
-        'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS'
+        'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+        'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ 
-        message: 'Internal server error',
-        error: err.message 
+      body: JSON.stringify({
+        error: 'Internal server error',
+        message: error.message,
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
       })
     };
   }

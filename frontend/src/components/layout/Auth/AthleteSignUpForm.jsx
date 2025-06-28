@@ -19,7 +19,9 @@ const schema = yup.object().shape({
   gender: yup.string().required('Gender is required'),
   sport: yup.string().required('Sport is required'),
   position: yup.string().required('Position is required'),
-  height: yup.number().required('Height is required').min(48, 'Height must be at least 48 inches').max(96, 'Height must be at most 96 inches'),
+  height: yup.number().typeError('Height is required').required('Height is required').min(48, 'Height must be at least 48 inches').max(96, 'Height must be at most 96 inches'),
+  weight: yup.number().typeError('Weight must be a number').required('Weight is required').min(50, 'Weight must be at least 50 lbs').max(400, 'Weight must be at most 400 lbs'),
+  date_of_birth: yup.date().typeError('Date of birth is required').required('Date of birth is required').max(new Date(), 'Date of birth cannot be in the future'),
   country: yup.string().required('Country is required'),
   email: yup.string().email('Invalid email').required('Email is required'),
   password: yup
@@ -84,12 +86,12 @@ function AthleteSignUpForm() {
     formState: { errors },
   } = useForm({
     resolver: yupResolver(schema),
-    defaultValues: { height: formatHeight(70) },
+    defaultValues: { height: 70 },
   });
 
   // Keep form value in sync with slider
   useEffect(() => {
-    setValue('height', formatHeight(heightInInches));
+    setValue('height', heightInInches);
   }, [heightInInches, setValue]);
 
   const onSubmit = async (data) => {
@@ -127,9 +129,11 @@ function AthleteSignUpForm() {
 
     try {
       const payload = {
-        firstName: data.fullName,
+        name: data.firstName,
         gender: data.gender,
         height: data.height,
+        weight: data.weight,
+        date_of_birth: data.date_of_birth,
         sport: data.sport,
         position: data.position,
         country: data.country,
@@ -279,13 +283,38 @@ function AthleteSignUpForm() {
         onChange={e => {
           const newValue = Number(e.target.value);
           setHeightInInches(newValue);
-          setValue('height', formatHeight(newValue));
+          setValue('height', newValue);
         }}
         className="login-input"
         style={{ width: '100%' }}
       />
       <input type="hidden" {...register('height')} />
       {errors.height && <p className="login-error">{errors.height.message}</p>}
+
+      <div className="form-group">
+        <label htmlFor="weight">Weight (lbs)</label>
+        <input
+          id="weight"
+          type="number"
+          step="1"
+          min="50"
+          max="400"
+          {...register('weight')}
+          className={`login-input${errors.weight ? ' input-error' : ''}`}
+        />
+        {errors.weight && <p className="login-error">{errors.weight.message}</p>}
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="date_of_birth">Date of Birth</label>
+        <input
+          id="date_of_birth"
+          type="date"
+          {...register('date_of_birth')}
+          className={`login-input${errors.date_of_birth ? ' input-error' : ''}`}
+        />
+        {errors.date_of_birth && <p className="login-error">{errors.date_of_birth.message}</p>}
+      </div>
 
       <select className="login-input" {...register('country')} defaultValue="">
         <option value="" disabled>Country...</option>
