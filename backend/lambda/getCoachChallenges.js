@@ -3,23 +3,37 @@ const { Client } = require('pg');
 exports.handler = async (event) => {
   const claims = event?.requestContext?.authorizer?.jwt?.claims;
   console.log('JWT Claims:', JSON.stringify(claims));
-  // --- Auth check ---
-  const groups = claims?.["cognito:groups"] || [];
-  const customRole = claims?.["custom:role"] || claims?.role || "";
-  const coachId = claims?.sub;
-
-  if (!(groups.includes("coaches") || customRole === "coach")) {
-    return {
-      statusCode: 403,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Credentials': true,
-        'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-        'Access-Control-Allow-Methods': 'OPTIONS,POST,GET,PUT,DELETE'
-      },
-      body: JSON.stringify({ message: "Forbidden: Only coaches can fetch their challenges" })
-    };
+  
+  // Get coachId from query parameters or JWT claims
+  const queryParams = event.queryStringParameters || {};
+  const requestedCoachId = queryParams.coachId;
+  const authenticatedCoachId = claims?.sub;
+  
+  // Determine which coach's challenges to fetch
+  let targetCoachId;
+  
+  if (requestedCoachId) {
+    // If coachId is provided in query params, use that (public access)
+    targetCoachId = requestedCoachId;
+  } else {
+    // If no coachId provided, user must be authenticated coach viewing their own challenges
+    const groups = claims?.["cognito:groups"] || [];
+    const customRole = claims?.["custom:role"] || claims?.role || "";
+    
+    if (!(groups.includes("coaches") || customRole === "coach")) {
+      return {
+        statusCode: 403,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Credentials': true,
+          'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+          'Access-Control-Allow-Methods': 'OPTIONS,POST,GET,PUT,DELETE'
+        },
+        body: JSON.stringify({ message: "Forbidden: Only coaches can fetch their own challenges without specifying coachId" })
+      };
+    }
+    targetCoachId = authenticatedCoachId;
   }
 
   const client = new Client({
@@ -45,7 +59,7 @@ exports.handler = async (event) => {
       GROUP BY c.id, u.name, u.profile_picture_url
       ORDER BY c.created_at DESC
     `;
-    const result = await client.query(query, [coachId]);
+    const result = await client.query(query, [targetCoachId]);
     await client.end();
     return {
       statusCode: 200,
