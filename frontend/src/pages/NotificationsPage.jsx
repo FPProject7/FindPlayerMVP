@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FollowButton from '../components/common/FollowButton';
-import { followUser, getNotifications, checkFollowing } from '../api/followApi';
+import { followUser, unfollowUser, getNotifications, checkFollowing } from '../api/followApi';
 import { useAuthStore } from '../stores/useAuthStore';
 import ChallengeLoader from '../components/common/ChallengeLoader';
 import { createProfileUrl } from '../utils/profileUrlUtils';
@@ -142,6 +142,19 @@ const NotificationsPage = () => {
     }
   };
 
+  const handleUnfollow = async (notifId, fromUserId) => {
+    setLoadingMap((prev) => ({ ...prev, [notifId]: true }));
+    setFollowStatusMap((prev) => ({ ...prev, [fromUserId]: false }));
+    try {
+      await unfollowUser(currentUserId, fromUserId);
+    } catch (err) {
+      setFollowStatusMap((prev) => ({ ...prev, [fromUserId]: true }));
+      alert('Failed to unfollow. Please try again.');
+    } finally {
+      setLoadingMap((prev) => ({ ...prev, [notifId]: false }));
+    }
+  };
+
   const handleUserClick = (userName, userRole) => {
     const profileUrl = createProfileUrl(userName, userRole);
     navigate(profileUrl);
@@ -178,6 +191,20 @@ const NotificationsPage = () => {
           {notifications.map((notif) => {
             const fromUserId = notif.fromUser.id;
             const isFollowing = followStatusMap[fromUserId] || false;
+            let message = '';
+            if (notif.type === 'challenge_submission') {
+              message = (
+                <>
+                  Submitted an attempt for <span style={{ color: '#dc2626', fontWeight: 600 }}>{notif.challengeTitle || 'this challenge'}</span>
+                </>
+              );
+            } else if (notif.type === 'challenge_review') {
+              message = notif.reviewResult === 'approve'
+                ? 'Your challenge submission was approved'
+                : 'Your challenge submission was denied';
+            } else {
+              message = 'started following you';
+            }
             return (
               <div key={notif.id} className="flex items-center bg-white rounded-lg shadow p-4">
                 <div 
@@ -201,16 +228,21 @@ const NotificationsPage = () => {
                   >
                     {notif.fromUser.name}
                   </div>
-                  <div className="text-gray-500 text-sm">started following you</div>
+                  <div className="text-gray-500 text-sm">{message}</div>
+                  {notif.createdAt && (
+                    <div className="text-xs text-gray-300">{new Date(notif.createdAt).toLocaleString()}</div>
+                  )}
                 </div>
-                <div className="ml-4" style={{ minWidth: 120 }}>
-                  <FollowButton
-                    isFollowing={isFollowing}
-                    loading={!!loadingMap[notif.id]}
-                    onFollow={() => handleFollowBack(notif.id, fromUserId)}
-                    onUnfollow={() => {}}
-                  />
-                </div>
+                {notif.type === 'follow' && (
+                  <div className="ml-4" style={{ minWidth: 120 }}>
+                    <FollowButton
+                      isFollowing={isFollowing}
+                      loading={!!loadingMap[notif.id]}
+                      onFollow={() => handleFollowBack(notif.id, fromUserId)}
+                      onUnfollow={() => handleUnfollow(notif.id, fromUserId)}
+                    />
+                  </div>
+                )}
               </div>
             );
           })}

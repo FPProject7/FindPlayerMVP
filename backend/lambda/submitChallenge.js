@@ -4,16 +4,7 @@ exports.handler = async (event) => {
   const claims = event?.requestContext?.authorizer?.jwt?.claims;
   const groups = claims?.["cognito:groups"] || [];
   const customRole = claims?.["custom:role"] || "";
-  const claims = event?.requestContext?.authorizer?.jwt?.claims;
-  const groups = claims?.["cognito:groups"] || [];
-  const customRole = claims?.["custom:role"] || "";
 
-  if (!groups.includes("athletes") && customRole !== "athlete") {
-    return {
-      statusCode: 403,
-      body: JSON.stringify({ message: "Forbidden: Only athletes can submit challenges" })
-    };
-  }
   if (!groups.includes("athletes") && customRole !== "athlete") {
     return {
       statusCode: 403,
@@ -70,6 +61,22 @@ exports.handler = async (event) => {
        RETURNING *`,
       [challengeId, athleteId, athleteName, video_url]
     );
+    const submission = result.rows[0];
+
+    // Fetch coach ID for the challenge
+    const coachRes = await client.query(
+      `SELECT coach_id FROM challenges WHERE id = $1`,
+      [challengeId]
+    );
+    const coachId = coachRes.rows[0]?.coach_id;
+    if (coachId) {
+      // Insert notification for coach
+      await client.query(
+        `INSERT INTO notifications (type, from_user_id, to_user_id, challenge_id, submission_id, created_at)
+         VALUES ($1, $2, $3, $4, $5, NOW())`,
+        ['challenge_submission', athleteId, coachId, challengeId, submission.id]
+      );
+    }
 
     await client.end();
 
@@ -77,7 +84,7 @@ exports.handler = async (event) => {
       statusCode: 200,
       body: JSON.stringify({
         message: 'Submission received successfully',
-        submission: result.rows[0]
+        submission: submission
       }),
     };
   } catch (err) {
