@@ -200,8 +200,8 @@ const NotificationsPage = () => {
               );
             } else if (notif.type === 'challenge_review') {
               message = notif.reviewResult === 'approve'
-                ? 'Your challenge submission was approved'
-                : 'Your challenge submission was denied';
+                ? 'Your challenge submission was approved.'
+                : 'Your challenge submission was denied.';
             } else {
               message = 'started following you';
             }
