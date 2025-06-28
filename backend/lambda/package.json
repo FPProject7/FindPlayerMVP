@@ -1,7 +1,7 @@
 {
-  "name": "lambda",
+  "name": "post-challenge-lambda",
   "version": "1.0.0",
-  "main": "getChallenges.js",
+  "main": "postChallenge.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "getCoachChallenges": "node getCoachChallenges.js"
@@ -11,7 +11,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@aws-sdk/client-cognito-identity-provider": "^3.830.0",
-    "pg": "^8.16.2"
+    "aws-sdk": "^2.1481.0",
+    "pg": "^8.11.3"
   }
 }

@@ -30,7 +30,7 @@ exports.handler = async (event) => {
     if (athleteId) {
       // Fetch all challenges the athlete has submitted to
       const query = `
-        SELECT DISTINCT c.*, s.status AS submission_status, s.id AS submission_id, s.submitted_at
+        SELECT DISTINCT c.*, s.status AS submission_status, s.id AS submission_id, s.submitted_at, c.image_url
         FROM challenges c
         JOIN challenge_submissions s ON s.challenge_id = c.id
         WHERE s.athlete_id = $1
@@ -39,15 +39,15 @@ exports.handler = async (event) => {
       result = await client.query(query, [athleteId]);
     } else {
       // Original: fetch all available challenges
-    const query = `
-      SELECT 
-        c.id, c.title, c.description, c.xp_value, c.created_at, c.coach_id,
-        u.name AS coach_name,
-        u.profile_picture_url AS coach_profile_picture_url
-      FROM challenges c
-      LEFT JOIN users u ON c.coach_id = u.id::varchar
-      ORDER BY c.created_at DESC
-    `;
+      const query = `
+        SELECT 
+          c.id, c.title, c.description, c.xp_value, c.created_at, c.coach_id, c.image_url,
+          u.name AS coach_name,
+          u.profile_picture_url AS coach_profile_picture_url
+        FROM challenges c
+        LEFT JOIN users u ON c.coach_id = u.id::varchar
+        ORDER BY c.created_at DESC
+      `;
       result = await client.query(query);
     }
     await client.end();

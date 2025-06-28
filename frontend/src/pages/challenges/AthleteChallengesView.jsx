@@ -340,26 +340,20 @@ const AthleteChallengesView = () => {
               {selectedChallenge.title}
             </h2>
 
-              {selectedChallenge.image_url && (
-                <div className="challenge-image-container mb-4">
-                  <img 
-                    src={selectedChallenge.image_url} 
-                    alt={selectedChallenge.title}
-                    className="w-full h-48 object-cover rounded-lg shadow-md"
-                  />
-                </div>
-              )}
+            {selectedChallenge?.image_url && (
+              <div className="mb-4"><img src={selectedChallenge.image_url} alt={selectedChallenge.title} className="w-full max-h-64 object-cover rounded-lg" /></div>
+            )}
 
-              <p className="mb-3 text-gray-700"><strong>Description:</strong> {selectedChallenge.description}</p>
+            <p className="mb-3 text-gray-700"><strong>Description:</strong> {selectedChallenge.description}</p>
 
-              {/* Coach Information in Detail View */}
-              {selectedChallenge.coach_name && (
-                <div className="mb-5 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                  <p className="text-gray-700">
-                    <strong>Created by:</strong> {selectedChallenge.coach_name}
-                  </p>
-                </div>
-              )}
+            {/* Coach Information in Detail View */}
+            {selectedChallenge.coach_name && (
+              <div className="mb-5 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                <p className="text-gray-700">
+                  <strong>Created by:</strong> {selectedChallenge.coach_name}
+                </p>
+              </div>
+            )}
 
             <div className="video-upload-section bg-gray-50 border border-gray-200 p-5 rounded-lg">
               <h3 className="text-lg font-bold mb-3 text-gray-800">Upload Your Video</h3>
@@ -531,6 +525,10 @@ const AthleteChallengesView = () => {
                     <h3 className="text-lg font-semibold text-gray-800">{challenge.title}</h3>
                     <span className="text-sm font-medium text-red-600">{challenge.xp_value} XP</span>
                   </div>
+                  
+                  {challenge.image_url && (
+                    <div className="mb-2"><img src={challenge.image_url} alt={challenge.title} className="w-full max-h-48 object-cover rounded-lg" /></div>
+                  )}
                   
                   <p className="text-gray-600 text-sm mb-3 line-clamp-2">{challenge.description}</p>
                   

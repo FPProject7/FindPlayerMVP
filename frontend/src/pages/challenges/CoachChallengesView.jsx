@@ -23,6 +23,9 @@ export default function CoachChallengesView() {
   const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [imageError, setImageError] = useState("");
 
   // Character limits
   const TITLE_CHAR_LIMIT = 50;
@@ -112,6 +115,24 @@ export default function CoachChallengesView() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleImageChange = (e) => {
+    setImageError("");
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setImageError('Only image files are allowed.');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setImageError('Image must be less than 2MB.');
+      return;
+    }
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setImagePreview(reader.result);
+    reader.readAsDataURL(file);
+  };
+
   // Handle new challenge submission
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -125,14 +146,34 @@ export default function CoachChallengesView() {
       setTimeout(() => setErrorMessage(""), 2000);
       return;
     }
+    if (imageFile && imageFile.size > 2 * 1024 * 1024) {
+      setImageError('Image must be less than 2MB.');
+      return;
+    }
+    let imageBase64 = null;
+    let imageContentType = null;
+    if (imageFile) {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(imageFile);
+      });
+      imageBase64 = base64;
+      imageContentType = imageFile.type;
+    }
     try {
       const response = await challengeClient.post("/challenges", {
         title: formData.title,
         description: formData.description,
         xp_value: parseInt(formData.xp_value, 10),
+        imageBase64,
+        imageContentType,
       });
       setFormData({ title: "", description: "", xp_value: 1 });
-      // Optionally refresh challenge list if on view tab
+      setImageFile(null);
+      setImagePreview(null);
+      setImageError("");
       if (activeTab === "view") fetchChallenges();
       setSuccessMessage("Challenge created!");
       setTimeout(() => setSuccessMessage(""), 1200);
@@ -274,6 +315,20 @@ export default function CoachChallengesView() {
               style={{ accentColor: '#ef4444' }}
             />
           </div>
+          <div>
+            <label htmlFor="challenge-image" className="block text-sm font-semibold text-gray-700 mb-1">Challenge Image (max 2MB)</label>
+            <input
+              id="challenge-image"
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
+              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100"
+            />
+            {imageError && <div className="text-red-600 text-xs mt-1">{imageError}</div>}
+            {imagePreview && (
+              <div className="mt-2"><img src={imagePreview} alt="Preview" className="w-full max-h-48 object-contain rounded-lg border" /></div>
+            )}
+          </div>
           <button
             type="submit"
             className="w-full bg-white text-red-600 border-2 border-red-500 hover:bg-red-100 font-bold py-3 rounded-full text-base uppercase transition-colors duration-200"
@@ -402,6 +457,9 @@ export default function CoachChallengesView() {
                       <span className="mr-2">Submissions:</span>
                       <span className="font-bold text-red-600">{challenge.submission_count}</span>
                     </div>
+                    {challenge.image_url && (
+                      <div className="mb-2"><img src={challenge.image_url} alt={challenge.title} className="w-full max-h-48 object-cover rounded-lg" /></div>
+                    )}
                   </div>
                 ))
               )}
