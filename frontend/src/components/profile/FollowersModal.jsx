@@ -20,7 +20,7 @@ const FollowersModal = ({ userId, open, onClose }) => {
       .then(res => {
         setFollowers(res.data.items || []);
       })
-      .catch(() => setError('Failed to load followers.'))
+      .catch(() => setError('Failed to load connections.'))
       .finally(() => setLoading(false));
   }, [userId, open]);
 
@@ -36,13 +36,13 @@ const FollowersModal = ({ userId, open, onClose }) => {
         >
           ×
         </button>
-        <h2 className="text-xl font-bold mb-4 text-center">Followers</h2>
+        <h2 className="text-xl font-bold mb-4 text-center">Connections</h2>
         {loading ? (
           <div className="flex justify-center items-center py-8"><ChallengeLoader /></div>
         ) : error ? (
           <div className="text-center text-red-400 py-8">{error}</div>
         ) : followers.length === 0 ? (
-          <div className="text-center text-gray-400 py-8">No followers yet.</div>
+          <div className="text-center text-gray-400 py-8">No connections yet.</div>
         ) : (
           <div className="overflow-y-auto divide-y divide-gray-100" style={{ maxHeight: '60vh' }}>
             {followers.map(follower => (
@@ -53,12 +53,12 @@ const FollowersModal = ({ userId, open, onClose }) => {
               >
                 {follower.profile_picture_url ? (
                   <img
+                    className="w-10 h-10 rounded-full object-cover mr-4"
                     src={follower.profile_picture_url}
                     alt={follower.name}
-                    className="w-10 h-10 rounded-full object-cover border border-gray-200 shadow-sm"
                   />
                 ) : (
-                  <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 font-bold text-lg">
+                  <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center mr-4">
                     <span>{(follower.name || 'U').charAt(0)}</span>
                   </div>
                 )}
