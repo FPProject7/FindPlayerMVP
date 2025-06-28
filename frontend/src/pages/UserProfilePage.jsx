@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { getInfoUser, getFollowerCount } from '../api/userApi';
 import { followUser, unfollowUser, checkFollowing } from '../api/followApi';
 import ChallengeLoader from '../components/common/ChallengeLoader';
 import FollowButton from '../components/common/FollowButton';
-import { decodeProfileName } from '../utils/profileUrlUtils';
+import { decodeProfileName, createProfileUrl } from '../utils/profileUrlUtils';
 import AthleteProfile from '../components/profile/AthleteProfile';
 import CoachProfile from '../components/profile/CoachProfile';
 import ScoutProfile from '../components/profile/ScoutProfile';
@@ -17,8 +17,10 @@ function isUUID(str) {
 }
 
 const UserProfilePage = () => {
-  const { profileUserId } = useParams();
+  const { role, profileUserId } = useParams();
+  const navigate = useNavigate();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const user = useAuthStore((state) => state.user);
   const [currentUserId, setCurrentUserId] = useState(null);
   const [isFollowing, setIsFollowing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -28,7 +30,17 @@ const UserProfilePage = () => {
   const [followerCount, setFollowerCount] = useState(0);
   const [challengesCompleted, setChallengesCompleted] = useState(0);
 
+  // Redirect /profile to the correct role-based URL for the current user
   useEffect(() => {
+    if (!role && !profileUserId && isAuthenticated && user) {
+      const url = createProfileUrl(user.name, user.role);
+      navigate(url, { replace: true });
+    }
+  }, [role, profileUserId, isAuthenticated, user, navigate]);
+
+  useEffect(() => {
+    // Don't run the main profile loading logic if we're about to redirect
+    if (!role && !profileUserId) return;
     const loadUser = async () => {
       setLoading(true);
       setError(null);
@@ -50,25 +62,37 @@ const UserProfilePage = () => {
         } else {
           profileRes = await getInfoUser(undefined, decodedProfileId); // pass username
         }
-        setProfile(profileRes.data);
-        // 3. Fetch follower count for the profile user
-        const followerCountRes = await getFollowerCount(profileRes.data.id);
+        
+        const userProfile = profileRes.data;
+        const actualUserRole = (userProfile.role || 'athlete').toLowerCase();
+        const urlRole = (role || 'athlete').toLowerCase();
+        
+        // 3. Validate that the URL role matches the actual user role
+        if (actualUserRole !== urlRole) {
+          setError('Profile not found. The user may not exist or the name may be incorrect.');
+          setLoading(false);
+          return;
+        }
+        
+        setProfile(userProfile);
+        // 4. Fetch follower count for the profile user
+        const followerCountRes = await getFollowerCount(userProfile.id);
         setFollowerCount(followerCountRes);
-        // 4. Fetch completed challenges for athletes
-        if ((profileRes.data.role || '').toLowerCase() === 'athlete') {
-          const challenges = await fetchChallengesForAthlete(profileRes.data.id);
+        // 5. Fetch completed challenges for athletes
+        if (actualUserRole === 'athlete') {
+          const challenges = await fetchChallengesForAthlete(userProfile.id);
           const submitted = Array.isArray(challenges) ? challenges.length : 0;
           setChallengesCompleted(submitted);
         }
-        // 5. Fetch challenges posted by coaches
-        if ((profileRes.data.role || '').toLowerCase() === 'coach') {
-          const challenges = await fetchCoachChallenges(profileRes.data.id);
+        // 6. Fetch challenges posted by coaches
+        if (actualUserRole === 'coach') {
+          const challenges = await fetchCoachChallenges(userProfile.id);
           const posted = Array.isArray(challenges) ? challenges.length : 0;
           setChallengesCompleted(posted);
         }
-        // 6. Optionally preload follow status (only if authenticated and not viewing own profile)
-        if (isAuthenticated && currentUserRes && currentUserRes.data.id !== (profileRes.data.id || decodedProfileId)) {
-          const followRes = await checkFollowing(currentUserRes.data.id, profileRes.data.id);
+        // 7. Optionally preload follow status (only if authenticated and not viewing own profile)
+        if (isAuthenticated && currentUserRes && currentUserRes.data.id !== (userProfile.id || decodedProfileId)) {
+          const followRes = await checkFollowing(currentUserRes.data.id, userProfile.id);
           setIsFollowing(followRes.data.isFollowing);
         }
       } catch (err) {
@@ -81,7 +105,7 @@ const UserProfilePage = () => {
       }
     };
     loadUser();
-  }, [profileUserId, isAuthenticated]);
+  }, [role, profileUserId, isAuthenticated]);
 
   const handleFollow = async () => {
     setIsFollowing(true);

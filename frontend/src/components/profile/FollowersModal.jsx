@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ChallengeLoader from '../common/ChallengeLoader';
 import { connectionsApiClient } from '../../api/userApi';
+import { createProfileUrl } from '../../utils/profileUrlUtils';
 
 const FollowersModal = ({ userId, open, onClose }) => {
   const [followers, setFollowers] = useState([]);
@@ -48,7 +49,7 @@ const FollowersModal = ({ userId, open, onClose }) => {
               <div
                 key={follower.id}
                 className="flex items-center gap-3 py-3 cursor-pointer hover:bg-gray-50 px-2 rounded"
-                onClick={() => navigate(`/profile/${follower.id}`)}
+                onClick={() => navigate(createProfileUrl(follower.name, follower.role))}
               >
                 {follower.profile_picture_url ? (
                   <img

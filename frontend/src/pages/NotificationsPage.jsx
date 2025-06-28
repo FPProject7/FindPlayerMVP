@@ -142,8 +142,8 @@ const NotificationsPage = () => {
     }
   };
 
-  const handleUserClick = (userName) => {
-    const profileUrl = createProfileUrl(userName);
+  const handleUserClick = (userName, userRole) => {
+    const profileUrl = createProfileUrl(userName, userRole);
     navigate(profileUrl);
   };
 
@@ -182,7 +182,7 @@ const NotificationsPage = () => {
               <div key={notif.id} className="flex items-center bg-white rounded-lg shadow p-4">
                 <div 
                   className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 font-bold text-xl mr-4 cursor-pointer hover:opacity-80"
-                  onClick={() => handleUserClick(notif.fromUser.name)}
+                  onClick={() => handleUserClick(notif.fromUser.name, notif.fromUser.role)}
                 >
                   {notif.fromUser.profilePictureUrl ? (
                     <img
@@ -197,7 +197,7 @@ const NotificationsPage = () => {
                 <div className="flex-1">
                   <div 
                     className="font-semibold text-gray-800 cursor-pointer hover:text-red-600 hover:underline"
-                    onClick={() => handleUserClick(notif.fromUser.name)}
+                    onClick={() => handleUserClick(notif.fromUser.name, notif.fromUser.role)}
                   >
                     {notif.fromUser.name}
                   </div>
