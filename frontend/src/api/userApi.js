@@ -42,23 +42,39 @@ connectionsApiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+const PUBLIC_USER_INFO_URL = 'https://k4hvzprd1g.execute-api.us-east-1.amazonaws.com/default/getInfoUser';
+
 export const getInfoUser = (userId, username) => {
   const params = {};
   if (userId) params.userId = userId;
   if (username) params.username = username;
+  // Use public endpoint if looking up by userId or username (public profile)
+  if (userId || username) {
+    return axios.get(PUBLIC_USER_INFO_URL, { params });
+  }
+  // Otherwise, use the authenticated endpoint for 'me' lookups
   return userApiClient.get('/user-info', { params });
 };
 
 export { connectionsApiClient };
 
+const PUBLIC_CONNECTIONS_URL = 'https://6gsow5ouw8.execute-api.us-east-1.amazonaws.com/default/getConnections';
+
 // Fetch follower count for a user (uses connections client)
 export const getFollowerCount = (userId) => {
-  return connectionsApiClient.get('/connections', {
-    params: {
-      userId,
-      countsOnly: true
-    }
-  }).then(res => res.data.followerCount);
+  const isAuthenticated = useAuthStore.getState().isAuthenticated;
+  const params = {
+    userId,
+    countsOnly: true
+  };
+  if (!isAuthenticated) {
+    // Use public endpoint for unauthenticated users
+    return axios.get(PUBLIC_CONNECTIONS_URL, { params })
+      .then(res => res.data.followerCount);
+  }
+  // Use original endpoint for authenticated users
+  return connectionsApiClient.get('/connections', { params })
+    .then(res => res.data.followerCount);
 };
 
 // Function to award XP points (for testing and future use)

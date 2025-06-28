@@ -39,15 +39,15 @@ exports.handler = async (event) => {
       result = await client.query(query, [athleteId]);
     } else {
       // Original: fetch all available challenges
-      const query = `
-        SELECT 
-          c.id, c.title, c.description, c.xp_value, c.created_at, c.coach_id,
-          u.name AS coach_name,
-          u.profile_picture_url AS coach_profile_picture_url
-        FROM challenges c
-        LEFT JOIN users u ON c.coach_id = u.id::varchar
-        ORDER BY c.created_at DESC
-      `;
+    const query = `
+      SELECT 
+        c.id, c.title, c.description, c.xp_value, c.created_at, c.coach_id,
+        u.name AS coach_name,
+        u.profile_picture_url AS coach_profile_picture_url
+      FROM challenges c
+      LEFT JOIN users u ON c.coach_id = u.id::varchar
+      ORDER BY c.created_at DESC
+    `;
       result = await client.query(query);
     }
     await client.end();

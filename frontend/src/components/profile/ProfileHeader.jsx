@@ -3,15 +3,47 @@ import FollowButton from '../common/FollowButton';
 import { useState } from 'react';
 import { FiShare2 } from 'react-icons/fi';
 import { getXPDetails } from '../../utils/levelUtils';
+import { createProfileUrl } from '../../utils/profileUrlUtils';
+
+// Toast for share/copy feedback
+const ShareToast = ({ message }) => (
+  <div className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none">
+    <div className="bg-red-500 text-white px-8 py-4 rounded-2xl shadow-2xl text-lg font-semibold opacity-95 animate-fade-in-out">
+      {message}
+    </div>
+  </div>
+);
 
 const ProfileHeader = ({ profile, currentUserId, isFollowing, buttonLoading, onFollow, onUnfollow, quote, showShareButton = true }) => {
   // Share button logic
-  const [copied, setCopied] = useState(false);
-  const handleShare = () => {
-    const url = window.location.href;
-    navigator.clipboard.writeText(url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMsg, setToastMsg] = useState('');
+  const handleShare = async () => {
+    // Use the name-based profile URL per PROFILE_URL_GUIDE.md
+    const url = window.location.origin + createProfileUrl(profile.name);
+    // Try Web Share API first (mobile)
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: profile.name, url });
+        setToastMsg('Link shared!');
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 1500);
+        return;
+      } catch (e) {
+        // Fallback to clipboard
+      }
+    }
+    // Fallback: copy to clipboard
+    try {
+      await navigator.clipboard.writeText(url);
+      setToastMsg('Copied to clipboard');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 1500);
+    } catch (e) {
+      setToastMsg('Failed to copy');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 1500);
+    }
   };
 
   // Calculate XP details from profile data
@@ -47,6 +79,8 @@ const ProfileHeader = ({ profile, currentUserId, isFollowing, buttonLoading, onF
             <FiShare2 size={22} color="#dc2626" />
           </button>
         )}
+        {/* Toast */}
+        {showToast && <ShareToast message={toastMsg} />}
         {/* Centered name and level above XP bar */}
         <div className="flex flex-col items-center w-full mb-2">
           <span className="text-2xl font-bold text-gray-900 text-center block w-full">{profile.name}</span>

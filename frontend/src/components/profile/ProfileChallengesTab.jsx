@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import ChallengeLoader from '../common/ChallengeLoader';
 import challengeClient, { coachClient } from '../../api/challengeApi';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { fetchChallengesForAthlete, fetchCoachChallenges } from '../../api/challengeApi';
 
 const ProfileChallengesTab = ({ profile }) => {
   const [challenges, setChallenges] = useState([]);
@@ -23,19 +24,16 @@ const ProfileChallengesTab = ({ profile }) => {
           if (isOwnProfile) {
             // Fetch our own challenges using the coach endpoint (no parameters needed)
             res = await coachClient.get('/coach/challenges');
+            setChallenges(res.data);
           } else {
-            // Fetch another coach's challenges using the coachId parameter
-            res = await coachClient.get('/coach/challenges', {
-              params: { coachId: profile.id },
-            });
+            // Fetch another coach's challenges using public/auth logic
+            const data = await fetchCoachChallenges(profile.id);
+            setChallenges(data);
           }
-          setChallenges(res.data);
         } else {
-          // Fetch submitted challenges for athlete using authenticated client
-          res = await challengeClient.get('/challenges', {
-            params: { athleteId: profile.id },
-          });
-          setChallenges(res.data);
+          // Fetch submitted challenges for athlete using public/auth logic
+          const data = await fetchChallengesForAthlete(profile.id);
+          setChallenges(data);
         }
       } catch (err) {
         setError('Failed to load challenges.');

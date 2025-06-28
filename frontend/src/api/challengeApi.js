@@ -38,3 +38,33 @@ export const reviewSubmission = async (submissionId, action, comment) => {
     comment,
   });
 };
+
+const PUBLIC_CHALLENGES_URL = 'https://meq3pup4qj.execute-api.us-east-1.amazonaws.com/default/getChallenges';
+
+export const fetchChallengesForAthlete = async (athleteId) => {
+  const isAuthenticated = useAuthStore.getState().isAuthenticated;
+  const params = { athleteId };
+  if (!isAuthenticated) {
+    // Use public endpoint for unauthenticated users
+    const response = await axios.get(PUBLIC_CHALLENGES_URL, { params });
+    return response.data;
+  }
+  // Use original endpoint for authenticated users
+  const response = await challengeClient.get('/challenges', { params });
+  return response.data;
+};
+
+const PUBLIC_COACH_CHALLENGES_URL = 'https://spv6m79758.execute-api.us-east-1.amazonaws.com/default/coachChallenges';
+
+export const fetchCoachChallenges = async (coachId) => {
+  const isAuthenticated = useAuthStore.getState().isAuthenticated;
+  const params = { coachId };
+  if (!isAuthenticated) {
+    // Use public endpoint for unauthenticated users
+    const response = await axios.get(PUBLIC_COACH_CHALLENGES_URL, { params });
+    return response.data;
+  }
+  // Use original endpoint for authenticated users
+  const response = await coachClient.get('/coach/challenges', { params });
+  return response.data;
+};

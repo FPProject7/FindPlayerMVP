@@ -1,10 +1,12 @@
 // frontend/src/pages/NotificationsPage.jsx
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import FollowButton from '../components/common/FollowButton';
-import { followUser, getNotifications } from '../api/followApi';
+import { followUser, getNotifications, checkFollowing } from '../api/followApi';
 import { useAuthStore } from '../stores/useAuthStore';
 import ChallengeLoader from '../components/common/ChallengeLoader';
+import { createProfileUrl } from '../utils/profileUrlUtils';
 
 const PULL_THRESHOLD = 80;
 const MAX_PULL_DISTANCE = 120;
@@ -12,6 +14,7 @@ const MAX_PULL_DISTANCE = 120;
 const NotificationsPage = () => {
   const { user, isAuthenticated } = useAuthStore();
   const currentUserId = user?.id;
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [loadingMap, setLoadingMap] = useState({}); // { notifId: boolean }
   const [loading, setLoading] = useState(true);
@@ -19,6 +22,8 @@ const NotificationsPage = () => {
   const [pullStartY, setPullStartY] = useState(0);
   const [pullDistance, setPullDistance] = useState(0);
   const containerRef = useRef(null);
+  const [followStatusMap, setFollowStatusMap] = useState({}); // { fromUserId: boolean }
+  const [followStatusLoaded, setFollowStatusLoaded] = useState(false);
 
   const fetchNotifications = async () => {
     setLoading(true);
@@ -37,13 +42,49 @@ const NotificationsPage = () => {
     }
   };
 
+  // Fetch notifications and follow status together
   useEffect(() => {
-    if (!isAuthenticated || !currentUserId) {
+    const fetchAll = async () => {
+      setLoading(true);
+      setError(null);
+      setFollowStatusLoaded(false);
+      try {
+        const res = await getNotifications();
+        setNotifications(res.data);
+        // Get all unique fromUserIds
+        const uniqueFromUserIds = Array.from(new Set(res.data.map(n => n.fromUser.id)));
+        const statusMap = {};
+        await Promise.all(uniqueFromUserIds.map(async (fromUserId) => {
+          if (!currentUserId || fromUserId === currentUserId) {
+            statusMap[fromUserId] = false;
+            return;
+          }
+          try {
+            const res = await checkFollowing(currentUserId, fromUserId);
+            statusMap[fromUserId] = res.data.isFollowing;
+          } catch {
+            statusMap[fromUserId] = false;
+          }
+        }));
+        setFollowStatusMap(statusMap);
+        setFollowStatusLoaded(true);
+      } catch (err) {
+        if (err.response && err.response.status === 401) {
+          setError('You must be logged in to view notifications.');
+        } else {
+          setError('Failed to load notifications.');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (isAuthenticated && currentUserId) {
+      fetchAll();
+    } else {
       setLoading(false);
       setError('You must be logged in to view notifications.');
-      return;
     }
-    fetchNotifications();
+    // eslint-disable-next-line
   }, [isAuthenticated, currentUserId]);
 
   // Pull-to-refresh handlers
@@ -90,24 +131,20 @@ const NotificationsPage = () => {
 
   const handleFollowBack = async (notifId, fromUserId) => {
     setLoadingMap((prev) => ({ ...prev, [notifId]: true }));
-    setNotifications((prev) =>
-      prev.map((n) =>
-        n.id === notifId ? { ...n, isFollowingBack: true } : n
-      )
-    );
+    setFollowStatusMap((prev) => ({ ...prev, [fromUserId]: true }));
     try {
       await followUser(currentUserId, fromUserId);
     } catch (err) {
-      // Revert on error
-      setNotifications((prev) =>
-        prev.map((n) =>
-          n.id === notifId ? { ...n, isFollowingBack: false } : n
-        )
-      );
+      setFollowStatusMap((prev) => ({ ...prev, [fromUserId]: false }));
       alert('Failed to follow back. Please try again.');
     } finally {
       setLoadingMap((prev) => ({ ...prev, [notifId]: false }));
     }
+  };
+
+  const handleUserClick = (userName) => {
+    const profileUrl = createProfileUrl(userName);
+    navigate(profileUrl);
   };
 
   return (
@@ -130,7 +167,7 @@ const NotificationsPage = () => {
           )}
         </div>
       )}
-      {loading ? (
+      {(loading || !followStatusLoaded) ? (
         <div className="mt-8 flex justify-center"><ChallengeLoader /></div>
       ) : error ? (
         <div className="mt-8 text-center text-red-500">{error}</div>
@@ -138,33 +175,45 @@ const NotificationsPage = () => {
         <div className="mt-8 text-center text-gray-500">No notifications.</div>
       ) : (
         <div className="mt-4 space-y-4">
-          {notifications.map((notif) => (
-            <div key={notif.id} className="flex items-center bg-white rounded-lg shadow p-4">
-              <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 font-bold text-xl mr-4">
-                {notif.fromUser.profilePictureUrl ? (
-                  <img
-                    src={notif.fromUser.profilePictureUrl}
-                    alt={notif.fromUser.name}
-                    className="w-12 h-12 rounded-full object-cover"
+          {notifications.map((notif) => {
+            const fromUserId = notif.fromUser.id;
+            const isFollowing = followStatusMap[fromUserId] || false;
+            return (
+              <div key={notif.id} className="flex items-center bg-white rounded-lg shadow p-4">
+                <div 
+                  className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 font-bold text-xl mr-4 cursor-pointer hover:opacity-80"
+                  onClick={() => handleUserClick(notif.fromUser.name)}
+                >
+                  {notif.fromUser.profilePictureUrl ? (
+                    <img
+                      src={notif.fromUser.profilePictureUrl}
+                      alt={notif.fromUser.name}
+                      className="w-12 h-12 rounded-full object-cover"
+                    />
+                  ) : (
+                    <span>{notif.fromUser.name.charAt(0)}</span>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <div 
+                    className="font-semibold text-gray-800 cursor-pointer hover:text-red-600 hover:underline"
+                    onClick={() => handleUserClick(notif.fromUser.name)}
+                  >
+                    {notif.fromUser.name}
+                  </div>
+                  <div className="text-gray-500 text-sm">started following you</div>
+                </div>
+                <div className="ml-4" style={{ minWidth: 120 }}>
+                  <FollowButton
+                    isFollowing={isFollowing}
+                    loading={!!loadingMap[notif.id]}
+                    onFollow={() => handleFollowBack(notif.id, fromUserId)}
+                    onUnfollow={() => {}}
                   />
-                ) : (
-                  <span>{notif.fromUser.name.charAt(0)}</span>
-                )}
+                </div>
               </div>
-              <div className="flex-1">
-                <div className="font-semibold text-gray-800">{notif.fromUser.name}</div>
-                <div className="text-gray-500 text-sm">started following you</div>
-              </div>
-              <div className="ml-4" style={{ minWidth: 120 }}>
-                <FollowButton
-                  isFollowing={notif.isFollowingBack}
-                  loading={!!loadingMap[notif.id]}
-                  onFollow={() => handleFollowBack(notif.id, notif.fromUser.id)}
-                  onUnfollow={() => {}}
-                />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

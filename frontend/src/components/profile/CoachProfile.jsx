@@ -19,6 +19,7 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
   const [showFollowers, setShowFollowers] = useState(false);
   const navigate = useNavigate();
   const logout = useAuthStore((state) => state.logout);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const { user: currentUser } = useAuthStore();
   const currentUserRole = currentUser?.role?.toLowerCase();
   // Assume we can get current user's role from profile or context if needed
@@ -47,13 +48,17 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
       />
       <div className="flex justify-around my-4">
         <div className="flex flex-col items-center">
-          <button
-            className="font-bold text-lg text-red-600 hover:underline focus:outline-none bg-transparent border-none p-0 m-0"
-            style={{ background: 'none' }}
-            onClick={() => setShowFollowers(true)}
-          >
-            {connections}
-          </button>
+          {isAuthenticated ? (
+            <button
+              className="font-bold text-lg text-red-600 hover:underline focus:outline-none bg-transparent border-none p-0 m-0"
+              style={{ background: 'none' }}
+              onClick={() => setShowFollowers(true)}
+            >
+              {connections}
+            </button>
+          ) : (
+            <span className="font-bold text-lg text-gray-600">{connections}</span>
+          )}
           <span className="text-xs text-gray-500">Connections</span>
         </div>
         <div className="flex flex-col items-center">
@@ -65,7 +70,9 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
           <span className="text-xs text-gray-500">Challenges</span>
         </div>
       </div>
-      <FollowersModal userId={userId} open={showFollowers} onClose={() => setShowFollowers(false)} />
+      {isAuthenticated && (
+        <FollowersModal userId={userId} open={showFollowers} onClose={() => setShowFollowers(false)} />
+      )}
       {/* Show Book a Session for athletes viewing a coach profile */}
       {currentUserRole === 'athlete' && !isOwnProfile && (
         <div className="flex justify-center my-4">

@@ -28,6 +28,7 @@ const AthleteProfile = ({
   } = profile;
   const [showFollowers, setShowFollowers] = useState(false);
   const logout = useAuthStore((state) => state.logout);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const navigate = useNavigate();
 
   return (
@@ -52,13 +53,17 @@ const AthleteProfile = ({
       {/* Stats Row */}
       <div className="flex justify-between my-6 max-w-xs mx-auto">
         <div className="flex flex-col items-center flex-1">
-          <button
-            className="font-bold text-lg text-red-600 hover:underline focus:outline-none bg-transparent border-none p-0 m-0"
-            style={{ background: 'none' }}
-            onClick={() => setShowFollowers(true)}
-          >
-            {connections}
-          </button>
+          {isAuthenticated ? (
+            <button
+              className="font-bold text-lg text-red-600 hover:underline focus:outline-none bg-transparent border-none p-0 m-0"
+              style={{ background: 'none' }}
+              onClick={() => setShowFollowers(true)}
+            >
+              {connections}
+            </button>
+          ) : (
+            <span className="font-bold text-lg text-gray-600">{connections}</span>
+          )}
           <span className="text-xs text-gray-500">Connections</span>
         </div>
         <div className="flex flex-col items-center flex-1">
@@ -72,7 +77,9 @@ const AthleteProfile = ({
           </span>
         </div>
       </div>
-      <FollowersModal userId={userId} open={showFollowers} onClose={() => setShowFollowers(false)} />
+      {isAuthenticated && (
+        <FollowersModal userId={userId} open={showFollowers} onClose={() => setShowFollowers(false)} />
+      )}
       {currentUserId === profile.id && <UpgradePremiumButton />}
       <div className="text-xs text-center text-gray-400 mb-4">
         Stand out, get noticed, and unlock exclusive opportunities.
