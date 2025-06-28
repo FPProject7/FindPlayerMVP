@@ -451,7 +451,7 @@ const AthleteChallengesView = () => {
                         {existingSubmission?.status === 'denied' && (
                           <span className="px-3 py-1 rounded-full text-xs font-bold tracking-wide bg-red-500 text-white border-2 border-red-500">
                             Denied
-                          </span>
+                            </span>
                         )}
                         <div className="text-sm font-normal mt-1 text-gray-700">
                           Submitted: {existingSubmission?.submitted_at ? new Date(existingSubmission.submitted_at).toLocaleDateString() : 'N/A'}
@@ -627,7 +627,7 @@ const AthleteChallengesView = () => {
                           {submission?.status === 'denied' && (
                             <span className="px-3 py-1 rounded-full text-xs font-bold tracking-wide bg-red-500 text-white border-2 border-red-500">
                               Denied
-                            </span>
+                          </span>
                           )}
                         </>
                       ) : uploadStatus ? (

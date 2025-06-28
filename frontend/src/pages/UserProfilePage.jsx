@@ -8,6 +8,9 @@ import { decodeProfileName } from '../utils/profileUrlUtils';
 import AthleteProfile from '../components/profile/AthleteProfile';
 import CoachProfile from '../components/profile/CoachProfile';
 import ScoutProfile from '../components/profile/ScoutProfile';
+import challengeClient, { coachClient } from '../api/challengeApi';
+import { fetchChallengesForAthlete, fetchCoachChallenges } from '../api/challengeApi';
+import { useAuthStore } from '../stores/useAuthStore';
 
 function isUUID(str) {
   return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(str);
@@ -15,6 +18,7 @@ function isUUID(str) {
 
 const UserProfilePage = () => {
   const { profileUserId } = useParams();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const [currentUserId, setCurrentUserId] = useState(null);
   const [isFollowing, setIsFollowing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -22,6 +26,7 @@ const UserProfilePage = () => {
   const [profile, setProfile] = useState(null);
   const [error, setError] = useState(null);
   const [followerCount, setFollowerCount] = useState(0);
+  const [challengesCompleted, setChallengesCompleted] = useState(0);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -30,55 +35,61 @@ const UserProfilePage = () => {
       try {
         // Decode the URL parameter to handle special characters
         const decodedProfileId = profileUserId ? decodeProfileName(profileUserId) : null;
-        console.log('Original profileUserId:', profileUserId);
-        console.log('Decoded profileUserId:', decodedProfileId);
-
-        // Always get current user info (for follow logic)
-        const res = await getInfoUser();
-        console.log('Current user info response:', res);
-        setCurrentUserId(res.data.id);
-
-        // Fetch profile info for the viewed user
+        // 1. If authenticated, get current user info (for follow logic)
+        let currentUserRes = null;
+        if (isAuthenticated) {
+          currentUserRes = await getInfoUser();
+          setCurrentUserId(currentUserRes.data.id);
+        } else {
+          setCurrentUserId(null);
+        }
+        // 2. Fetch profile info for the viewed user
         let profileRes;
         if (isUUID(decodedProfileId)) {
           profileRes = await getInfoUser(decodedProfileId);
         } else {
           profileRes = await getInfoUser(undefined, decodedProfileId); // pass username
         }
-        console.log('Profile info response:', profileRes);
         setProfile(profileRes.data);
-
-        // Fetch follower count for the profile user
+        // 3. Fetch follower count for the profile user
         const followerCountRes = await getFollowerCount(profileRes.data.id);
         setFollowerCount(followerCountRes);
-
-        // Optionally preload follow status
-        if (res.data.id !== (profileRes.data.id || decodedProfileId)) {
-          const followRes = await checkFollowing(res.data.id, profileRes.data.id);
-          console.log('Follow status response:', followRes);
+        // 4. Fetch completed challenges for athletes
+        if ((profileRes.data.role || '').toLowerCase() === 'athlete') {
+          const challenges = await fetchChallengesForAthlete(profileRes.data.id);
+          const submitted = Array.isArray(challenges) ? challenges.length : 0;
+          setChallengesCompleted(submitted);
+        }
+        // 5. Fetch challenges posted by coaches
+        if ((profileRes.data.role || '').toLowerCase() === 'coach') {
+          const challenges = await fetchCoachChallenges(profileRes.data.id);
+          const posted = Array.isArray(challenges) ? challenges.length : 0;
+          setChallengesCompleted(posted);
+        }
+        // 6. Optionally preload follow status (only if authenticated and not viewing own profile)
+        if (isAuthenticated && currentUserRes && currentUserRes.data.id !== (profileRes.data.id || decodedProfileId)) {
+          const followRes = await checkFollowing(currentUserRes.data.id, profileRes.data.id);
           setIsFollowing(followRes.data.isFollowing);
         }
       } catch (err) {
         setError('Failed to load profile.');
-        console.error("Error loading user or follow status", err);
-        if (err.response) {
-          console.error('Error response:', err.response);
-          if (err.response.status === 404) {
-            setError('Profile not found. The user may not exist or the name may be incorrect.');
-          }
+        if (err.response && err.response.status === 404) {
+          setError('Profile not found. The user may not exist or the name may be incorrect.');
         }
       } finally {
         setLoading(false);
       }
     };
     loadUser();
-  }, [profileUserId]);
+  }, [profileUserId, isAuthenticated]);
 
   const handleFollow = async () => {
     setIsFollowing(true);
     setButtonLoading(true);
     try {
       await followUser(currentUserId, profile.id);
+      const followerCountRes = await getFollowerCount(profile.id);
+      setFollowerCount(followerCountRes);
     } catch (err) {
       setIsFollowing(false);
       alert("Something went wrong, please try again.");
@@ -92,6 +103,8 @@ const UserProfilePage = () => {
     setButtonLoading(true);
     try {
       await unfollowUser(currentUserId, profile.id);
+      const followerCountRes = await getFollowerCount(profile.id);
+      setFollowerCount(followerCountRes);
     } catch (err) {
       setIsFollowing(true);
       alert("Something went wrong, please try again.");
@@ -121,17 +134,31 @@ const UserProfilePage = () => {
 
   return (
     <div className="p-4 max-w-md mx-auto bg-white rounded-lg shadow-md mt-6">
-      <ProfileComponent
-        profile={profile}
-        currentUserId={currentUserId}
-        isFollowing={isFollowing}
-        buttonLoading={buttonLoading}
-        onFollow={handleFollow}
-        onUnfollow={handleUnfollow}
-        connections={followerCount}
-        achievements={0}
-        challengesCompleted={profile.challengesCompleted || 0}
-      />
+      {ProfileComponent === CoachProfile ? (
+        <CoachProfile
+          profile={profile}
+          currentUserId={currentUserId}
+          isFollowing={isFollowing}
+          buttonLoading={buttonLoading}
+          onFollow={handleFollow}
+          onUnfollow={handleUnfollow}
+          connections={followerCount}
+          challengesUploaded={challengesCompleted}
+          achievements={0}
+        />
+      ) : (
+        <ProfileComponent
+          profile={profile}
+          currentUserId={currentUserId}
+          isFollowing={isFollowing}
+          buttonLoading={buttonLoading}
+          onFollow={handleFollow}
+          onUnfollow={handleUnfollow}
+          connections={followerCount}
+          achievements={0}
+          challengesCompleted={challengesCompleted}
+        />
+      )}
     </div>
   );
 };

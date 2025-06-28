@@ -11,22 +11,22 @@ import './TopNavBar.css';
 const TopNavBar = () => {
   const { isAuthenticated, user } = useAuthStore();
   const navigate = useNavigate();
-  const [notifCount, setNotifCount] = useState(0);
+  const [hasNotifications, setHasNotifications] = useState(false);
 
   useEffect(() => {
-    const fetchCount = async () => {
+    const fetchNotifications = async () => {
       if (!isAuthenticated) {
-        setNotifCount(0);
+        setHasNotifications(false);
         return;
       }
       try {
         const res = await getNotifications();
-        setNotifCount(Array.isArray(res.data) ? res.data.length : 0);
+        setHasNotifications(Array.isArray(res.data) && res.data.length > 0);
       } catch {
-        setNotifCount(0);
+        setHasNotifications(false);
       }
     };
-    fetchCount();
+    fetchNotifications();
   }, [isAuthenticated]);
 
   const handleProfileIconClick = () => {
@@ -39,6 +39,7 @@ const TopNavBar = () => {
 
   // --- NEW: Handlers for Notifications and Messages ---
   const handleNotificationsClick = () => {
+    setHasNotifications(false);
     navigate('/notifications');
   };
 
@@ -76,10 +77,8 @@ const TopNavBar = () => {
       <div className="top-nav-item action-icons-container">
         <button className="action-icon-button relative" aria-label="Notifications" onClick={handleNotificationsClick}>
           <IoNotificationsOutline size={24} color="#6b7280" />
-          {notifCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[20px] text-center" style={{fontSize: '0.75rem'}}>
-              {notifCount > 9 ? '9+' : notifCount}
-            </span>
+          {hasNotifications && (
+            <span className="absolute -top-1 -right-1 bg-red-500 rounded-full w-3 h-3"></span>
           )}
         </button>
         <button className="action-icon-button" aria-label="Messages" onClick={handleMessagesClick}>

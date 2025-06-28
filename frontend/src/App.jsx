@@ -57,11 +57,11 @@ function App() {
   useEffect(() => {
     // Added new pages to trulyPublicPages for modal logic
     const authRelatedPaths = ['/login', '/signup', '/reset-password'];
-    const trulyPublicPages = ['/events', '/profile', '/scout-dashboard', '/notifications', '/messages']; // <--- Added new pages here
-
+    const trulyPublicPages = ['/events', '/profile', '/scout-dashboard', '/notifications', '/messages'];
     const isAuthRelatedPath = authRelatedPaths.includes(location.pathname);
-    const isTrulyPublicPage = trulyPublicPages.includes(location.pathname);
-
+    // Allow /profile/:profileUserId as public (regex match)
+    const isProfileUserPage = /^\/profile\/[^/]+$/.test(location.pathname);
+    const isTrulyPublicPage = trulyPublicPages.includes(location.pathname) || isProfileUserPage;
     if (!isAuthenticated && !isAuthRelatedPath && !isTrulyPublicPage) {
       setShowModal(true);
     } else {
@@ -97,7 +97,7 @@ function App() {
         {/* These routes load only if authenticated, and are also wrapped by MainLayout. */}
         <Route element={<MainLayout />}>
             <Route path="/profile" element={<ProtectedRoute><UserProfilePage /></ProtectedRoute>} /> 
-            <Route path="/profile/:profileUserId" element={<ProtectedRoute><UserProfilePage /></ProtectedRoute>} /> 
+            <Route path="/profile/:profileUserId" element={<UserProfilePage />} /> 
             <Route path="/scout-dashboard" element={<RoleProtectedRoute allowedRoles={['Scout']}><ScoutDashboardPage /></RoleProtectedRoute>} /> 
             {/* --- NEW: Protected Notifications & Messages Routes --- */}
             <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} /> {/* <--- New Route */}

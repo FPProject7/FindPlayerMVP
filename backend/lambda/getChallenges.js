@@ -6,10 +6,13 @@ exports.handler = async (event) => {
   const groups = claims?.["cognito:groups"] || [];
   const customRole = claims?.["custom:role"] || "";
 
-  if (!groups.includes("athletes") && customRole !== "athlete") {
+  // Accept athleteId as a query parameter
+  const athleteId = event.queryStringParameters?.athleteId;
+
+  if (!groups.includes("athletes") && customRole !== "athlete" && !athleteId) {
     return {
       statusCode: 403,
-      body: JSON.stringify({ message: "Forbidden: Only athletes can fetch challenges" })
+      body: JSON.stringify({ message: "Forbidden: Only athletes can fetch challenges or athleteId must be provided" })
     };
   }
 
@@ -23,8 +26,19 @@ exports.handler = async (event) => {
 
   try {
     await client.connect();
-    
-    // Fetch challenges and join with users for coach info
+    let result;
+    if (athleteId) {
+      // Fetch all challenges the athlete has submitted to
+      const query = `
+        SELECT DISTINCT c.*, s.status AS submission_status, s.id AS submission_id, s.submitted_at
+        FROM challenges c
+        JOIN challenge_submissions s ON s.challenge_id = c.id
+        WHERE s.athlete_id = $1
+        ORDER BY s.submitted_at DESC
+      `;
+      result = await client.query(query, [athleteId]);
+    } else {
+      // Original: fetch all available challenges
     const query = `
       SELECT 
         c.id, c.title, c.description, c.xp_value, c.created_at, c.coach_id,
@@ -34,7 +48,8 @@ exports.handler = async (event) => {
       LEFT JOIN users u ON c.coach_id = u.id::varchar
       ORDER BY c.created_at DESC
     `;
-    const result = await client.query(query);
+      result = await client.query(query);
+    }
     await client.end();
 
     return {

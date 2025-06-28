@@ -4,13 +4,12 @@ import ProfilePostsTab from './ProfilePostsTab';
 import ProfileChallengesTab from './ProfileChallengesTab';
 import ProfileLikesTab from './ProfileLikesTab';
 
-const TABS = [
-  { key: 'posts', label: 'Posts' },
-  { key: 'challenges', label: 'Challenges' },
-  { key: 'likes', label: 'Likes' },
-];
-
-const ProfileTabs = ({ profile }) => {
+const ProfileTabs = ({ profile, isOwnProfile }) => {
+  const TABS = [
+    { key: 'posts', label: 'Posts' },
+    { key: 'challenges', label: 'Challenges' },
+    ...(isOwnProfile ? [{ key: 'likes', label: 'Likes' }] : []),
+  ];
   const [activeTab, setActiveTab] = useState('posts');
 
   return (
@@ -29,7 +28,7 @@ const ProfileTabs = ({ profile }) => {
       <div>
         {activeTab === 'posts' && <ProfilePostsTab profile={profile} />}
         {activeTab === 'challenges' && <ProfileChallengesTab profile={profile} />}
-        {activeTab === 'likes' && <ProfileLikesTab profile={profile} />}
+        {activeTab === 'likes' && isOwnProfile && <ProfileLikesTab profile={profile} />}
       </div>
     </div>
   );
