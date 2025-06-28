@@ -1,0 +1,136 @@
+// @ts-nocheck
+const { Client } = require('pg');
+
+// Helper function to convert height string to inches
+function heightToInches(heightStr) {
+  if (!heightStr) return null;
+  
+  // Handle format like "6'2" or "5'10"
+  const match = heightStr.match(/(\d+)'(\d+)"/);
+  if (match) {
+    const feet = parseInt(match[1], 10);
+    const inches = parseInt(match[2], 10);
+    return feet * 12 + inches;
+  }
+  
+  // Handle format like "74" (already in inches)
+  const inchesOnly = parseInt(heightStr, 10);
+  if (!isNaN(inchesOnly)) {
+    return inchesOnly;
+  }
+  
+  return null;
+}
+
+exports.handler = async (event) => {
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token',
+        'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+        'Access-Control-Max-Age': '86400'
+      },
+      body: ''
+    };
+  }
+
+  try {
+    const query = event.queryStringParameters || {};
+    const heightMin = parseInt(query.heightMin, 10);
+    const heightMax = parseInt(query.heightMax, 10);
+    const country = query.country;
+    const sport = query.sport;
+    const position = query.position;
+    const limit = parseInt(query.limit || '20', 10);
+    const offset = parseInt(query.offset || '0', 10);
+
+    const client = new Client({
+      host: process.env.DB_HOST,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
+      ssl: { rejectUnauthorized: false }
+    });
+
+    await client.connect();
+
+    /** @type {string[]} */
+    const whereConditions = [];
+    /** @type {any[]} */
+    const queryParams = [];
+    let paramCount = 1;
+
+    if (!isNaN(heightMin)) {
+      whereConditions.push(`CAST(height AS INTEGER) >= $${paramCount}`);
+      queryParams.push(heightMin);
+      paramCount++;
+    }
+
+    if (!isNaN(heightMax)) {
+      whereConditions.push(`CAST(height AS INTEGER) <= $${paramCount}`);
+      queryParams.push(heightMax);
+      paramCount++;
+    }
+
+    if (country) {
+      whereConditions.push(`country ILIKE $${paramCount}`);
+      queryParams.push(`%${country}%`);
+      paramCount++;
+    }
+
+    if (sport) {
+      whereConditions.push(`sport ILIKE $${paramCount}`);
+      queryParams.push(`%${sport}%`);
+      paramCount++;
+    }
+
+    if (position) {
+      whereConditions.push(`position ILIKE $${paramCount}`);
+      queryParams.push(`%${position}%`);
+      paramCount++;
+    }
+
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
+    const leaderboardQuery = `
+      SELECT id, name, profile_picture_url AS "profilePictureUrl", xp_total AS "xpTotal", height, country, sport, position
+      FROM users
+      ${whereClause}
+      ORDER BY xp_total DESC
+      LIMIT $${paramCount}
+      OFFSET $${paramCount + 1}
+    `;
+
+    queryParams.push(limit, offset);
+
+    const result = await client.query(leaderboardQuery, queryParams);
+    await client.end();
+
+    return {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token',
+        'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS'
+      },
+      body: JSON.stringify({ users: result.rows })
+    };
+
+  } catch (err) {
+    console.error('Error in getLeaderboard:', err);
+    return {
+      statusCode: 500,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token',
+        'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS'
+      },
+      body: JSON.stringify({ 
+        message: 'Internal server error',
+        error: err.message 
+      })
+    };
+  }
+};

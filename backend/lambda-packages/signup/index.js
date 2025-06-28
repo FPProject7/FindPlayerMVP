@@ -30,7 +30,7 @@ export const handler = async (event) => {
     }
 
     // Destructure new profilePictureContentType
-    const { email, password, role, firstName, gender, sport, position, profilePictureBase64, profilePictureContentType } = body; // <--- New field
+    const { email, password, role, firstName, gender, sport, position, profilePictureBase64, profilePictureContentType, height } = body; // <--- New field
 
     if (!email || !password || !firstName || !role) {
         return {
@@ -140,7 +140,8 @@ export const handler = async (event) => {
             gender: gender,
             sport: sport,
             position: position,
-            profilePictureUrl: profilePictureUrl
+            profilePictureUrl: profilePictureUrl,
+            height: height
         };
 
         // --- Sync user to users table in PostgreSQL ---
@@ -155,20 +156,22 @@ export const handler = async (event) => {
                 const client = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
                 await client.connect();
                 await client.query(
-                    `INSERT INTO users (id, email, name, role, profile_picture_url)
-                     VALUES ($1, $2, $3, $4, $5)
+                    `INSERT INTO users (id, email, name, role, profile_picture_url, height)
+                     VALUES ($1, $2, $3, $4, $5, $6)
                      ON CONFLICT (id) DO UPDATE SET
                        email = EXCLUDED.email,
                        name = EXCLUDED.name,
                        role = EXCLUDED.role,
                        profile_picture_url = EXCLUDED.profile_picture_url,
+                       height = EXCLUDED.height,
                        updated_at = CURRENT_TIMESTAMP`,
                     [
                         cognitoSub,
                         email,
                         firstName,
                         role,
-                        profilePictureUrl
+                        profilePictureUrl,
+                        role && role.toLowerCase() === 'athlete' ? height : null
                     ]
                 );
                 await client.end();

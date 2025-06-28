@@ -35,10 +35,11 @@ const AthleteProfile = ({
         showShareButton={true}
       />
       {/* Height and Weight */}
-      {(height || weight) && (
+      {(height || weight || profile.country) && (
         <div className="flex flex-row justify-center gap-6 text-gray-500 text-sm mt-1">
           {height && <span>Height: {height}</span>}
           {weight && <span>Weight: {weight}</span>}
+          {profile.country && <span>Country: {profile.country}</span>}
         </div>
       )}
       {/* Stats Row */}

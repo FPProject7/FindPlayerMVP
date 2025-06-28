@@ -69,3 +69,18 @@ export const awardXP = (userId, challengeId, submissionId, points, earnedFor) =>
     earnedFor
   });
 };
+
+// Function to get leaderboard data
+export const getLeaderboard = (filters = {}) => {
+  const params = new URLSearchParams();
+  
+  if (filters.heightMin !== undefined) params.append('heightMin', filters.heightMin);
+  if (filters.heightMax !== undefined) params.append('heightMax', filters.heightMax);
+  if (filters.country) params.append('country', filters.country);
+  if (filters.sport) params.append('sport', filters.sport);
+  if (filters.position) params.append('position', filters.position);
+  if (filters.limit) params.append('limit', filters.limit);
+  if (filters.offset) params.append('offset', filters.offset);
+  
+  return userApiClient.get(`/leaderboard?${params.toString()}`);
+};

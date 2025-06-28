@@ -38,6 +38,11 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
         quote={quote}
         showShareButton={true}
       />
+      {profile.country && (
+        <div className="text-center text-gray-500 text-sm mb-2">
+          Country: {profile.country}
+        </div>
+      )}
       <div className="flex justify-around my-4">
         <div className="flex flex-col items-center">
           <span className="font-bold text-lg">{connections}</span>

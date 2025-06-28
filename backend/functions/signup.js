@@ -32,7 +32,7 @@ export const handler = async (event) => {
     }
 
     // Destructure new profilePictureContentType
-    const { email, password, role, firstName, gender, sport, position, profilePictureBase64, profilePictureContentType } = body;
+    const { email, password, role, firstName, gender, sport, position, height, country, profilePictureBase64, profilePictureContentType } = body;
 
     if (!email || !password || !firstName || !role) {
         return {
@@ -53,6 +53,14 @@ export const handler = async (event) => {
 
     if (role && role.toLowerCase() === 'athlete' && position) {
         userAttributes.push({ Name: "custom:position", Value: position });
+    }
+
+    if (role && role.toLowerCase() === 'athlete' && height) {
+        userAttributes.push({ Name: "custom:height", Value: height });
+    }
+
+    if (country) {
+        userAttributes.push({ Name: "custom:country", Value: country });
     }
 
     const signUpParams = {
@@ -159,20 +167,28 @@ export const handler = async (event) => {
                 const client = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
                 await client.connect();
                 await client.query(
-                    `INSERT INTO users (id, email, name, role, profile_picture_url)
-                     VALUES ($1, $2, $3, $4, $5)
+                    `INSERT INTO users (id, email, name, role, profile_picture_url, height, country, sport, position)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                      ON CONFLICT (id) DO UPDATE SET
                        email = EXCLUDED.email,
                        name = EXCLUDED.name,
                        role = EXCLUDED.role,
                        profile_picture_url = EXCLUDED.profile_picture_url,
+                       height = EXCLUDED.height,
+                       country = EXCLUDED.country,
+                       sport = EXCLUDED.sport,
+                       position = EXCLUDED.position,
                        updated_at = CURRENT_TIMESTAMP`,
                     [
                         cognitoSub,
                         email,
                         firstName,
                         role,
-                        profilePictureUrl
+                        profilePictureUrl,
+                        role && role.toLowerCase() === 'athlete' ? height : null,
+                        country,
+                        sport,
+                        position
                     ]
                 );
                 await client.end();
@@ -190,6 +206,8 @@ export const handler = async (event) => {
             gender: gender,
             sport: sport,
             position: position,
+            height: role && role.toLowerCase() === 'athlete' ? height : null,
+            country: country,
             profilePictureUrl: profilePictureUrl
         };
 

@@ -63,6 +63,7 @@ const ProfileHeader = ({ profile, currentUserId, isFollowing, buttonLoading, onF
         <div className="text-gray-500 text-base mb-1 w-full">
           {profile.sport && <span>{profile.sport}</span>}
           {profile.position && <span>, {profile.position}</span>}
+          {profile.country && <span>, {profile.country}</span>}
           {profile.age && <span>, {profile.age}</span>}
         </div>
         {quote && (
