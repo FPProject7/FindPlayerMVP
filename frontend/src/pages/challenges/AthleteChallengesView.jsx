@@ -8,59 +8,6 @@ import { fetchChallenges, completeChallengeSubmission } from '../../api/challeng
 import apiClient from '../../api/axiosConfig';
 import useUploadStore from '../../stores/useUploadStore';
 
-// --- Mock Data for Challenge List ---
-const MOCK_CHALLENGES = [
-  {
-    id: 'c1',
-    title: 'Sprint Challenge',
-    description: 'Run 100m in under 12 seconds.',
-    instructions: 'Record your sprint. Ensure clear start and finish lines.',
-    status: 'open',
-    imageUrl: 'https://picsum.photos/seed/sprint/150/150'
-  },
-  {
-    id: 'c2',
-    title: 'Vertical Jump Test',
-    description: 'Jump as high as you can to measure explosive power.',
-    instructions: 'Measure your standing reach. Jump and touch the highest point you can reach. Record your attempt.',
-    status: 'open',
-    imageUrl: 'https://picsum.photos/seed/jump/150/150'
-  },
-  {
-    id: 'c3',
-    title: 'Dribbling Drill',
-    description: 'Complete the cone dribbling course under 30 seconds.',
-    instructions: 'Set up 5 cones in a zigzag pattern. Dribble through them. Record the entire drill.',
-    status: 'open',
-    imageUrl: 'https://picsum.photos/seed/dribble/150/150'
-  },
-  {
-    id: 'c4',
-    title: 'Push-up Max',
-    description: 'Perform as many push-ups as possible with proper form.',
-    instructions: 'Keep your body straight. Lower until chest touches floor. Record full range of motion.',
-    status: 'open',
-    imageUrl: 'https://picsum.photos/seed/pushup/150/150'
-  },
-  {
-    id: 'c5',
-    title: 'Long Jump',
-    description: 'Measure your horizontal explosive power from a standing start.',
-    instructions: 'Stand behind a line. Jump forward as far as you can. Measure distance. Record attempt.',
-    status: 'open',
-    imageUrl: 'https://picsum.photos/seed/longjump/150/150'
-  },
-];
-
-// --- Mock Data for Specific Challenge Detail ---
-const MOCK_CHALLENGE_DETAILS = {
-  'c1': { id: 'c1', title: 'Sprint Challenge', description: 'This challenge tests your raw speed over a short distance. Focus on explosive power from the blocks or standing start. Develop muscle memory for efficient stride length and frequency. Improves overall acceleration and top speed.', instructions: '1. Find a flat, clear 100-meter space (track or open field). 2. Set up clear start and finish markers. 3. Use a reliable timer (e.g., a friend with a stopwatch). 4. Record your sprint from a side angle (hip to head visible) to show form and technique. 5. Upload the video. Max video length 30s. Ensure lighting is adequate and you are clearly visible.', imageUrl: 'https://picsum.photos/seed/sprint-detail/400/250' },
-  'c2': { id: 'c2', title: 'Vertical Jump Test', description: 'Measure your explosive leg power. A higher jump indicates greater athletic potential for quick movements, crucial in sports like basketball, volleyball, or high-jump.', instructions: '1. Stand next to a wall or measuring device, flat-footed. 2. Mark your standing reach with your arm fully extended overhead. 3. Jump vertically as high as you can, touching the highest point possible. 4. Record your jump from a side angle, ensuring both your standing reach and jump height are visible. 5. Upload the video. Max video length 15s. Take 3 attempts and submit your best.', imageUrl: 'https://picsum.photos/seed/jump-detail/400/250' },
-  'c3': { id: 'c3', title: 'Dribbling Drill', description: 'Evaluate your ball control and agility. Essential for changing direction quickly while maintaining possession, vital for players in team sports like basketball or soccer.', instructions: '1. Set up 5 cones 3 meters apart in a straight line or zigzag pattern. 2. Dribble the ball (football or basketball) through the cones as fast as possible, making sure not to touch any cones. 3. Record the drill from a high angle or from behind to clearly show the entire course. 4. Upload the video. Max video length 45s. Focus on tight control and quick turns.', imageUrl: 'https://picsum.photos/seed/dribble-detail/400/250' },
-  'c4': { id: 'c4', title: 'Push-up Max', description: 'Measure your explosive leg power. A higher jump indicates greater athletic potential for quick movements, crucial in sports like basketball, volleyball, or high-jump.', instructions: '1. Stand next to a wall or measuring device, flat-footed. 2. Mark your standing reach with your arm fully extended overhead. 3. Jump vertically as high as you can, touching the highest point possible. 4. Record your jump from a side angle, ensuring both your standing reach and jump height are visible. 5. Upload the video. Max video length 15s. Take 3 attempts and submit your best.', imageUrl: 'https://picsum.photos/seed/pushup-detail/400/250' },
-  'c5': { id: 'c5', title: 'Long Jump', description: 'Evaluate your ball control and agility. Essential for changing direction quickly while maintaining possession, vital for players in team sports like basketball or soccer.', instructions: '1. Set up 5 cones 3 meters apart in a straight line or zigzag pattern. 2. Dribble the ball (football or basketball) through the cones as fast as possible, making sure not to touch any cones. 3. Record the drill from a high angle or from behind to clearly show the entire course. 4. Upload the video. Max video length 45s. Focus on tight control and quick turns.', imageUrl: 'https://picsum.photos/seed/longjump-detail/400/250' },
-};
-
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
 const MAX_VIDEO_SIZE_BYTES = 50 * 1024 * 1024;
 
@@ -404,7 +351,6 @@ const AthleteChallengesView = () => {
               )}
 
               <p className="mb-3 text-gray-700"><strong>Description:</strong> {selectedChallenge.description}</p>
-              <p className="mb-5 text-gray-700"><strong>Instructions:</strong> {selectedChallenge.instructions}</p>
 
               {/* Coach Information in Detail View */}
               {selectedChallenge.coach_name && (
