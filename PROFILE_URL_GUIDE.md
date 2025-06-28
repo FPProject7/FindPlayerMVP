@@ -2,24 +2,26 @@
 
 ## Overview
 
-The profile URL system allows users to visit profiles using either a user ID or a name. The system is designed to be flexible and handle various name formats.
+The profile URL system allows users to visit profiles using role-based URLs. Each user type (Athlete, Coach, Scout) has a unique URL structure that includes their role.
 
 ## URL Format
 
 ```
-http://localhost:5173/profile/<name>
+http://localhost:5173/profile/<role>/<name>
 ```
 
-Where `<name>` can be:
-- A user's name (e.g., "John Doe")
-- A user ID (UUID format)
-- Various name formats (see examples below)
+Where:
+- `<role>` is one of: `athlete`, `coach`, or `scout`
+- `<name>` can be:
+  - A user's name (e.g., "John Doe")
+  - A user ID (UUID format)
+  - Various name formats (see examples below)
 
 ## How It Works
 
 ### 1. Frontend Processing
-- The frontend receives the URL parameter and decodes it using `decodeURIComponent`
-- It checks if the parameter is a UUID (user ID) or a name
+- The frontend receives the URL parameters (role and name) and decodes the name using `decodeURIComponent`
+- It checks if the name parameter is a UUID (user ID) or a name
 - If it's a UUID, it queries by user ID
 - If it's a name, it queries by username
 
@@ -42,24 +44,33 @@ The `getInfoUser.js` Lambda function handles name-based queries with the followi
 
 ### Input Names and Their Normalized Forms
 
-| Input | Normalized | URL |
-|-------|------------|-----|
-| "John Doe" | "john doe" | `/profile/john%20doe` |
-| "john-doe" | "john doe" | `/profile/john%20doe` |
-| "john_doe" | "john doe" | `/profile/john%20doe` |
-| "JOHN DOE" | "john doe" | `/profile/john%20doe` |
-| "JohnDoe" | "johndoe" | `/profile/johndoe` |
-| "john   doe" | "john doe" | `/profile/john%20doe` |
+| Input | Role | Normalized | URL |
+|-------|------|------------|-----|
+| "John Doe" | athlete | "john doe" | `/profile/athlete/john%20doe` |
+| "Jane Smith" | coach | "jane smith" | `/profile/coach/jane%20smith` |
+| "Bob Wilson" | scout | "bob wilson" | `/profile/scout/bob%20wilson` |
+| "john-doe" | athlete | "john doe" | `/profile/athlete/john%20doe` |
+| "jane_smith" | coach | "jane smith" | `/profile/coach/jane%20smith` |
+| "JOHN DOE" | athlete | "john doe" | `/profile/athlete/john%20doe` |
+| "JohnDoe" | athlete | "johndoe" | `/profile/athlete/johndoe` |
+| "john   doe" | athlete | "john doe" | `/profile/athlete/john%20doe` |
 
 ### Database Query Examples
 
-The Lambda function will find a user with name "John Doe" using any of these inputs:
-- "John Doe"
-- "john doe"
-- "johndoe"
-- "john-doe"
-- "john_doe"
-- "JOHN DOE"
+The Lambda function will find a user with name "John Doe" and role "athlete" using any of these inputs:
+- "John Doe" → `/profile/athlete/john%20doe`
+- "john doe" → `/profile/athlete/john%20doe`
+- "johndoe" → `/profile/athlete/johndoe`
+- "john-doe" → `/profile/athlete/john%20doe`
+- "john_doe" → `/profile/athlete/john%20doe`
+- "JOHN DOE" → `/profile/athlete/john%20doe`
+
+## Role-Based URL Benefits
+
+1. **Clear User Type Identification**: URLs immediately indicate what type of user profile is being viewed
+2. **SEO Benefits**: Search engines can better understand the content structure
+3. **User Experience**: Users can easily identify and share role-specific profiles
+4. **Scalability**: Future role additions can be easily accommodated
 
 ## Testing
 

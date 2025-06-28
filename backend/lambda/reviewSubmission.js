@@ -171,6 +171,21 @@ exports.handler = async (event) => {
     // Wait for all XP calls to finish (but don't block main logic on error)
     await Promise.all(xpCalls);
 
+    // --- Notification for athlete ---
+    // Insert notification for athlete about review
+    await client.query(
+      `INSERT INTO notifications (type, from_user_id, to_user_id, challenge_id, submission_id, review_result, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+      [
+        'challenge_review',
+        coachId,
+        submission.athlete_id,
+        submission.challenge_id,
+        submissionId,
+        action // 'approve' or 'deny'
+      ]
+    );
+
     await client.end();
     return buildResponse(200, updatedSubmission);
 

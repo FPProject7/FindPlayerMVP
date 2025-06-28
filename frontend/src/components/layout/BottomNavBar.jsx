@@ -6,13 +6,14 @@ import {
     IoHomeOutline, IoHome, 
     IoPodiumOutline, IoPodium, 
     IoCalendarOutline, IoCalendar,
-    IoSearchOutline, IoSearch // <--- CHANGED: Magnifying glass icons for Scout Dashboard
+    IoSearchOutline, IoSearch
 } from 'react-icons/io5'; 
 import { LiaClipboardCheckSolid, LiaClipboardSolid } from "react-icons/lia";
 import { FaPlus } from 'react-icons/fa';
 import { useAuthStore } from '../../stores/useAuthStore';
 
 import navBackground from '../../assets/nav-bg-responsive.svg';
+import scoutDashboardIcon from '../../assets/scout-dashboard-icon.png';
 
 const BottomNavBar = () => {
     const { user, isAuthenticated } = useAuthStore();
@@ -27,8 +28,7 @@ const BottomNavBar = () => {
         { to: "/", icon: <IoHomeOutline size={28} />, activeIcon: <IoHome size={28} />, label: 'Home' },
         
         userRole?.toLowerCase() === 'scout' ? 
-            // CHANGED: Use magnifying glass icons here
-            { to: "/scout-dashboard", icon: <IoSearchOutline size={28} />, activeIcon: <IoSearch size={28} />, label: 'Dashboard' } : 
+            { to: "/scout-dashboard", icon: <img src={scoutDashboardIcon} alt="Scout Dashboard" width={34} height={34} style={{ display: 'block', filter: 'brightness(0) saturate(100%) invert(41%) sepia(6%) saturate(0%) hue-rotate(169deg) brightness(92%) contrast(86%)' }} />, activeIcon: <img src={scoutDashboardIcon} alt="Scout Dashboard" width={34} height={34} style={{ display: 'block', filter: 'invert(17%) sepia(97%) saturate(7492%) hue-rotate(359deg) brightness(70%) contrast(120%)' }} />, label: 'Dashboard' } : 
             { to: "/challenges", icon: <LiaClipboardCheckSolid size={30} />, activeIcon: <LiaClipboardSolid size={30} />, label: 'Challenges', isChallenge: true },
         
         { to: "/upload", icon: <FaPlus size={24} />, label: 'Add', isCenter: true },
@@ -37,7 +37,6 @@ const BottomNavBar = () => {
 
         { to: "/events", icon: <IoCalendarOutline size={28} />, activeIcon: <IoCalendar size={28} />, label: 'Events' },
     ];
-
 
     const navLinkStyle = ({ isActive }) => {
         return {

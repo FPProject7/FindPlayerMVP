@@ -19,8 +19,8 @@ const ProfileHeader = ({ profile, currentUserId, isFollowing, buttonLoading, onF
   const [showToast, setShowToast] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const handleShare = async () => {
-    // Use the name-based profile URL per PROFILE_URL_GUIDE.md
-    const url = window.location.origin + createProfileUrl(profile.name);
+    const url = window.location.origin + createProfileUrl(profile.name, profile.role);
+
     // Try Web Share API first (mobile)
     if (navigator.share) {
       try {
@@ -30,16 +30,52 @@ const ProfileHeader = ({ profile, currentUserId, isFollowing, buttonLoading, onF
         setTimeout(() => setShowToast(false), 1500);
         return;
       } catch (e) {
-        // Fallback to clipboard
+        console.log('Web Share API failed:', e);
       }
     }
-    // Fallback: copy to clipboard
+
+    // Try modern clipboard API
+    let copied = false;
     try {
       await navigator.clipboard.writeText(url);
+      copied = true;
       setToastMsg('Copied to clipboard');
       setShowToast(true);
       setTimeout(() => setShowToast(false), 1500);
+      return;
     } catch (e) {
+      console.error('Modern clipboard API failed:', e);
+    }
+
+    // Try legacy fallback
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = url;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textArea);
+
+      if (successful) {
+        copied = true;
+        setToastMsg('Copied to clipboard');
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 1500);
+        return;
+      } else {
+        console.error('Legacy execCommand copy failed: execCommand returned false');
+      }
+    } catch (e) {
+      console.error('Legacy execCommand copy failed:', e);
+    }
+
+    // If all methods fail
+    if (!copied) {
       setToastMsg('Failed to copy');
       setShowToast(true);
       setTimeout(() => setShowToast(false), 1500);
