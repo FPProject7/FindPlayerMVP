@@ -12,6 +12,6 @@
   "description": "",
   "dependencies": {
     "aws-sdk": "^2.1692.0",
-    "pg": "^8.11.3"
+    "pg": "^8.16.3"
   }
 }

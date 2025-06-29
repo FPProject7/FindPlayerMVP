@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { createPost } from '../../api/postApi';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { createPortal } from 'react-dom';
 
 const CreatePostModal = ({ isOpen, onClose, onPostCreated }) => {
   const [content, setContent] = useState('');
@@ -105,7 +106,7 @@ const CreatePostModal = ({ isOpen, onClose, onPostCreated }) => {
 
   if (!isOpen) return null;
 
-  return (
+  const modalContent = (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
@@ -148,7 +149,7 @@ const CreatePostModal = ({ isOpen, onClose, onPostCreated }) => {
               type="file"
               accept="image/*"
               onChange={handleImageChange}
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-[#dc2626] file:hover:bg-[#b91c1c] file:text-white"
               disabled={isLoading}
             />
             <p className="text-xs text-gray-500 mt-1">
@@ -198,14 +199,14 @@ const CreatePostModal = ({ isOpen, onClose, onPostCreated }) => {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+              className="border-2 border-red-500 text-red-600 bg-white rounded-full font-bold px-6 py-2 hover:bg-red-50 transition-colors duration-200"
               disabled={isLoading}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
+              className="bg-[#dc2626] hover:bg-[#b91c1c] text-white rounded-full font-bold px-6 py-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isLoading || !content.trim()}
             >
               {isLoading ? 'Posting...' : 'Post'}
@@ -215,6 +216,8 @@ const CreatePostModal = ({ isOpen, onClose, onPostCreated }) => {
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
 
 export default CreatePostModal; 

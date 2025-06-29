@@ -10,6 +10,7 @@ import ChallengeLoader from '../components/common/ChallengeLoader';
 
 const PULL_THRESHOLD = 80;
 const MAX_PULL_DISTANCE = 120;
+const POSTS_PER_PAGE = 10;
 
 const HomePage = () => {
   const [posts, setPosts] = useState([]);
@@ -32,13 +33,13 @@ const HomePage = () => {
 
     try {
       const currentOffset = reset ? 0 : offset;
-      const response = await getFeed(user.id, 20, currentOffset);
+      const response = await getFeed(user.id, POSTS_PER_PAGE, currentOffset);
       
       if (response.status === 200) {
         const newPosts = response.data.posts;
         setPosts(prev => reset ? newPosts : [...prev, ...newPosts]);
         setHasMore(response.data.hasMore);
-        setOffset(reset ? 20 : currentOffset + 20);
+        setOffset(reset ? POSTS_PER_PAGE : currentOffset + POSTS_PER_PAGE);
       }
     } catch (err) {
       console.error('Error loading feed:', err);
@@ -198,6 +199,18 @@ const HomePage = () => {
           </div>
         )}
       </div>
+
+      {/* Load More Button */}
+      {hasMore && !isLoading && (
+        <div className="flex justify-center my-6">
+          <button
+            onClick={handleLoadMore}
+            className="bg-[#dc2626] hover:bg-[#b91c1c] text-white rounded-full font-bold px-8 py-2 transition-colors duration-200"
+          >
+            Load More
+          </button>
+        </div>
+      )}
 
       {/* Create Post Modal */}
       <CreatePostModal

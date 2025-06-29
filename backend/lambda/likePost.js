@@ -40,6 +40,10 @@ exports.handler = async (event) => {
 
     await client.connect();
 
+    // Get post owner
+    const postOwnerRes = await client.query('SELECT user_id FROM posts WHERE id = $1', [postId]);
+    const postOwnerId = postOwnerRes.rows[0]?.user_id;
+
     // Check if user already liked the post
     const existingLike = await client.query(
       'SELECT id FROM post_likes WHERE post_id = $1 AND user_id = $2',
@@ -51,6 +55,11 @@ exports.handler = async (event) => {
       await client.query(
         'DELETE FROM post_likes WHERE post_id = $1 AND user_id = $2',
         [postId, userId]
+      );
+      // Remove like notification if it exists
+      await client.query(
+        `DELETE FROM notifications WHERE type = 'like_post' AND from_user_id = $1 AND to_user_id = $2`,
+        [userId, postOwnerId]
       );
       
       const newLikesCount = await client.query(
@@ -79,6 +88,20 @@ exports.handler = async (event) => {
         'INSERT INTO post_likes (post_id, user_id) VALUES ($1, $2)',
         [postId, userId]
       );
+      // Add notification if not already exists and not liking own post
+      if (userId !== postOwnerId) {
+        const notifCheck = await client.query(
+          `SELECT 1 FROM notifications WHERE type = 'like_post' AND from_user_id = $1 AND to_user_id = $2`,
+          [userId, postOwnerId]
+        );
+        if (notifCheck.rowCount === 0) {
+          await client.query(
+            `INSERT INTO notifications (type, from_user_id, to_user_id, created_at)
+             VALUES ($1, $2, $3, NOW())`,
+            ['like_post', userId, postOwnerId]
+          );
+        }
+      }
       
       const newLikesCount = await client.query(
         'SELECT COUNT(*) as count FROM post_likes WHERE post_id = $1',

@@ -44,7 +44,23 @@ export const likePost = (userId, postId) => {
 
 // Get posts by a specific user
 export const getUserPosts = (userId, limit = 20, offset = 0) => {
-  return postApiClient.get('/get-user-posts', {
-    params: { userId, limit, offset }
+  return postApiClient.get('/get-feed', {
+    params: { userId, limit, offset, onlyOwn: true }
+  });
+};
+
+// Add comment to a post
+export const addComment = (userId, postId, content) => {
+  return postApiClient.post('/comment-post', {
+    userId,
+    postId,
+    content
+  });
+};
+
+// Get comments for a specific post
+export const getComments = (postId, limit = 50, offset = 0) => {
+  return postApiClient.get('/get-comments', {
+    params: { postId, limit, offset }
   });
 }; 

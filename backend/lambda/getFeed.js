@@ -18,6 +18,7 @@ exports.handler = async (event) => {
     const userId = event.queryStringParameters?.userId;
     const limit = parseInt(event.queryStringParameters?.limit || '20', 10);
     const offset = parseInt(event.queryStringParameters?.offset || '0', 10);
+    const onlyOwn = event.queryStringParameters?.onlyOwn === 'true';
 
     if (!userId) {
       return {
@@ -42,29 +43,51 @@ exports.handler = async (event) => {
     await client.connect();
 
     // Get posts from users that the current user follows, plus their own posts
-    const feedQuery = `
-      SELECT 
-        p.id,
-        p.user_id,
-        p.content,
-        p.image_url,
-        p.created_at,
-        u.name as user_name,
-        u.profile_picture_url as user_profile_picture,
-        COUNT(DISTINCT pl.id) as likes_count,
-        COUNT(DISTINCT pc.id) as comments_count,
-        EXISTS(SELECT 1 FROM post_likes WHERE post_id = p.id AND user_id = $1) as is_liked
-      FROM posts p
-      INNER JOIN users u ON p.user_id = u.id
-      LEFT JOIN post_likes pl ON p.id = pl.post_id
-      LEFT JOIN post_comments pc ON p.id = pc.post_id
-      WHERE p.user_id = $1 OR p.user_id IN (
-        SELECT following_id FROM followers WHERE follower_id = $1
-      )
-      GROUP BY p.id, p.user_id, p.content, p.image_url, p.created_at, u.name, u.profile_picture_url
-      ORDER BY p.created_at DESC
-      LIMIT $2 OFFSET $3
-    `;
+    const feedQuery = onlyOwn
+      ? `
+        SELECT 
+          p.id,
+          p.user_id,
+          p.content,
+          p.image_url,
+          p.created_at,
+          u.name as user_name,
+          u.profile_picture_url as user_profile_picture,
+          COUNT(DISTINCT pl.id) as likes_count,
+          COUNT(DISTINCT pc.id) as comments_count,
+          EXISTS(SELECT 1 FROM post_likes WHERE post_id = p.id AND user_id = $1) as is_liked
+        FROM posts p
+        INNER JOIN users u ON p.user_id = u.id
+        LEFT JOIN post_likes pl ON p.id = pl.post_id
+        LEFT JOIN post_comments pc ON p.id = pc.post_id
+        WHERE p.user_id = $1
+        GROUP BY p.id, p.user_id, p.content, p.image_url, p.created_at, u.name, u.profile_picture_url
+        ORDER BY p.created_at DESC
+        LIMIT $2 OFFSET $3
+      `
+      : `
+        SELECT 
+          p.id,
+          p.user_id,
+          p.content,
+          p.image_url,
+          p.created_at,
+          u.name as user_name,
+          u.profile_picture_url as user_profile_picture,
+          COUNT(DISTINCT pl.id) as likes_count,
+          COUNT(DISTINCT pc.id) as comments_count,
+          EXISTS(SELECT 1 FROM post_likes WHERE post_id = p.id AND user_id = $1) as is_liked
+        FROM posts p
+        INNER JOIN users u ON p.user_id = u.id
+        LEFT JOIN post_likes pl ON p.id = pl.post_id
+        LEFT JOIN post_comments pc ON p.id = pc.post_id
+        WHERE p.user_id = $1 OR p.user_id IN (
+          SELECT following_id FROM followers WHERE follower_id = $1
+        )
+        GROUP BY p.id, p.user_id, p.content, p.image_url, p.created_at, u.name, u.profile_picture_url
+        ORDER BY p.created_at DESC
+        LIMIT $2 OFFSET $3
+      `;
 
     const result = await client.query(feedQuery, [userId, limit, offset]);
     
