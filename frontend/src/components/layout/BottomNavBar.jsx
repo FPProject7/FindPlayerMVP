@@ -11,12 +11,14 @@ import {
 import { LiaClipboardCheckSolid, LiaClipboardSolid } from "react-icons/lia";
 import { FaPlus } from 'react-icons/fa';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { useCreatePostStore } from '../../stores/useCreatePostStore';
 
 import navBackground from '../../assets/nav-bg-responsive.svg';
 import scoutDashboardIcon from '../../assets/scout-dashboard-icon.png';
 
 const BottomNavBar = () => {
     const { user, isAuthenticated } = useAuthStore();
+    const { openCreateModal } = useCreatePostStore();
     const userRole = isAuthenticated && user ? user.role : null; 
     const navigate = useNavigate();
 
@@ -31,7 +33,7 @@ const BottomNavBar = () => {
             { to: "/scout-dashboard", icon: <img src={scoutDashboardIcon} alt="Scout Dashboard" width={34} height={34} style={{ display: 'block', filter: 'brightness(0) saturate(100%) invert(41%) sepia(6%) saturate(0%) hue-rotate(169deg) brightness(92%) contrast(86%)' }} />, activeIcon: <img src={scoutDashboardIcon} alt="Scout Dashboard" width={34} height={34} style={{ display: 'block', filter: 'invert(17%) sepia(97%) saturate(7492%) hue-rotate(359deg) brightness(70%) contrast(120%)' }} />, label: 'Dashboard' } : 
             { to: "/challenges", icon: <LiaClipboardCheckSolid size={30} />, activeIcon: <LiaClipboardSolid size={30} />, label: 'Challenges', isChallenge: true },
         
-        { to: "/upload", icon: <FaPlus size={24} />, label: 'Add', isCenter: true },
+        { icon: <FaPlus size={24} />, label: 'Add', isCenter: true, isCreatePost: true },
 
         { to: "/leaderboard", icon: <IoPodiumOutline size={28} />, activeIcon: <IoPodium size={28} />, label: 'Leaderboard' },
 
@@ -48,6 +50,18 @@ const BottomNavBar = () => {
         <nav className="nav-container" style={navContainerStyle}>
             {navItems.map((item, index) => {
                 if (item.isCenter) {
+                    if (item.isCreatePost) {
+                        return (
+                            <button
+                                key={index}
+                                onClick={openCreateModal}
+                                className="nav-center-button"
+                                aria-label={item.label}
+                            >
+                                {item.icon}
+                            </button>
+                        );
+                    }
                     return (
                         <NavLink key={index} to={item.to} className="nav-center-button" aria-label={item.label}>
                             {item.icon}

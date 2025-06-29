@@ -5,8 +5,11 @@ import { Outlet } from 'react-router-dom';
 import BottomNavBar from './BottomNavBar';
 import TopNavBar from './TopNavBar'; // <--- Import TopNavBar
 import './Layout.css';
+import { useCreatePostStore } from '../../stores/useCreatePostStore';
+import CreatePostModal from '../feed/CreatePostModal';
 
 const MainLayout = () => {
+  const { isCreateModalOpen, closeCreateModal } = useCreatePostStore();
   return (
     <div className="main-layout">
       <TopNavBar /> {/* <--- Render the new TopNavBar here */}
@@ -18,6 +21,7 @@ const MainLayout = () => {
       <footer className="nav-wrapper">
         <BottomNavBar />
       </footer>
+      <CreatePostModal isOpen={isCreateModalOpen} onClose={closeCreateModal} onPostCreated={() => {}} />
     </div>
   );
 };

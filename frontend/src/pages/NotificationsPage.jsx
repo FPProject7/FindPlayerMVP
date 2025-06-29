@@ -202,8 +202,14 @@ const NotificationsPage = () => {
               message = notif.reviewResult === 'approve'
                 ? 'Your challenge submission was approved.'
                 : 'Your challenge submission was denied.';
+            } else if (notif.type === 'like_post') {
+              message = 'Liked your post.';
+            } else if (notif.type === 'comment_post') {
+              message = 'Commented on your post.';
+            } else if (notif.type === 'follow') {
+              message = 'Started following you.';
             } else {
-              message = 'started following you';
+              message = 'Interacted with your content.';
             }
             return (
               <div key={notif.id} className="flex items-center bg-white rounded-lg shadow p-4">
