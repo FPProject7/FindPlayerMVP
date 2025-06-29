@@ -104,6 +104,7 @@ export const getLeaderboard = (filters = {}) => {
   if (filters.sortOrder) params.append('sortOrder', filters.sortOrder);
   if (filters.limit) params.append('limit', filters.limit);
   if (filters.offset) params.append('offset', filters.offset);
+  if (filters.role) params.append('role', filters.role);
   
   return userApiClient.get(`/leaderboard?${params.toString()}`);
 };

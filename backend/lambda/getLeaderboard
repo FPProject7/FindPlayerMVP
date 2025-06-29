@@ -38,6 +38,9 @@ exports.handler = async (event) => {
 
   try {
     const query = event.queryStringParameters || {};
+    console.log('Leaderboard API - Incoming query params:', query);
+    console.log('Leaderboard API - Role parameter:', query.role);
+    const role = query.role;
     const heightMin = parseInt(query.heightMin, 10);
     const heightMax = parseInt(query.heightMax, 10);
     const country = query.country;
@@ -69,6 +72,7 @@ exports.handler = async (event) => {
 
     // Time-based filtering
     let timeFilter = '';
+    let timeFilterParams = [];
     if (timeFrame !== 'all') {
       const now = new Date();
       let startDate;
@@ -92,7 +96,7 @@ exports.handler = async (event) => {
       
       if (startDate) {
         timeFilter = `AND cs.submitted_at >= $${paramCount}`;
-        queryParams.push(startDate.toISOString());
+        timeFilterParams.push(startDate.toISOString());
         paramCount++;
       }
     }
@@ -148,67 +152,30 @@ exports.handler = async (event) => {
       }
     }
 
+    // Role filtering
+    if (role) {
+      whereConditions.push(`LOWER(u.role) = LOWER($${paramCount})`);
+      queryParams.push(role);
+      paramCount++;
+      console.log('Leaderboard API - Added role filter for:', role);
+    } else {
+      // Default: only athletes or null (legacy behavior)
+      whereConditions.push(`(u.role = 'athlete' OR u.role IS NULL)`);
+      console.log('Leaderboard API - Added default athlete filter');
+    }
+
     // Validate sortBy parameter
-    const validSortFields = ['xpTotal', 'height', 'challengesSubmitted', 'coachApprovals', 'name'];
+    const validSortFields = ['xpTotal', 'height', 'challengesSubmitted', 'coachApprovals', 'challengesCreated', 'challengesApproved', 'name'];
     const sortField = validSortFields.includes(sortBy) ? sortBy : 'xpTotal';
     const validSortOrders = ['ASC', 'DESC'];
     const orderDirection = validSortOrders.includes(sortOrder.toUpperCase()) ? sortOrder.toUpperCase() : 'DESC';
 
-    // Build the base query without complex sorting first
-    let leaderboardQuery = `
-      SELECT 
-        u.id, 
-        u.name, 
-        u.profile_picture_url AS "profilePictureUrl", 
-        u.xp_total AS "xpTotal", 
-        u.height, 
-        u.weight, 
-        u.country, 
-        u.sport, 
-        u.position, 
-        u.date_of_birth AS "dateOfBirth",
-        u.role,
-        COALESCE(COUNT(cs.id), 0) AS "challengesSubmitted",
-        COALESCE(COUNT(CASE WHEN cs.status = 'approved' THEN cs.id END), 0) AS "coachApprovals"
-      FROM users u
-      LEFT JOIN challenge_submissions cs ON u.id = cs.athlete_id ${timeFilter}
-      WHERE (u.role = 'athlete' OR u.role IS NULL)
-      ${whereConditions.length > 0 ? `AND ${whereConditions.join(' AND ')}` : ''}
-      GROUP BY u.id, u.name, u.profile_picture_url, u.xp_total, u.height, u.weight, u.country, u.sport, u.position, u.date_of_birth, u.role
-    `;
-
-    // Add sorting based on field type
-    if (sortField === 'challengesSubmitted') {
-      leaderboardQuery += ` ORDER BY COUNT(cs.id) ${orderDirection}`;
-    } else if (sortField === 'coachApprovals') {
-      leaderboardQuery += ` ORDER BY COUNT(CASE WHEN cs.status = 'approved' THEN cs.id END) ${orderDirection}`;
-    } else if (sortField === 'xpTotal') {
-      leaderboardQuery += ` ORDER BY u.xp_total ${orderDirection}`;
-    } else if (sortField === 'height') {
-      leaderboardQuery += ` ORDER BY CAST(u.height AS INTEGER) ${orderDirection}`;
-    } else {
-      leaderboardQuery += ` ORDER BY u.name ${orderDirection}`;
-    }
-
-    leaderboardQuery += ` LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
-
-    console.log('Generated SQL Query:', leaderboardQuery);
-    console.log('Query parameters:', queryParams);
-    console.log('Parameter count:', paramCount);
-
-    queryParams.push(limit, offset);
-
-    let result;
-    try {
-      result = await client.query(leaderboardQuery, queryParams);
-      console.log('Leaderboard query executed successfully');
-      console.log('Result count:', result.rows.length);
-    } catch (dbError) {
-      console.error('Database query error:', dbError);
-      console.error('SQL Query that failed:', leaderboardQuery);
-      
-      // Try a simpler fallback query
-      const fallbackQuery = `
+    // Build the base query with role-specific joins
+    let leaderboardQuery;
+    
+    if (role === 'coach') {
+      // Query for coaches - include challenges created and challenges approved
+      leaderboardQuery = `
         SELECT 
           u.id, 
           u.name, 
@@ -222,15 +189,164 @@ exports.handler = async (event) => {
           u.date_of_birth AS "dateOfBirth",
           u.role,
           0 AS "challengesSubmitted",
-          0 AS "coachApprovals"
+          0 AS "coachApprovals",
+          COALESCE(challenges_created.count, 0) AS "challengesCreated",
+          COALESCE(challenges_approved.count, 0) AS "challengesApproved"
         FROM users u
-        WHERE (u.role = 'athlete' OR u.role IS NULL)
-        ORDER BY u.xp_total DESC
-        LIMIT 20
+        LEFT JOIN (
+          SELECT coach_id, COUNT(*) AS count
+          FROM challenges
+          GROUP BY coach_id
+        ) AS challenges_created ON u.id::text = challenges_created.coach_id
+        LEFT JOIN (
+          SELECT c.coach_id, COUNT(*) AS count
+          FROM challenges c
+          JOIN challenge_submissions cs ON c.id = cs.challenge_id
+          WHERE cs.status = 'approved'
+          GROUP BY c.coach_id
+        ) AS challenges_approved ON u.id::text = challenges_approved.coach_id
+        WHERE ${whereConditions.join(' AND ')}
       `;
+    } else {
+      // Query for athletes - keep existing logic
+      // Add time filter parameters for athlete query
+      queryParams.push(...timeFilterParams);
       
-      result = await client.query(fallbackQuery);
+      leaderboardQuery = `
+        SELECT 
+          u.id, 
+          u.name, 
+          u.profile_picture_url AS "profilePictureUrl", 
+          u.xp_total AS "xpTotal", 
+          u.height, 
+          u.weight, 
+          u.country, 
+          u.sport, 
+          u.position, 
+          u.date_of_birth AS "dateOfBirth",
+          u.role,
+          COALESCE(COUNT(cs.id), 0) AS "challengesSubmitted",
+          COALESCE(COUNT(CASE WHEN cs.status = 'approved' THEN cs.id END), 0) AS "coachApprovals",
+          0 AS "challengesCreated",
+          0 AS "challengesApproved"
+        FROM users u
+        LEFT JOIN challenge_submissions cs ON u.id = cs.athlete_id ${timeFilter}
+        WHERE ${whereConditions.join(' AND ')}
+        GROUP BY u.id, u.name, u.profile_picture_url, u.xp_total, u.height, u.weight, u.country, u.sport, u.position, u.date_of_birth, u.role
+      `;
+    }
+
+    leaderboardQuery += ` ORDER BY ${sortField} ${orderDirection} LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+
+    console.log('Leaderboard API - Generated SQL Query:', leaderboardQuery);
+    console.log('Leaderboard API - SQL Query parameters:', queryParams);
+    console.log('Leaderboard API - LIMIT:', limit, 'OFFSET:', offset);
+    console.log('Leaderboard API - Role being queried:', role);
+
+    queryParams.push(limit, offset);
+
+    let result;
+    try {
+      result = await client.query(leaderboardQuery, queryParams);
+      console.log('Leaderboard query executed successfully');
+      console.log('Result count:', result.rows.length);
+      console.log('Leaderboard API - Roles in results:', result.rows.map(row => row.role));
+      console.log('Leaderboard API - First few results:', result.rows.slice(0, 3).map(row => ({ id: row.id, name: row.name, role: row.role })));
+    } catch (dbError) {
+      console.error('Database query error:', dbError);
+      console.error('SQL Query that failed:', leaderboardQuery);
+      // Try a simpler fallback query
+      let fallbackQuery;
+      let fallbackParams = [];
+      if (role === 'coach') {
+        fallbackQuery = `
+          SELECT 
+            u.id, 
+            u.name, 
+            u.profile_picture_url AS "profilePictureUrl", 
+            u.xp_total AS "xpTotal", 
+            u.height, 
+            u.weight, 
+            u.country, 
+            u.sport, 
+            u.position, 
+            u.date_of_birth AS "dateOfBirth",
+            u.role,
+            0 AS "challengesSubmitted",
+            0 AS "coachApprovals",
+            COALESCE(challenges_created.count, 0) AS "challengesCreated",
+            COALESCE(challenges_approved.count, 0) AS "challengesApproved"
+          FROM users u
+          LEFT JOIN (
+            SELECT coach_id, COUNT(*) AS count
+            FROM challenges
+            GROUP BY coach_id
+          ) AS challenges_created ON u.id::text = challenges_created.coach_id
+          LEFT JOIN (
+            SELECT c.coach_id, COUNT(*) AS count
+            FROM challenges c
+            JOIN challenge_submissions cs ON c.id = cs.challenge_id
+            WHERE cs.status = 'approved'
+            GROUP BY c.coach_id
+          ) AS challenges_approved ON u.id::text = challenges_approved.coach_id
+          WHERE LOWER(u.role) = LOWER($1)
+          ORDER BY u.xp_total DESC
+          LIMIT 20
+        `;
+        fallbackParams = [role];
+      } else if (role) {
+        fallbackQuery = `
+          SELECT 
+            u.id, 
+            u.name, 
+            u.profile_picture_url AS "profilePictureUrl", 
+            u.xp_total AS "xpTotal", 
+            u.height, 
+            u.weight, 
+            u.country, 
+            u.sport, 
+            u.position, 
+            u.date_of_birth AS "dateOfBirth",
+            u.role,
+            0 AS "challengesSubmitted",
+            0 AS "coachApprovals",
+            0 AS "challengesCreated",
+            0 AS "challengesApproved"
+          FROM users u
+          WHERE LOWER(u.role) = LOWER($1)
+          ORDER BY u.xp_total DESC
+          LIMIT 20
+        `;
+        fallbackParams = [role];
+      } else {
+        fallbackQuery = `
+          SELECT 
+            u.id, 
+            u.name, 
+            u.profile_picture_url AS "profilePictureUrl", 
+            u.xp_total AS "xpTotal", 
+            u.height, 
+            u.weight, 
+            u.country, 
+            u.sport, 
+            u.position, 
+            u.date_of_birth AS "dateOfBirth",
+            u.role,
+            0 AS "challengesSubmitted",
+            0 AS "coachApprovals",
+            0 AS "challengesCreated",
+            0 AS "challengesApproved"
+          FROM users u
+          WHERE (u.role = 'athlete' OR u.role IS NULL)
+          ORDER BY u.xp_total DESC
+          LIMIT 20
+        `;
+      }
+      result = await client.query(fallbackQuery, fallbackParams);
       console.log('Fallback query executed successfully');
+      console.log('Fallback query - Result count:', result.rows.length);
+      console.log('Fallback query - Roles in results:', result.rows.map(row => row.role));
+      console.log('Fallback query - First few results:', result.rows.slice(0, 3).map(row => ({ id: row.id, name: row.name, role: row.role })));
     }
 
     await client.end();
@@ -261,7 +377,6 @@ exports.handler = async (event) => {
   } catch (error) {
     console.error('Leaderboard error:', error);
     console.error('Error stack:', error.stack);
-    
     return {
       statusCode: 500,
       headers: {
