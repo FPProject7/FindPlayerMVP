@@ -125,4 +125,26 @@ export function calculateAge(dateOfBirth) {
   } catch (error) {
     return 'N/A';
   }
+}
+
+/**
+ * Format height in inches to feet/inches and cm (e.g., 6'0" (183 cm))
+ * @param {number} height - Height in inches
+ * @returns {string} Formatted height string
+ */
+export function formatHeight(height) {
+  if (!height) return 'N/A';
+  const feet = Math.floor(height / 12);
+  const inches = height % 12;
+  return `${feet}'${inches}\"`;
+}
+
+/**
+ * Format weight in lbs to lbs and kg (e.g., 190 lbs (86 kg))
+ * @param {number} weight - Weight in lbs
+ * @returns {string} Formatted weight string
+ */
+export function formatWeight(weight) {
+  if (!weight) return 'N/A';
+  return `${weight} lbs`;
 } 

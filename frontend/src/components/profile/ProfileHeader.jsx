@@ -129,11 +129,10 @@ const ProfileHeader = ({ profile, currentUserId, isFollowing, buttonLoading, onF
             style={{ width: `${xpDetails.progress}%` }}
           ></div>
         </div>
-        <div className="text-gray-500 text-base mb-1 w-full">
+        <div className="text-gray-500 text-base mb-1 w-full text-center">
           {profile.sport && <span>{profile.sport}</span>}
-          {profile.position && <span>, {profile.position}</span>}
-          {profile.country && <span>, {profile.country}</span>}
-          {profile.age && <span>, {profile.age}</span>}
+          {profile.sport && profile.position && <span> | </span>}
+          {profile.position && <span>{profile.position}</span>}
         </div>
         {quote && (
           <div className="italic text-gray-400 text-sm mt-1 text-left w-full">"{quote}"</div>

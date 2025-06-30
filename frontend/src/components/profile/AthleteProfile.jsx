@@ -5,6 +5,7 @@ import FollowersModal from './FollowersModal';
 import { useState } from 'react';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useNavigate } from 'react-router-dom';
+import { formatHeight, formatWeight } from '../../utils/levelUtils';
 
 const AthleteProfile = ({
   profile,
@@ -45,11 +46,16 @@ const AthleteProfile = ({
       />
       {/* Height and Weight */}
       {(height || weight || profile.country) && (
-        <div className="flex flex-row justify-center gap-6 text-gray-500 text-sm mt-1">
-          {height && <span>Height: {height}</span>}
-          {weight && <span>Weight: {weight}</span>}
-          {profile.country && <span>Country: {profile.country}</span>}
-        </div>
+        <>
+          <div className="w-full flex justify-center">
+            <div className="h-px bg-gray-200 my-4" style={{ width: '70%' }}></div>
+          </div>
+          <div className="grid grid-cols-3 text-gray-500 text-sm mt-5 w-full max-w-xs mx-auto">
+            <div className="text-center">{height ? formatHeight(height) : ''}</div>
+            <div className="text-center">{weight ? formatWeight(weight) : ''}</div>
+            <div className="text-center">{profile.country ? profile.country : ''}</div>
+          </div>
+        </>
       )}
       {/* Stats Row */}
       <div className="flex justify-between my-6 max-w-xs mx-auto">
