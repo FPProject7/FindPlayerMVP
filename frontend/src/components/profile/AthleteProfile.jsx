@@ -88,9 +88,11 @@ const AthleteProfile = ({
         <FollowersModal userId={userId} open={showFollowers} onClose={() => setShowFollowers(false)} />
       )}
       {currentUserId === profile.id && <UpgradePremiumButton />}
-      <div className="text-xs text-center text-gray-400 mb-4">
-        Stand out, get noticed, and unlock exclusive opportunities.
-      </div>
+      {currentUserId === profile.id && (
+        <div className="text-xs text-center text-gray-400 mb-4">
+          Stand out, get noticed, and unlock exclusive opportunities.
+        </div>
+      )}
       <ProfileTabs profile={profile} isOwnProfile={currentUserId === profile.id} />
       {currentUserId === profile.id && (
         <div className="flex justify-center mt-8 mb-24">

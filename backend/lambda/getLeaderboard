@@ -236,7 +236,7 @@ exports.handler = async (event) => {
       `;
     }
 
-    leaderboardQuery += ` ORDER BY ${sortField} ${orderDirection} LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+    leaderboardQuery += ` ORDER BY "${sortField}" ${orderDirection} LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
 
     console.log('Leaderboard API - Generated SQL Query:', leaderboardQuery);
     console.log('Leaderboard API - SQL Query parameters:', queryParams);
