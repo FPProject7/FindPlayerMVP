@@ -4,7 +4,8 @@
   "main": "postChallenge.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "getCoachChallenges": "node getCoachChallenges.js"
+    "getCoachChallenges": "node getCoachChallenges.js",
+    "searchUsers": "node searchUsers.js"
   },
   "keywords": [],
   "author": "",

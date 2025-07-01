@@ -1,0 +1,109 @@
+type Message {
+  messageId: ID!
+  conversationId: ID!
+  senderId: ID!
+  receiverId: ID!
+  content: String!
+  timestamp: AWSDateTime!
+  readStatus: MessageStatus!
+  senderName: String
+  receiverName: String
+}
+
+type Conversation {
+  conversationId: ID!
+  participant1: ID!
+  participant2: ID!
+  participant1Name: String
+  participant2Name: String
+  lastMessageContent: String
+  lastMessageTimestamp: AWSDateTime
+  lastMessageSenderId: ID
+  unreadCount: Int!
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+type UserConversation {
+  userId: ID!
+  conversationId: ID!
+  otherUserId: ID!
+  otherUserName: String
+  lastMessageContent: String
+  lastMessageTimestamp: AWSDateTime
+  unreadCount: Int!
+  conversation: Conversation
+}
+
+type SendMessageResponse {
+  message: Message!
+  userConversation: UserConversation!
+}
+
+type ConversationConnection {
+  items: [UserConversation!]!
+  nextToken: String
+}
+
+type MessageConnection {
+  items: [Message!]!
+  nextToken: String
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+}
+
+enum UserType {
+  ATHLETE
+  COACH
+  SCOUT
+}
+
+input SendMessageInput {
+  receiverId: ID!
+  content: String!
+}
+
+input MarkMessageReadInput {
+  messageId: ID!
+  conversationId: ID!
+}
+
+type UserSearchResult {
+  id: ID!
+  name: String!
+  email: String!
+  profile_picture_url: String
+  role: String
+}
+
+type Query {
+  listConversations(limit: Int, nextToken: String): ConversationConnection!
+  getConversationMessages(conversationId: ID!, limit: Int, nextToken: String): MessageConnection!
+  searchUsers(query: String!): [UserSearchResult!]!
+}
+
+type Mutation {
+  sendMessage(input: SendMessageInput!): SendMessageResponse!
+  markMessageRead(input: MarkMessageReadInput!): Message!
+}
+
+type Subscription {
+  onNewMessage(conversationId: ID!): SendMessageResponse
+    @aws_subscribe(mutations: ["sendMessage"])
+  
+  onMessageStatusUpdate(conversationId: ID!): Message
+    @aws_subscribe(mutations: ["markMessageRead"])
+  
+  onConversationUpdate(userId: ID!): SendMessageResponse
+    @aws_subscribe(mutations: ["sendMessage"])
+}
+
+schema {
+  query: Query
+  mutation: Mutation
+  subscription: Subscription
+} 

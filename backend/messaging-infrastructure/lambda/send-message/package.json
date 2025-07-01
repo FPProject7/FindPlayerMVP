@@ -1,0 +1,20 @@
+{
+  "name": "send-message-lambda",
+  "version": "1.0.0",
+  "description": "Lambda function to send messages in the messaging system",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.830.0",
+    "@aws-sdk/client-cognito-identity-provider": "^3.830.0",
+    "@aws-sdk/lib-dynamodb": "^3.830.0",
+    "@aws-sdk/client-appsync": "^3.830.0",
+    "uuid": "^9.0.1"
+  },
+  "keywords": ["aws", "lambda", "messaging", "dynamodb"],
+  "author": "",
+  "license": "ISC"
+} 

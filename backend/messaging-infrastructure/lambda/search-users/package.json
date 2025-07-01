@@ -1,0 +1,18 @@
+{
+  "name": "post-challenge-lambda",
+  "version": "1.0.0",
+  "main": "postChallenge.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "getCoachChallenges": "node getCoachChallenges.js",
+    "searchUsers": "node searchUsers.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "aws-sdk": "^2.1692.0",
+    "pg": "^8.16.3"
+  }
+}
