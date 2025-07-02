@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, gql } from '@apollo/client';
-import { useNavigate } from 'react-router-dom';
 import { searchUsers } from '../../api/userApi';
 
 // Utility to get initials from a name
@@ -28,12 +27,11 @@ const LIST_CONVERSATIONS = gql`
   }
 `;
 
-export default function ConversationList() {
+export default function ConversationList({ onSelectConversation }) {
   const [search, setSearch] = useState('');
   const [userResults, setUserResults] = useState([]);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [userLoading, setUserLoading] = useState(false);
-  const navigate = useNavigate();
 
   const { data, loading, error } = useQuery(LIST_CONVERSATIONS, {
     variables: { limit: 20 },
@@ -65,7 +63,11 @@ export default function ConversationList() {
   const handleStartChat = (user) => {
     setShowUserDropdown(false);
     setSearch('');
-    navigate(`/messages/new?userId=${user.id}`);
+    onSelectConversation({
+      conversationId: 'new',
+      name: user.name,
+      profilePic: user.profile_picture_url
+    });
   };
 
   if (loading) return <div>Loading conversations...</div>;
@@ -112,7 +114,23 @@ export default function ConversationList() {
                 onMouseDown={() => handleStartChat(user)}
                 style={{ display: 'flex', alignItems: 'center', padding: 10, cursor: 'pointer', borderBottom: '1px solid #f5f5f5' }}
               >
-                <img src={user.profile_picture_url} alt={user.name} style={{ width: 32, height: 32, borderRadius: '50%', marginRight: 10, objectFit: 'cover' }} />
+                {user.profile_picture_url ? (
+                  <img src={user.profile_picture_url} alt={user.name} style={{ width: 32, height: 32, borderRadius: '50%', marginRight: 10, objectFit: 'cover' }} />
+                ) : (
+                  <div style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: '50%',
+                    background: '#eee',
+                    color: '#888',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 600,
+                    fontSize: 15,
+                    marginRight: 10,
+                  }}>{getInitials(user.name)}</div>
+                )}
                 <div>
                   <div style={{ fontWeight: 500 }}>{user.name}</div>
                   <div style={{ fontSize: 12, color: '#888' }}>{user.role}</div>
@@ -127,7 +145,11 @@ export default function ConversationList() {
         {filtered.map(conv => (
           <div
             key={conv.conversationId}
-            onClick={() => navigate(`/messages/${conv.conversationId}`)}
+            onClick={() => onSelectConversation({
+              conversationId: conv.conversationId,
+              name: conv.otherUserName,
+              profilePic: conv.otherUserProfilePic
+            })}
             style={{
               display: 'flex',
               alignItems: 'center',
