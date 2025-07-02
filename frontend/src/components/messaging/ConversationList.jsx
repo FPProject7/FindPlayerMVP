@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, gql } from '@apollo/client';
+import { useNavigate } from 'react-router-dom';
 import { searchUsers } from '../../api/userApi';
+
+// Utility to get initials from a name
+function getInitials(name) {
+  if (!name) return '';
+  const parts = name.trim().split(' ');
+  if (parts.length === 1) return parts[0][0].toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
 const LIST_CONVERSATIONS = gql`
   query ListConversations($limit: Int, $nextToken: String) {
@@ -9,6 +18,7 @@ const LIST_CONVERSATIONS = gql`
         conversationId
         otherUserId
         otherUserName
+        otherUserProfilePic
         lastMessageContent
         lastMessageTimestamp
         unreadCount
@@ -18,11 +28,12 @@ const LIST_CONVERSATIONS = gql`
   }
 `;
 
-export default function ConversationList({ onSelectConversation }) {
+export default function ConversationList() {
   const [search, setSearch] = useState('');
   const [userResults, setUserResults] = useState([]);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [userLoading, setUserLoading] = useState(false);
+  const navigate = useNavigate();
 
   const { data, loading, error } = useQuery(LIST_CONVERSATIONS, {
     variables: { limit: 20 },
@@ -54,13 +65,7 @@ export default function ConversationList({ onSelectConversation }) {
   const handleStartChat = (user) => {
     setShowUserDropdown(false);
     setSearch('');
-    onSelectConversation({
-      conversationId: null,
-      otherUserId: user.id,
-      otherUserName: user.name,
-      profile_picture_url: user.profile_picture_url,
-      isNew: true,
-    });
+    navigate(`/messages/new?userId=${user.id}`);
   };
 
   if (loading) return <div>Loading conversations...</div>;
@@ -74,8 +79,8 @@ export default function ConversationList({ onSelectConversation }) {
   );
 
   return (
-    <div style={{ background: '#fff', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 4px #eee' }}>
-      <div style={{ padding: 12, borderBottom: '1px solid #eee', position: 'relative' }}>
+    <div className="conversation-list-container">
+      <div className="conversation-search-bar">
         <input
           type="text"
           placeholder="Search for Teammates, Coaches, Scouts..."
@@ -117,12 +122,12 @@ export default function ConversationList({ onSelectConversation }) {
           </div>
         )}
       </div>
-      <div>
+      <div className="conversation-list-scroll">
         {filtered.length === 0 && <div style={{ padding: 16, color: '#888', textAlign: 'center' }}>No conversations yet.<br/>Start a chat to see your conversations here.</div>}
         {filtered.map(conv => (
           <div
             key={conv.conversationId}
-            onClick={() => onSelectConversation(conv)}
+            onClick={() => navigate(`/messages/${conv.conversationId}`)}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -132,6 +137,24 @@ export default function ConversationList({ onSelectConversation }) {
               background: conv.unreadCount > 0 ? '#f6faff' : '#fff',
             }}
           >
+            {/* Avatar */}
+            {conv.otherUserProfilePic ? (
+              <img src={conv.otherUserProfilePic} alt={conv.otherUserName} style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', marginRight: 12 }} />
+            ) : (
+              <div style={{
+                width: 40,
+                height: 40,
+                borderRadius: '50%',
+                background: '#eee',
+                color: '#888',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 600,
+                fontSize: 18,
+                marginRight: 12,
+              }}>{getInitials(conv.otherUserName)}</div>
+            )}
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 600 }}>{conv.otherUserName}</div>
               <div style={{ color: '#888', fontSize: 13, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>

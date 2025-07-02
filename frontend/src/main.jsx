@@ -8,10 +8,10 @@ import client from './api/apolloClient';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <ApolloProvider client={client}>
-    <React.StrictMode>
-      <BrowserRouter> {/* 2. Wrap your App component */}
-        <App />
-      </BrowserRouter>
+  <React.StrictMode>
+    <BrowserRouter> {/* 2. Wrap your App component */}
+      <App />
+    </BrowserRouter>
     </React.StrictMode>
   </ApolloProvider>
 )

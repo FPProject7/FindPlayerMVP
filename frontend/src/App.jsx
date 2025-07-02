@@ -20,6 +20,8 @@ import NotificationsPage from './pages/NotificationsPage'; // <--- New page impo
 import MessagesPage from './pages/MessagesPage';         // <--- New page import
 // --- END NEW ---
 import ReviewSubmissionPage from './pages/challenges/ReviewModal';
+import ConversationList from './components/messaging/ConversationList';
+import ChatWindow from './components/messaging/ChatWindow';
 
 // ProtectedRoute Component (remains unchanged)
 const ProtectedRoute = ({ children }) => {
@@ -101,7 +103,8 @@ function App() {
             <Route path="/scout-dashboard" element={<RoleProtectedRoute allowedRoles={['Scout']}><ScoutDashboardPage /></RoleProtectedRoute>} /> 
             {/* --- NEW: Protected Notifications & Messages Routes --- */}
             <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} /> {/* <--- New Route */}
-            <Route path="/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />             {/* <--- New Route */}
+            <Route path="/messages" element={<ProtectedRoute><ConversationList /></ProtectedRoute>} />
+            <Route path="/messages/:conversationId" element={<ProtectedRoute><ChatWindow /></ProtectedRoute>} />
             {/* --- END NEW --- */}
         </Route>
 

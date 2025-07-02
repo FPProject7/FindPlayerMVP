@@ -1,149 +1,128 @@
-const AWS = require('aws-sdk');
-const cognitoIdentityServiceProvider = new AWS.CognitoIdentityServiceProvider();
-const dynamodb = new AWS.DynamoDB.DocumentClient();
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, PutCommand, ScanCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 
-exports.handler = async (event) => {
-    console.log('Event:', JSON.stringify(event, null, 2));
-    
+const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION });
+const docClient = DynamoDBDocumentClient.from(dynamoClient);
+
+const MESSAGES_TABLE = process.env.MESSAGES_TABLE;
+const CONVERSATIONS_TABLE = process.env.CONVERSATIONS_TABLE;
+
+export const handler = async (event) => {
+    const now = new Date().toISOString();
     try {
         // Extract user info from JWT claims
         const claims = event.identity.claims;
         const cognitoUsername = claims['cognito:username'];
-        
-        console.log('Cognito Username:', cognitoUsername);
-        console.log('Claims:', JSON.stringify(claims, null, 2));
-        
+
+        // UUID validation helper
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
         // Check if user is premium
         const isPremium = claims['custom:is_premium_member'] === 'true';
         if (!isPremium) {
-            return {
-                statusCode: 403,
-                body: JSON.stringify({
-                    error: 'Premium membership required to send messages'
-                })
-            };
+            throw new Error('Only premium members can use messaging.');
         }
-        
-        // Verify user exists in Cognito and get their attributes
-        let userAttributes;
-        try {
-            const cognitoResponse = await cognitoIdentityServiceProvider.adminGetUser({
-                UserPoolId: process.env.USER_POOL_ID,
-                Username: cognitoUsername
-            }).promise();
-            
-            userAttributes = cognitoResponse.UserAttributes;
-            console.log('Cognito user found:', cognitoResponse.Username);
-        } catch (cognitoError) {
-            console.error('Cognito lookup failed:', cognitoError);
-            return {
-                statusCode: 404,
-                body: JSON.stringify({
-                    error: 'User not found in Cognito'
-                })
-            };
-        }
-        
+
         // Extract input parameters
-        const { conversationId, content, messageType = 'text' } = event.arguments;
-        
-        if (!conversationId || !content) {
-            return {
-                statusCode: 400,
-                body: JSON.stringify({
-                    error: 'conversationId and content are required'
-                })
-            };
+        const { receiverId, content, messageType = 'text' } = event.arguments.input;
+        console.log('[sendMessage] senderId:', cognitoUsername, 'receiverId:', receiverId);
+        if (!receiverId || !content) {
+            throw new Error('receiverId and content are required');
         }
-        
-        // Check if conversation exists and user is a participant
-        const conversationParams = {
-            TableName: process.env.CONVERSATIONS_TABLE,
-            Key: {
-                id: conversationId
-            }
+        if (receiverId === 'new' || receiverId === cognitoUsername) {
+            console.error('[sendMessage] Invalid receiverId:', receiverId, 'sender:', cognitoUsername);
+            throw new Error('Invalid receiverId: cannot be "new" or the same as sender.');
+        }
+
+        // Deterministic conversationId for user pair (trim and lowercase for safety)
+        const senderIdClean = cognitoUsername.trim().toLowerCase();
+        const receiverIdClean = receiverId.trim().toLowerCase();
+        const participants = [senderIdClean, receiverIdClean].sort();
+        const conversationId = participants.join('_');
+        console.log('[sendMessage] Final conversationId:', conversationId, 'Participants:', participants);
+        let conversationTimestamp = now;
+        let isNewConversation = false;
+
+        // Check if conversation already exists (use Scan due to sort key)
+        const scanParams = {
+            TableName: CONVERSATIONS_TABLE,
+            FilterExpression: 'conversationId = :cid',
+            ExpressionAttributeValues: { ':cid': conversationId },
+            Limit: 1
         };
-        
-        const conversationResult = await dynamodb.get(conversationParams).promise();
-        if (!conversationResult.Item) {
-            return {
-                statusCode: 404,
-                body: JSON.stringify({
-                    error: 'Conversation not found'
-                })
+        const scanResult = await docClient.send(new ScanCommand(scanParams));
+        if (!scanResult.Items || scanResult.Items.length === 0) {
+            // Create new conversation
+            isNewConversation = true;
+            const newConversation = {
+                conversationId: conversationId,
+                timestamp: now,
+                participants: participants,
+                createdAt: now,
+                lastMessage: content,
+                lastMessageTime: now,
+                lastMessageSender: cognitoUsername
             };
+            await docClient.send(new PutCommand({
+                TableName: CONVERSATIONS_TABLE,
+                Item: newConversation
+            }));
+        } else {
+            // Use the existing conversation timestamp for updates
+            conversationTimestamp = scanResult.Items[0].timestamp;
         }
-        
-        // Check if user is a participant in this conversation
-        const isParticipant = conversationResult.Item.participants.includes(cognitoUsername);
-        if (!isParticipant) {
-            return {
-                statusCode: 403,
-                body: JSON.stringify({
-                    error: 'You are not a participant in this conversation'
-                })
-            };
-        }
-        
+
         // Create message
         const messageId = `${conversationId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         const timestamp = new Date().toISOString();
-        
         const message = {
-            id: messageId,
             conversationId: conversationId,
+            messageId: messageId,
             senderId: cognitoUsername,
+            receiverId: receiverId,
             content: content,
             messageType: messageType,
             timestamp: timestamp,
             isRead: false
         };
-        
-        // Save message to DynamoDB
-        const messageParams = {
-            TableName: process.env.MESSAGES_TABLE,
+        await docClient.send(new PutCommand({
+            TableName: MESSAGES_TABLE,
             Item: message
-        };
-        
-        await dynamodb.put(messageParams).promise();
-        
+        }));
+
         // Update conversation's lastMessage and lastMessageTime
         const updateConversationParams = {
-            TableName: process.env.CONVERSATIONS_TABLE,
-            Key: {
-                id: conversationId
-            },
-            UpdateExpression: 'SET lastMessage = :lastMessage, lastMessageTime = :lastMessageTime',
+            TableName: CONVERSATIONS_TABLE,
+            Key: { conversationId: conversationId, timestamp: conversationTimestamp },
+            UpdateExpression: 'SET lastMessage = :lastMessage, lastMessageTime = :lastMessageTime, lastMessageSender = :lastMessageSender',
             ExpressionAttributeValues: {
                 ':lastMessage': content,
-                ':lastMessageTime': timestamp
+                ':lastMessageTime': timestamp,
+                ':lastMessageSender': cognitoUsername
             }
         };
-        
-        await dynamodb.update(updateConversationParams).promise();
-        
-        console.log('Message sent successfully:', messageId);
-        
+        await docClient.send(new UpdateCommand(updateConversationParams));
+
         return {
-            statusCode: 200,
-            body: JSON.stringify({
-                id: messageId,
+            message: {
+                messageId: messageId,
                 conversationId: conversationId,
                 senderId: cognitoUsername,
+                receiverId: receiverId,
                 content: content,
-                messageType: messageType,
-                timestamp: timestamp,
-                isRead: false
-            })
+                timestamp: timestamp
+            },
+            userConversation: {
+                userId: cognitoUsername,
+                conversationId: conversationId,
+                otherUserId: receiverId,
+                lastMessageContent: content,
+                lastMessageTimestamp: timestamp,
+                unreadCount: 0
+            }
         };
-        
     } catch (error) {
-        console.error('Error:', error);
-        return {
-            statusCode: 500,
-            body: JSON.stringify({
-                error: 'Internal server error'
-            })
-        };
+        console.error('Error in sendMessage:', error);
+        throw new Error(error.message || 'Internal server error');
     }
 }; 

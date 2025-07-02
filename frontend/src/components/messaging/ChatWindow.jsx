@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useSubscription, gql } from '@apollo/client';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import './ChatWindow.css';
 
 const GET_MESSAGES = gql`
   query GetConversationMessages($conversationId: ID!, $limit: Int) {
@@ -28,6 +30,12 @@ const SEND_MESSAGE = gql`
         timestamp
         readStatus
       }
+      userConversation {
+        conversationId
+        otherUserId
+        lastMessageContent
+        lastMessageTimestamp
+      }
     }
   }
 `;
@@ -43,30 +51,60 @@ const ON_NEW_MESSAGE = gql`
         timestamp
         readStatus
       }
+      userConversation {
+        conversationId
+        otherUserId
+        lastMessageContent
+        lastMessageTimestamp
+      }
     }
   }
 `;
 
-export default function ChatWindow({ conversation, onBack }) {
+export default function ChatWindow() {
+  const { conversationId } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
+  const [currentConversationId, setCurrentConversationId] = useState(conversationId);
   const { user } = useAuthStore();
+  const myId = user?.sub || user?.id;
   const messagesEndRef = useRef(null);
 
-  // Fetch messages
+  // Check if this is a new conversation (no conversationId yet)
+  const isNewConversation = !currentConversationId || currentConversationId === 'new';
+
+  // Helper to get the real recipient UUID
+  function getOtherUserId() {
+    if (isNewConversation) {
+      const params = new URLSearchParams(location.search);
+      return params.get('userId');
+    }
+    // For existing conversations, parse the conversationId
+    if (conversationId && conversationId !== 'new') {
+      const ids = conversationId.split('_');
+      return ids.find(id => id !== myId);
+    }
+    return null;
+  }
+
+  // Fetch messages - skip for new conversations
   const { data, loading, error, refetch } = useQuery(GET_MESSAGES, {
-    variables: { conversationId: conversation.conversationId, limit: 50 },
+    variables: { conversationId: currentConversationId, limit: 50 },
     fetchPolicy: 'network-only',
-    skip: !conversation,
+    skip: !currentConversationId || isNewConversation,
   });
 
   // Send message mutation
   const [sendMessage, { loading: sending }] = useMutation(SEND_MESSAGE);
 
-  // Subscribe to new messages
+  // Subscribe to new messages - skip for new conversations
+  // Temporarily disabled due to WebSocket connection issues
+  /*
   useSubscription(ON_NEW_MESSAGE, {
-    variables: { conversationId: conversation.conversationId },
-    skip: !conversation,
+    variables: { conversationId: currentConversationId },
+    skip: !currentConversationId,
     onData: ({ data: subData }) => {
       const newMsg = subData?.data?.onNewMessage?.message;
       if (newMsg) {
@@ -77,6 +115,7 @@ export default function ChatWindow({ conversation, onBack }) {
       }
     },
   });
+  */
 
   // Update messages when query data changes
   useEffect(() => {
@@ -93,63 +132,97 @@ export default function ChatWindow({ conversation, onBack }) {
   const handleSend = async e => {
     e.preventDefault();
     if (!input.trim()) return;
-    await sendMessage({
-      variables: {
-        input: {
-          receiverId: conversation.otherUserId,
-          content: input,
+
+    const receiverId = getOtherUserId();
+    if (!receiverId || receiverId === 'new' || receiverId === myId) {
+      alert('Invalid recipient. Please select a valid user to chat with.');
+      return;
+    }
+    console.log('[ChatWindow] Sending message to receiverId:', receiverId);
+    try {
+      const result = await sendMessage({
+        variables: {
+          input: {
+            receiverId: receiverId,
+            content: input,
+          },
         },
-      },
-    });
-    setInput('');
-    refetch();
+      });
+      
+      // If this was a new conversation, update the conversationId
+      if (isNewConversation && result.data?.sendMessage?.userConversation?.conversationId) {
+        const newConversationId = result.data.sendMessage.userConversation.conversationId;
+        setCurrentConversationId(newConversationId);
+        // Update the URL to use the new conversationId
+        navigate(`/messages/${newConversationId}`, { replace: true });
+      }
+      
+      // Refetch messages to show the new message immediately
+      if (currentConversationId) {
+        await refetch();
+      }
+      
+      setInput('');
+    } catch (error) {
+      console.error('Error sending message:', error);
+    }
   };
 
-  if (!conversation) return <div>Select a conversation</div>;
-  if (loading) return <div>Loading messages...</div>;
-  if (error) return <div>Error loading messages.</div>;
+  if (!currentConversationId) return <div>No conversation selected.</div>;
+  if (loading && !isNewConversation) return <div>Loading messages...</div>;
+  if (error && !isNewConversation) return <div>Error loading messages.</div>;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Header */}
-      <div style={{ padding: 12, borderBottom: '1px solid #eee', display: 'flex', alignItems: 'center' }}>
-        {onBack && (
-          <button onClick={onBack} style={{ marginRight: 12 }}>&larr;</button>
+      <div style={{ padding: 12, borderBottom: '1px solid #eee', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <button onClick={() => navigate('/messages')} style={{ marginRight: 12 }}>&larr;</button>
+          <div style={{ fontWeight: 600 }}>Conversation</div>
+        </div>
+        {currentConversationId && !isNewConversation && (
+          <button 
+            onClick={() => refetch()} 
+            style={{ 
+              padding: '4px 8px', 
+              fontSize: 12, 
+              background: '#f0f0f0', 
+              border: '1px solid #ddd', 
+              borderRadius: 4,
+              cursor: 'pointer'
+            }}
+          >
+            Refresh
+          </button>
         )}
-        <div style={{ fontWeight: 600 }}>{conversation.otherUserName}</div>
       </div>
       {/* Messages */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: 16, background: '#f8f8fa' }}>
-        {messages.map(msg => {
-          const isMe = msg.senderId === user?.sub;
-          return (
-            <div
-              key={msg.messageId}
-              style={{
-                display: 'flex',
-                justifyContent: isMe ? 'flex-end' : 'flex-start',
-                marginBottom: 8,
-              }}
-            >
+      <div className="chat-messages-container">
+        {isNewConversation ? (
+          <div className="chat-start-message">
+            Start a new conversation
+          </div>
+        ) : (
+          messages.map(msg => {
+            // Use user.sub or user.id for sender check
+            const isMe = msg.senderId === (user?.sub || user?.id);
+            return (
               <div
-                style={{
-                  background: isMe ? '#ff3b30' : '#eee',
-                  color: isMe ? '#fff' : '#222',
-                  borderRadius: 16,
-                  padding: '8px 14px',
-                  maxWidth: 320,
-                  fontSize: 15,
-                  boxShadow: isMe ? '0 1px 4px #ffd6d6' : '0 1px 2px #eee',
-                }}
+                key={msg.messageId}
+                className={`chat-message-row ${isMe ? 'sent' : 'received'}`}
               >
-                {msg.content}
-                <div style={{ fontSize: 11, color: isMe ? '#ffe' : '#888', marginTop: 2, textAlign: 'right' }}>
-                  {msg.timestamp && new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                <div
+                  className={`chat-message-bubble ${isMe ? 'sent-bubble' : 'received-bubble'}`}
+                >
+                  {msg.content}
+                  <div className="chat-message-time">
+                    {msg.timestamp && new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
         <div ref={messagesEndRef} />
       </div>
       {/* Input */}
@@ -162,7 +235,7 @@ export default function ChatWindow({ conversation, onBack }) {
           style={{ flex: 1, padding: 10, borderRadius: 16, border: '1px solid #ddd', fontSize: 15 }}
         />
         <button type="submit" disabled={sending || !input.trim()} style={{ marginLeft: 8, padding: '0 18px', borderRadius: 16, background: '#ff3b30', color: '#fff', border: 'none', fontWeight: 600 }}>
-          Send
+          {sending ? 'Sending...' : 'Send'}
         </button>
       </form>
     </div>

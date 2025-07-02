@@ -110,3 +110,29 @@ export async function searchUsers(query) {
   });
   return data?.searchUsers || [];
 }
+
+export const CREATE_CONVERSATION = gql`
+  mutation CreateConversation($otherUserId: ID!) {
+    createConversation(otherUserId: $otherUserId) {
+      conversationId
+      participant1
+      participant2
+      participant1Name
+      participant2Name
+      lastMessageContent
+      lastMessageTimestamp
+      unreadCount
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+export async function createConversation(otherUserId) {
+  const { data } = await client.mutate({
+    mutation: CREATE_CONVERSATION,
+    variables: { otherUserId },
+    fetchPolicy: 'no-cache',
+  });
+  return data?.createConversation;
+}

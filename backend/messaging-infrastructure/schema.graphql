@@ -5,7 +5,7 @@ type Message {
   receiverId: ID!
   content: String!
   timestamp: AWSDateTime!
-  readStatus: MessageStatus!
+  readStatus: MessageStatus
   senderName: String
   receiverName: String
 }
@@ -19,7 +19,7 @@ type Conversation {
   lastMessageContent: String
   lastMessageTimestamp: AWSDateTime
   lastMessageSenderId: ID
-  unreadCount: Int!
+  unreadCount: Int
   createdAt: AWSDateTime!
   updatedAt: AWSDateTime!
 }
@@ -29,9 +29,10 @@ type UserConversation {
   conversationId: ID!
   otherUserId: ID!
   otherUserName: String
+  otherUserProfilePic: String
   lastMessageContent: String
   lastMessageTimestamp: AWSDateTime
-  unreadCount: Int!
+  unreadCount: Int
   conversation: Conversation
 }
 
@@ -65,6 +66,7 @@ enum UserType {
 input SendMessageInput {
   receiverId: ID!
   content: String!
+  conversationId: ID
 }
 
 input MarkMessageReadInput {
@@ -87,6 +89,7 @@ type Query {
 }
 
 type Mutation {
+  createConversation(otherUserId: ID!): Conversation!
   sendMessage(input: SendMessageInput!): SendMessageResponse!
   markMessageRead(input: MarkMessageReadInput!): Message!
 }

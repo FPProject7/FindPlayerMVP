@@ -153,6 +153,17 @@ export class MessagingStack extends cdk.Stack {
       memorySize: 512,
     });
 
+    const createConversationLambda = new lambda.Function(this, 'CreateConversationFunction', {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'createConversation.handler',
+      code: lambda.Code.fromAsset('lambda/createConversation.zip'),
+      environment: {
+        CONVERSATIONS_TABLE: 'findplayer-conversations',
+      },
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 512,
+    });
+
     // Grant DynamoDB permissions to Lambda functions
     conversationsTable.grantReadWriteData(sendMessageLambda);
     conversationsTable.grantReadData(listConversationsLambda);
@@ -214,6 +225,16 @@ export class MessagingStack extends cdk.Stack {
       typeName: 'Query',
       fieldName: 'searchUsers',
     });
+
+    // AppSync Data Source for createConversation
+    const createConversationDataSource = api.addLambdaDataSource('CreateConversationDataSource', createConversationLambda);
+    createConversationDataSource.createResolver('CreateConversationResolver', {
+      typeName: 'Mutation',
+      fieldName: 'createConversation',
+    });
+
+    // Grant DynamoDB permissions to createConversation Lambda
+    conversationsTable.grantReadWriteData(createConversationLambda);
 
     // Outputs
     new cdk.CfnOutput(this, 'UserPoolId', {
