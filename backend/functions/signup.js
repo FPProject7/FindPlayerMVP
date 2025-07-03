@@ -179,8 +179,8 @@ export const handler = async (event) => {
                 const client = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
                 await client.connect();
                 await client.query(
-                    `INSERT INTO users (id, email, name, role, profile_picture_url, height, weight, date_of_birth, country, sport, position)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                    `INSERT INTO users (id, email, name, role, profile_picture_url, height, weight, date_of_birth, country, sport, position, gender)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
                      ON CONFLICT (id) DO UPDATE SET
                        email = EXCLUDED.email,
                        name = EXCLUDED.name,
@@ -192,6 +192,7 @@ export const handler = async (event) => {
                        country = EXCLUDED.country,
                        sport = EXCLUDED.sport,
                        position = EXCLUDED.position,
+                       gender = EXCLUDED.gender,
                        updated_at = CURRENT_TIMESTAMP`,
                     [
                         cognitoSub,
@@ -204,7 +205,8 @@ export const handler = async (event) => {
                         date_of_birth || null,
                         country,
                         sport,
-                        position
+                        position,
+                        gender
                     ]
                 );
                 await client.end();

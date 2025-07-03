@@ -170,14 +170,15 @@ export const handler = async (event) => {
                 }
                 
                 await client.query(
-                    `INSERT INTO users (id, email, name, role, profile_picture_url, height)
-                     VALUES ($1, $2, $3, $4, $5, $6)
+                    `INSERT INTO users (id, email, name, role, profile_picture_url, height, gender)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7)
                      ON CONFLICT (id) DO UPDATE SET
                        email = EXCLUDED.email,
                        name = EXCLUDED.name,
                        role = EXCLUDED.role,
                        profile_picture_url = EXCLUDED.profile_picture_url,
                        height = EXCLUDED.height,
+                       gender = EXCLUDED.gender,
                        updated_at = CURRENT_TIMESTAMP`,
                     [
                         cognitoSub,
@@ -185,7 +186,8 @@ export const handler = async (event) => {
                         firstName,
                         role,
                         profilePictureUrl,
-                        role && role.toLowerCase() === 'athlete' ? height : null
+                        role && role.toLowerCase() === 'athlete' ? height : null,
+                        gender
                     ]
                 );
                 await client.end();
