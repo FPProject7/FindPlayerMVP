@@ -1,5 +1,7 @@
 import axios from 'axios';
 import { useAuthStore } from '../stores/useAuthStore';
+import { gql } from '@apollo/client';
+import client from './apolloClient';
 
 // Client for XP/user info endpoints
 const userApiClient = axios.create({
@@ -87,3 +89,50 @@ export const awardXP = (userId, challengeId, submissionId, points, earnedFor) =>
     earnedFor
   });
 };
+
+export const SEARCH_USERS = gql`
+  query SearchUsers($query: String!) {
+    searchUsers(query: $query) {
+      id
+      name
+      email
+      profile_picture_url
+      role
+    }
+  }
+`;
+
+export async function searchUsers(query) {
+  const { data } = await client.query({
+    query: SEARCH_USERS,
+    variables: { query },
+    fetchPolicy: 'network-only',
+  });
+  return data?.searchUsers || [];
+}
+
+export const CREATE_CONVERSATION = gql`
+  mutation CreateConversation($otherUserId: ID!) {
+    createConversation(otherUserId: $otherUserId) {
+      conversationId
+      participant1
+      participant2
+      participant1Name
+      participant2Name
+      lastMessageContent
+      lastMessageTimestamp
+      unreadCount
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+export async function createConversation(otherUserId) {
+  const { data } = await client.mutate({
+    mutation: CREATE_CONVERSATION,
+    variables: { otherUserId },
+    fetchPolicy: 'no-cache',
+  });
+  return data?.createConversation;
+}

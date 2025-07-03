@@ -101,7 +101,7 @@ function App() {
             <Route path="/scout-dashboard" element={<RoleProtectedRoute allowedRoles={['Scout']}><ScoutDashboardPage /></RoleProtectedRoute>} /> 
             {/* --- NEW: Protected Notifications & Messages Routes --- */}
             <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} /> {/* <--- New Route */}
-            <Route path="/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />             {/* <--- New Route */}
+            <Route path="/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />
             {/* --- END NEW --- */}
         </Route>
 
