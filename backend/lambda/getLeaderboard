@@ -123,8 +123,8 @@ exports.handler = async (event) => {
 
     // Sport filtering
     if (sport) {
-      whereConditions.push(`u.sport ILIKE $${paramCount}`);
-      queryParams.push(`%${sport}%`);
+      whereConditions.push(`LOWER(u.sport) = LOWER($${paramCount})`);
+      queryParams.push(sport);
       paramCount++;
     }
 
@@ -261,14 +261,57 @@ exports.handler = async (event) => {
         athleteParams.push(query.gender);
         paramCount++;
       }
+      // Sport filter
+      if (query.sport) {
+        athleteWhere.push(`LOWER(u.sport) = LOWER($${paramCount})`);
+        athleteParams.push(query.sport);
+        paramCount++;
+      }
+      // Country filter
+      if (query.country) {
+        athleteWhere.push(`u.country ILIKE $${paramCount}`);
+        athleteParams.push(`%${query.country}%`);
+        paramCount++;
+      }
+      // Position filter
+      if (query.position) {
+        athleteWhere.push(`u.position ILIKE $${paramCount}`);
+        athleteParams.push(`%${query.position}%`);
+        paramCount++;
+      }
+      // Height filtering
+      if (!isNaN(query.heightMin)) {
+        athleteWhere.push(`CAST(u.height AS INTEGER) >= $${paramCount}`);
+        athleteParams.push(Number(query.heightMin));
+        paramCount++;
+      }
+      if (!isNaN(query.heightMax)) {
+        athleteWhere.push(`CAST(u.height AS INTEGER) <= $${paramCount}`);
+        athleteParams.push(Number(query.heightMax));
+        paramCount++;
+      }
+      // Age filtering
+      if (!isNaN(query.ageMin) || !isNaN(query.ageMax)) {
+        const currentDate = new Date();
+        if (!isNaN(query.ageMin)) {
+          const maxBirthDate = new Date(currentDate.getFullYear() - Number(query.ageMin), currentDate.getMonth(), currentDate.getDate());
+          athleteWhere.push(`u.date_of_birth <= $${paramCount}`);
+          athleteParams.push(maxBirthDate.toISOString());
+          paramCount++;
+        }
+        if (!isNaN(query.ageMax)) {
+          const minBirthDate = new Date(currentDate.getFullYear() - Number(query.ageMax) - 1, currentDate.getMonth(), currentDate.getDate());
+          athleteWhere.push(`u.date_of_birth >= $${paramCount}`);
+          athleteParams.push(minBirthDate.toISOString());
+          paramCount++;
+        }
+      }
       // Role filter
       if (role) {
         athleteWhere.push(`LOWER(u.role) = LOWER($${paramCount})`);
         athleteParams.push(role);
         paramCount++;
       }
-      // Add other filters here in the same way if needed (country, sport, etc.)
-      // ...
       let whereClause = athleteWhere.length > 0 ? athleteWhere.join(' AND ') : '1=1';
       leaderboardQuery = `
         SELECT 

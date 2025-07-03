@@ -24,7 +24,17 @@ const timeRanges = [
 
 const sports = ['All Sports', 'Football', 'Basketball'];
 
-const positions = [
+const footballPositions = [
+  'All Positions',
+  'Striker', 'Left Winger', 'Right Winger', 'Second Striker',
+  'Left Back', 'Right Back', 'Center Back', 'Defensive Midfielder',
+  'Center Midfielder', 'Attacking Midfielder', 'Goalkeeper'
+];
+const basketballPositions = [
+  'All Positions',
+  'Point Guard', 'Shooting Guard', 'Small Forward', 'Power Forward', 'Center'
+];
+const allPositions = [
   'All Positions',
   'Striker', 'Left Winger', 'Right Winger', 'Second Striker',
   'Left Back', 'Right Back', 'Center Back', 'Defensive Midfielder',
@@ -32,20 +42,28 @@ const positions = [
   'Point Guard', 'Shooting Guard', 'Small Forward', 'Power Forward', 'Center'
 ];
 
+const getPositionsForSport = (sport) => {
+  if (sport === 'Football') return footballPositions;
+  if (sport === 'Basketball') return basketballPositions;
+  return allPositions;
+};
+
 const countries = [
   'All Countries',
-  'United States', 'Canada', 'United Kingdom', 'Germany', 'France', 'Spain', 'Italy',
-  'Brazil', 'Argentina', 'Mexico', 'Japan', 'South Korea', 'China', 'India',
-  'Australia', 'Netherlands', 'Belgium', 'Portugal', 'Switzerland', 'Sweden',
-  'Norway', 'Denmark', 'Finland', 'Poland', 'Czech Republic', 'Austria',
-  'Hungary', 'Romania', 'Bulgaria', 'Greece', 'Turkey', 'Ukraine', 'Russia',
-  'South Africa', 'Nigeria', 'Egypt', 'Morocco', 'Kenya', 'Ghana', 'Senegal',
-  'Ivory Coast', 'Cameroon', 'Algeria', 'Tunisia', 'Libya', 'Sudan', 'Ethiopia',
-  'Saudi Arabia', 'Iran', 'Iraq', 'Syria', 'Lebanon', 'Jordan', 'Israel',
-  'Palestine', 'Kuwait', 'Qatar', 'UAE', 'Oman', 'Yemen', 'Afghanistan',
-  'Pakistan', 'Bangladesh', 'Sri Lanka', 'Nepal', 'Bhutan', 'Myanmar',
-  'Thailand', 'Vietnam', 'Cambodia', 'Laos', 'Malaysia', 'Singapore',
-  'Indonesia', 'Philippines', 'New Zealand', 'Fiji', 'Papua New Guinea'
+  ...[
+    'United States', 'Canada', 'United Kingdom', 'Germany', 'France', 'Spain', 'Italy',
+    'Brazil', 'Argentina', 'Mexico', 'Japan', 'South Korea', 'China', 'India',
+    'Australia', 'Netherlands', 'Belgium', 'Portugal', 'Switzerland', 'Sweden',
+    'Norway', 'Denmark', 'Finland', 'Poland', 'Czech Republic', 'Austria',
+    'Hungary', 'Romania', 'Bulgaria', 'Greece', 'Turkey', 'Ukraine', 'Russia',
+    'South Africa', 'Nigeria', 'Egypt', 'Morocco', 'Kenya', 'Ghana', 'Senegal',
+    'Ivory Coast', 'Cameroon', 'Algeria', 'Tunisia', 'Libya', 'Sudan', 'Ethiopia',
+    'Saudi Arabia', 'Iran', 'Iraq', 'Syria', 'Lebanon', 'Jordan', 'Israel',
+    'Palestine', 'Kuwait', 'Qatar', 'UAE', 'Oman', 'Yemen', 'Afghanistan',
+    'Pakistan', 'Bangladesh', 'Sri Lanka', 'Nepal', 'Bhutan', 'Myanmar',
+    'Thailand', 'Vietnam', 'Cambodia', 'Laos', 'Malaysia', 'Singapore',
+    'Indonesia', 'Philippines', 'New Zealand', 'Fiji', 'Papua New Guinea'
+  ].sort((a, b) => a.localeCompare(b))
 ];
 
 const sortOptions = [
@@ -248,7 +266,7 @@ const LeaderboardPage = () => {
   const [filtersApplied, setFiltersApplied] = useState(false);
   const [grinderOfWeekId, setGrinderOfWeekId] = useState(null);
   const [activeTab, setActiveTab] = useState('athletes'); // 'athletes' or 'coaches'
-  const [gender, setGender] = useState('male');
+  const [gender, setGender] = useState('Male');
   const [offset, setOffset] = useState(3);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -272,6 +290,8 @@ const LeaderboardPage = () => {
 
   // Apply filters function
   const applyFilters = () => {
+    setOffset(3); // Reset offset when applying new filters
+    const genderFormatted = gender.charAt(0).toUpperCase() + gender.slice(1).toLowerCase();
     const filters = {
       timeFrame: timeRange,
       sport: sport === 'All Sports' ? undefined : sport,
@@ -281,9 +301,9 @@ const LeaderboardPage = () => {
       country: country === 'All Countries' ? undefined : country,
       sortBy,
       sortOrder,
-      ...(activeTab === 'athletes' ? { gender } : {})
+      role: activeTab === 'coaches' ? 'coach' : 'athlete',
+      ...(activeTab === 'athletes' ? { gender: genderFormatted } : {})
     };
-    
     setFiltersApplied(true);
     fetchTopThree(filters);
     fetchRest(filters, false, 3);
@@ -394,6 +414,7 @@ const LeaderboardPage = () => {
   useEffect(() => {
     setOffset(3);
     setHasMore(true);
+    // Only fetch on tab, gender, sport, timeRange, sort, sortOrder changes
     fetchTopThree(getCurrentFilters());
     fetchRest(getCurrentFilters(), false, 3);
 
@@ -411,7 +432,18 @@ const LeaderboardPage = () => {
     } else {
       setGrinderOfWeekId(null);
     }
-  }, [timeRange, sport, sortBy, sortOrder, activeTab, gender, position, country]);
+  // Remove position, country, ageMin, ageMax from dependencies
+  }, [timeRange, sport, sortBy, sortOrder, activeTab, gender]);
+
+  // Fetch leaderboard for coaches when country changes
+  useEffect(() => {
+    if (activeTab === 'coaches') {
+      setOffset(3);
+      setHasMore(true);
+      fetchTopThree(getCurrentFilters());
+      fetchRest(getCurrentFilters(), false, 3);
+    }
+  }, [country, activeTab]);
 
   const formatHeight = (height) => {
     if (!height) return 'N/A';
@@ -596,13 +628,13 @@ const LeaderboardPage = () => {
                     <>
                       {/* Challenges Created */}
                       <div className="flex items-center gap-1 sm:gap-2 justify-center text-xs sm:text-lg">
-                        <span className="text-2xl">📝</span>
+                        <LeaderboardCheckIcon className="text-lg sm:text-3xl" size={24} />
                         <span className="font-bold">{top3[0]?.challengesCreated || 0}</span>
                         <span className="italic font-semibold text-gray-700 truncate">Created</span>
                       </div>
                       {/* Challenges Approved */}
                       <div className="flex items-center gap-1 sm:gap-2 justify-center text-xs sm:text-lg">
-                        <span className="text-2xl">✅</span>
+                        <UserIcon className="text-lg sm:text-3xl" size={24} />
                         <span className="font-bold">{top3[0]?.challengesApproved || 0}</span>
                         <span className="italic font-semibold text-gray-700 truncate">Approved</span>
                       </div>
@@ -706,12 +738,12 @@ const LeaderboardPage = () => {
                       ) : (
                         <>
                           <div className="flex items-center gap-0.5 sm:gap-1 justify-center">
-                            <span className="text-base">📝</span>
+                            <LeaderboardCheckIcon className="text-xs sm:text-base" size={18} />
                             <span className="font-bold">{top3[1].challengesCreated || 0}</span>
                             <span className="italic font-semibold text-gray-700 truncate">Created</span>
                           </div>
                           <div className="flex items-center gap-0.5 sm:gap-1 justify-center">
-                            <span className="text-base">✅</span>
+                            <UserIcon className="text-xs sm:text-base" size={18} />
                             <span className="font-bold">{top3[1].challengesApproved || 0}</span>
                             <span className="italic font-semibold text-gray-700 truncate">Approved</span>
                           </div>
@@ -806,12 +838,12 @@ const LeaderboardPage = () => {
                       ) : (
                         <>
                           <div className="flex items-center gap-0.5 sm:gap-1 justify-center">
-                            <span className="text-base">📝</span>
+                            <LeaderboardCheckIcon className="text-xs sm:text-base" size={18} />
                             <span className="font-bold">{top3[2].challengesCreated || 0}</span>
                             <span className="italic font-semibold text-gray-700 truncate">Created</span>
                           </div>
                           <div className="flex items-center gap-0.5 sm:gap-1 justify-center">
-                            <span className="text-base">✅</span>
+                            <UserIcon className="text-xs sm:text-base" size={18} />
                             <span className="font-bold">{top3[2].challengesApproved || 0}</span>
                             <span className="italic font-semibold text-gray-700 truncate">Approved</span>
                           </div>
@@ -873,16 +905,6 @@ const LeaderboardPage = () => {
                 <option key={option.value} value={option.value}>{option.label}</option>
               ))}
             </select>
-            <button
-              className={`px-2 sm:px-3 py-1 sm:py-2 rounded-lg shadow font-semibold text-[10px] sm:text-sm border transition truncate min-w-0 ${
-                sortOrder === 'DESC' 
-                  ? 'bg-red-600 text-white border-red-600' 
-                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
-              }`}
-              onClick={() => setSortOrder(sortOrder === 'DESC' ? 'ASC' : 'DESC')}
-            >
-              {sortOrder === 'DESC' ? '↓' : '↑'}
-            </button>
           </div>
           {/* Advanced Filters Toggle - Only show if there are advanced filters available */}
           {activeTab === 'athletes' && (
@@ -920,7 +942,7 @@ const LeaderboardPage = () => {
                   value={position}
                   onChange={e => setPosition(e.target.value)}
                 >
-                  {positions.map(p => <option key={p} value={p}>{p}</option>)}
+                  {getPositionsForSport(sport).map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
               </div>
               {/* Age Range - Only for athletes */}
