@@ -30,8 +30,16 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
   const showBookSession = !isCoach && !isOwnProfile;
 
   const handleBookSession = () => {
-    // Placeholder: navigate to messaging with this coach
-    navigate(`/messages?user=${profile.id}`);
+    // Navigate to messaging and open chat modal for this coach
+    navigate('/messages', {
+      state: {
+        openChatWith: {
+          userId: profile.id,
+          name: profile.name,
+          profilePic: profile.profilePictureUrl || profile.profile_picture_url || ''
+        }
+      }
+    });
   };
 
   return (
@@ -82,7 +90,7 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
       {currentUserRole === 'athlete' && !isOwnProfile && (
         <div className="flex justify-center my-4">
           <button
-            className="bg-[#dc2626] hover:bg-[#b91c1c] text-white rounded-full px-8 py-2 font-semibold shadow-md transition-colors duration-150"
+            className="w-full max-w-xl bg-[#dc2626] hover:bg-[#b91c1c] text-white rounded-full px-12 py-3 font-semibold shadow-md transition-colors duration-150 text-lg"
             onClick={handleBookSession}
           >
             Book a Session

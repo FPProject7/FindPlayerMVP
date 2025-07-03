@@ -1,0 +1,24 @@
+{
+  "name": "list-conversations-lambda",
+  "version": "1.0.0",
+  "description": "Lambda function to list conversations for a user",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.830.0",
+    "@aws-sdk/client-dynamodb": "^3.830.0",
+    "@aws-sdk/lib-dynamodb": "^3.830.0",
+    "aws-sdk": "^2.1692.0"
+  },
+  "keywords": [
+    "aws",
+    "lambda",
+    "messaging",
+    "dynamodb"
+  ],
+  "author": "",
+  "license": "ISC"
+}
