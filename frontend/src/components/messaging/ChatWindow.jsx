@@ -80,6 +80,7 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
   const [pullDistance, setPullDistance] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const messagesContainerRef = useRef(null);
+  const [errorMessage, setErrorMessage] = useState('');
 
   // Update currentConversationId when prop changes
   useEffect(() => {
@@ -206,7 +207,8 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
     if (!input.trim()) return;
     const receiverId = otherUserId;
     if (!receiverId || receiverId === 'new' || receiverId === myId) {
-      alert('Invalid recipient. Please select a valid user to chat with.');
+      setErrorMessage('Invalid recipient. Please select a valid user to chat with.');
+      setTimeout(() => setErrorMessage(''), 2000);
       return;
     }
     try {
@@ -227,6 +229,15 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
       }
       setInput('');
     } catch (error) {
+      // Show styled popup for non-premium error
+      const msg = error?.message || error?.graphQLErrors?.[0]?.message || '';
+      if (msg.includes('Only premium members can use messaging.')) {
+        setErrorMessage('Premium Feature');
+        setTimeout(() => setErrorMessage(''), 2000);
+      } else {
+        setErrorMessage(msg || 'Failed to send message.');
+        setTimeout(() => setErrorMessage(''), 2000);
+      }
       console.error('Error sending message:', error);
     }
   };
@@ -245,6 +256,14 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
   // Modal content
   const modalContent = (
     <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-0" style={{ minHeight: '100vh' }}>
+      {/* Error Popup */}
+      {errorMessage && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none">
+          <div className="bg-red-700 text-white px-8 py-4 rounded-2xl shadow-2xl text-lg font-semibold opacity-95 animate-fade-in-out max-w-xs w-auto text-center">
+            {errorMessage}
+          </div>
+        </div>
+      )}
       <div className="bg-white w-full max-w-[380px] mx-auto flex flex-col" style={{ height: '70vh', borderRadius: 24, boxShadow: '0 4px 32px rgba(0,0,0,0.12)', overflow: 'hidden', position: 'relative' }}>
         {/* Header */}
         <div className="flex items-center border-b px-4 py-3 bg-white z-10 relative" style={{ minHeight: 60, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
