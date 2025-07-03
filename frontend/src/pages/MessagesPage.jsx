@@ -46,6 +46,7 @@ export default function MessagesPage() {
         conversationId={selectedConversation?.conversationId}
         otherUserName={selectedConversation?.name}
         otherUserProfilePic={selectedConversation?.profilePic}
+        otherUserId={selectedConversation?.userId}
       />
     </div>
   );

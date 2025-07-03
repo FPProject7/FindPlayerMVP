@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, gql } from '@apollo/client';
 import { searchUsers } from '../../api/userApi';
+import ChallengeLoader from '../common/ChallengeLoader';
 
 // Utility to get initials from a name
 function getInitials(name) {
@@ -27,13 +28,20 @@ const LIST_CONVERSATIONS = gql`
   }
 `;
 
+const PULL_THRESHOLD = 80;
+const MAX_PULL_DISTANCE = 120;
+
 export default function ConversationList({ onSelectConversation }) {
   const [search, setSearch] = useState('');
   const [userResults, setUserResults] = useState([]);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [userLoading, setUserLoading] = useState(false);
+  const [pullStartY, setPullStartY] = useState(0);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const containerRef = useRef(null);
 
-  const { data, loading, error } = useQuery(LIST_CONVERSATIONS, {
+  const { data, loading, error, refetch } = useQuery(LIST_CONVERSATIONS, {
     variables: { limit: 20 },
     fetchPolicy: 'cache-and-network',
   });
@@ -60,18 +68,59 @@ export default function ConversationList({ onSelectConversation }) {
     return () => clearTimeout(timeout);
   }, [search]);
 
+  // Pull-to-refresh handlers
+  const handleTouchStart = (e) => {
+    if (loading) return;
+    const touch = e.touches[0];
+    setPullStartY(touch.clientY);
+    setPullDistance(0);
+  };
+  const handleTouchMove = (e) => {
+    if (loading) return;
+    const touch = e.touches[0];
+    const currentY = touch.clientY;
+    const distance = Math.max(0, currentY - pullStartY);
+    if (distance > 0 && window.scrollY === 0) {
+      e.preventDefault();
+      setPullDistance(Math.min(distance, MAX_PULL_DISTANCE));
+    } else {
+      setPullDistance(0);
+    }
+  };
+  const handleTouchEnd = () => {
+    if (loading) return;
+    if (pullDistance >= PULL_THRESHOLD) {
+      setRefreshing(true);
+      refetch().finally(() => setRefreshing(false));
+    }
+    setPullDistance(0);
+  };
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    container.addEventListener('touchstart', handleTouchStart, { passive: false });
+    container.addEventListener('touchmove', handleTouchMove, { passive: false });
+    container.addEventListener('touchend', handleTouchEnd, { passive: false });
+    return () => {
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchmove', handleTouchMove);
+      container.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [loading, pullDistance]);
+
   const handleStartChat = (user) => {
     setShowUserDropdown(false);
     setSearch('');
     onSelectConversation({
       conversationId: 'new',
       name: user.name,
-      profilePic: user.profile_picture_url
+      profilePic: user.profile_picture_url,
+      userId: user.id
     });
   };
 
-  if (loading) return <div>Loading conversations...</div>;
-  if (error) return <div>Error loading conversations.</div>;
+  if (loading && !refreshing) return <div className="flex justify-center items-center py-8"><ChallengeLoader /></div>;
+  if (error) return <div className="flex justify-center items-center py-8 text-red-500">{error.message || 'Error loading conversations.'}</div>;
 
   const conversations = data?.listConversations?.items || [];
   const filtered = conversations.filter(
@@ -81,7 +130,35 @@ export default function ConversationList({ onSelectConversation }) {
   );
 
   return (
-    <div className="conversation-list-container">
+    <div
+      className="conversation-list-container"
+      ref={containerRef}
+      style={{
+        transform: `translateY(${pullDistance}px)`,
+        transition: pullDistance === 0 ? 'transform 0.3s ease-out' : 'none'
+      }}
+    >
+      {/* Pull to Refresh Indicator */}
+      {pullDistance > 0 && (
+        <div className="flex justify-center items-center py-4 text-gray-500">
+          {pullDistance >= PULL_THRESHOLD ? (
+            <div className="flex items-center">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500 mr-2"></div>
+              Release to refresh
+            </div>
+          ) : (
+            <div className="flex items-center">
+              <div className="mr-2">↓</div>
+              Pull down to refresh
+            </div>
+          )}
+        </div>
+      )}
+      {refreshing && (
+        <div className="flex justify-center items-center py-2 text-gray-500">
+          <ChallengeLoader />
+        </div>
+      )}
       <div className="conversation-search-bar">
         <input
           type="text"
@@ -148,7 +225,8 @@ export default function ConversationList({ onSelectConversation }) {
             onClick={() => onSelectConversation({
               conversationId: conv.conversationId,
               name: conv.otherUserName,
-              profilePic: conv.otherUserProfilePic
+              profilePic: conv.otherUserProfilePic,
+              userId: conv.otherUserId
             })}
             style={{
               display: 'flex',

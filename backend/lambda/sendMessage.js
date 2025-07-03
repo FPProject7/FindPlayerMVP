@@ -1,5 +1,5 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, PutCommand, QueryCommand, UpdateCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
@@ -29,26 +29,42 @@ export const handler = async (event) => {
         }
 
         let finalConversationId = conversationId;
+        let conversationTimestamp;
 
-        // If no conversationId provided, create a new conversation
+        // If no conversationId provided, check for existing conversation (order-agnostic)
         if (!finalConversationId) {
-            const now = new Date().toISOString();
-            finalConversationId = `${cognitoUsername}_${receiverId}_${Date.now()}`;
-            
-            const newConversation = {
-                conversationId: finalConversationId,
-                timestamp: now,
-                participants: [cognitoUsername, receiverId],
-                createdAt: now,
-                lastMessage: content,
-                lastMessageTime: now,
-                lastMessageSender: cognitoUsername
-            };
-
-            await docClient.send(new PutCommand({
+            // Scan for existing conversation with both participants
+            const scanParams = {
                 TableName: CONVERSATIONS_TABLE,
-                Item: newConversation
-            }));
+                FilterExpression: 'contains(participants, :u1) AND contains(participants, :u2)',
+                ExpressionAttributeValues: {
+                    ':u1': cognitoUsername,
+                    ':u2': receiverId,
+                },
+            };
+            const existing = await docClient.send(new ScanCommand(scanParams));
+            if (existing.Items && existing.Items.length > 0) {
+                finalConversationId = existing.Items[0].conversationId;
+                conversationTimestamp = existing.Items[0].timestamp;
+            } else {
+                // No existing conversation, create new
+                const now = new Date().toISOString();
+                finalConversationId = `${cognitoUsername}_${receiverId}_${Date.now()}`;
+                const newConversation = {
+                    conversationId: finalConversationId,
+                    timestamp: now,
+                    participants: [cognitoUsername, receiverId],
+                    createdAt: now,
+                    lastMessage: content,
+                    lastMessageTime: now,
+                    lastMessageSender: cognitoUsername
+                };
+                await docClient.send(new PutCommand({
+                    TableName: CONVERSATIONS_TABLE,
+                    Item: newConversation
+                }));
+                conversationTimestamp = now;
+            }
         } else {
             // Query for the latest conversation by conversationId to get the timestamp
             const queryParams = {
@@ -71,7 +87,7 @@ export const handler = async (event) => {
             }
 
             // Save timestamp for update
-            var conversationTimestamp = conversationItem.timestamp;
+            conversationTimestamp = conversationItem.timestamp;
         }
 
         // Create message

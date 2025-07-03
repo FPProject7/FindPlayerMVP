@@ -3,6 +3,7 @@ import { useQuery, useMutation, useSubscription, gql } from '@apollo/client';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useLocation } from 'react-router-dom';
 import { createPortal } from 'react-dom';
+import ChallengeLoader from '../common/ChallengeLoader';
 import './ChatWindow.css';
 
 const GET_MESSAGES = gql`
@@ -62,7 +63,10 @@ const ON_NEW_MESSAGE = gql`
   }
 `;
 
-export default function ChatWindow({ isOpen, onClose, conversationId, otherUserName, otherUserProfilePic }) {
+const PULL_THRESHOLD = 80;
+const MAX_PULL_DISTANCE = 120;
+
+export default function ChatWindow({ isOpen, onClose, conversationId, otherUserName, otherUserProfilePic, otherUserId }) {
   const location = useLocation();
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
@@ -72,6 +76,10 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
   const myName = user?.name || '';
   const myProfilePic = user?.profile_picture_url || '';
   const messagesEndRef = useRef(null);
+  const [pullStartY, setPullStartY] = useState(0);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const messagesContainerRef = useRef(null);
 
   // Update currentConversationId when prop changes
   useEffect(() => {
@@ -153,10 +161,50 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Pull-to-refresh handlers for messages
+  const handleTouchStart = (e) => {
+    if (loading) return;
+    const touch = e.touches[0];
+    setPullStartY(touch.clientY);
+    setPullDistance(0);
+  };
+  const handleTouchMove = (e) => {
+    if (loading) return;
+    const touch = e.touches[0];
+    const currentY = touch.clientY;
+    const distance = Math.max(0, currentY - pullStartY);
+    if (distance > 0 && messagesContainerRef.current && messagesContainerRef.current.scrollTop === 0) {
+      e.preventDefault();
+      setPullDistance(Math.min(distance, MAX_PULL_DISTANCE));
+    } else {
+      setPullDistance(0);
+    }
+  };
+  const handleTouchEnd = () => {
+    if (loading) return;
+    if (pullDistance >= PULL_THRESHOLD) {
+      setRefreshing(true);
+      refetch().finally(() => setRefreshing(false));
+    }
+    setPullDistance(0);
+  };
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    container.addEventListener('touchstart', handleTouchStart, { passive: false });
+    container.addEventListener('touchmove', handleTouchMove, { passive: false });
+    container.addEventListener('touchend', handleTouchEnd, { passive: false });
+    return () => {
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchmove', handleTouchMove);
+      container.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [loading, pullDistance]);
+
   const handleSend = async e => {
     e.preventDefault();
     if (!input.trim()) return;
-    const receiverId = otherUser.id;
+    const receiverId = otherUserId;
     if (!receiverId || receiverId === 'new' || receiverId === myId) {
       alert('Invalid recipient. Please select a valid user to chat with.');
       return;
@@ -213,8 +261,35 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
           <button onClick={onClose} className="absolute right-4 top-1/2 -translate-y-1/2 text-2xl text-gray-500 hover:text-gray-700 font-bold" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}>&times;</button>
         </div>
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-3 py-4 bg-[#f8f8fa]" style={{ minHeight: 0 }}>
-          {isNewConversation ? (
+        <div
+          className="flex-1 overflow-y-auto px-3 py-4 bg-[#f8f8fa]"
+          style={{ minHeight: 0, transform: `translateY(${pullDistance}px)`, transition: pullDistance === 0 ? 'transform 0.3s ease-out' : 'none' }}
+          ref={messagesContainerRef}
+        >
+          {/* Pull to Refresh Indicator */}
+          {pullDistance > 0 && (
+            <div className="flex justify-center items-center py-4 text-gray-500">
+              {pullDistance >= PULL_THRESHOLD ? (
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500 mr-2"></div>
+                  Release to refresh
+                </div>
+              ) : (
+                <div className="flex items-center">
+                  <div className="mr-2">↓</div>
+                  Pull down to refresh
+                </div>
+              )}
+            </div>
+          )}
+          {refreshing && (
+            <div className="flex justify-center items-center py-2 text-gray-500">
+              <ChallengeLoader />
+            </div>
+          )}
+          {loading && !refreshing ? (
+            <div className="flex justify-center items-center py-8"><ChallengeLoader /></div>
+          ) : isNewConversation ? (
             <div className="text-center text-gray-400 mt-10">Start a new conversation</div>
           ) : (
             messages.map(msg => {
