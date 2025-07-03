@@ -67,12 +67,12 @@ exports.handler = async (event) => {
     /** @type {string[]} */
     const whereConditions = [];
     /** @type {any[]} */
-    const queryParams = [];
+    let queryParams = [];
     let paramCount = 1;
 
     // Time-based filtering
     let timeFilter = '';
-    let timeFilterParams = [];
+    let timeFilterParam = null;
     if (timeFrame !== 'all') {
       const now = new Date();
       let startDate;
@@ -96,7 +96,7 @@ exports.handler = async (event) => {
       
       if (startDate) {
         timeFilter = `AND cs.submitted_at >= $${paramCount}`;
-        timeFilterParams.push(startDate.toISOString());
+        timeFilterParam = startDate.toISOString();
         paramCount++;
       }
     }
@@ -132,6 +132,13 @@ exports.handler = async (event) => {
     if (position) {
       whereConditions.push(`u.position ILIKE $${paramCount}`);
       queryParams.push(`%${position}%`);
+      paramCount++;
+    }
+
+    // Gender filtering
+    if (query.gender) {
+      whereConditions.push(`LOWER(u.gender) = LOWER($${paramCount})`);
+      queryParams.push(query.gender);
       paramCount++;
     }
 
@@ -172,6 +179,13 @@ exports.handler = async (event) => {
 
     // Build the base query with role-specific joins
     let leaderboardQuery;
+    let orderByClause;
+    // Special handling for height sorting (numeric)
+    if (sortField === 'height') {
+      orderByClause = `ORDER BY CAST(u.height AS INTEGER) ${orderDirection}`;
+    } else {
+      orderByClause = `ORDER BY "${sortField}" ${orderDirection}`;
+    }
     
     if (role === 'coach') {
       // Query for coaches - include challenges created and challenges approved
@@ -206,12 +220,56 @@ exports.handler = async (event) => {
           GROUP BY c.coach_id
         ) AS challenges_approved ON u.id::text = challenges_approved.coach_id
         WHERE ${whereConditions.join(' AND ')}
+        ${orderByClause} LIMIT $${paramCount} OFFSET $${paramCount + 1}
       `;
+      queryParams.push(limit, offset);
     } else {
-      // Query for athletes - keep existing logic
-      // Add time filter parameters for athlete query
-      queryParams.push(...timeFilterParams);
-      
+      // Query for athletes - robust parameter order
+      let athleteWhere = [];
+      let athleteParams = [];
+      let paramCount = 1;
+      let joinTimeFilter = '';
+      // Time filter for LEFT JOIN (should be first param if present)
+      if (timeFrame !== 'all') {
+        const now = new Date();
+        let startDate;
+        switch (timeFrame) {
+          case 'today':
+            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            break;
+          case 'week':
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            break;
+          case 'month':
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            break;
+          case 'year':
+            startDate = new Date(now.getFullYear(), 0, 1);
+            break;
+          default:
+            startDate = null;
+        }
+        if (startDate) {
+          joinTimeFilter = `AND cs.submitted_at >= $${paramCount}`;
+          athleteParams.push(startDate.toISOString());
+          paramCount++;
+        }
+      }
+      // Gender filter
+      if (query.gender) {
+        athleteWhere.push(`LOWER(u.gender) = LOWER($${paramCount})`);
+        athleteParams.push(query.gender);
+        paramCount++;
+      }
+      // Role filter
+      if (role) {
+        athleteWhere.push(`LOWER(u.role) = LOWER($${paramCount})`);
+        athleteParams.push(role);
+        paramCount++;
+      }
+      // Add other filters here in the same way if needed (country, sport, etc.)
+      // ...
+      let whereClause = athleteWhere.length > 0 ? athleteWhere.join(' AND ') : '1=1';
       leaderboardQuery = `
         SELECT 
           u.id, 
@@ -230,20 +288,18 @@ exports.handler = async (event) => {
           0 AS "challengesCreated",
           0 AS "challengesApproved"
         FROM users u
-        LEFT JOIN challenge_submissions cs ON u.id = cs.athlete_id ${timeFilter}
-        WHERE ${whereConditions.join(' AND ')}
+        LEFT JOIN challenge_submissions cs ON u.id = cs.athlete_id ${joinTimeFilter}
+        WHERE ${whereClause}
         GROUP BY u.id, u.name, u.profile_picture_url, u.xp_total, u.height, u.weight, u.country, u.sport, u.position, u.date_of_birth, u.role
       `;
+      // Add LIMIT and OFFSET
+      leaderboardQuery += ` ${orderByClause} LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+      athleteParams.push(limit, offset);
+      queryParams = athleteParams;
+      // Logging for debugging
+      console.log('Final SQL:', leaderboardQuery);
+      console.log('Final Params:', queryParams);
     }
-
-    leaderboardQuery += ` ORDER BY "${sortField}" ${orderDirection} LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
-
-    console.log('Leaderboard API - Generated SQL Query:', leaderboardQuery);
-    console.log('Leaderboard API - SQL Query parameters:', queryParams);
-    console.log('Leaderboard API - LIMIT:', limit, 'OFFSET:', offset);
-    console.log('Leaderboard API - Role being queried:', role);
-
-    queryParams.push(limit, offset);
 
     let result;
     try {

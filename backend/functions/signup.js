@@ -32,20 +32,20 @@ export const handler = async (event) => {
     }
 
     // Destructure new profilePictureContentType
-    const { email, password, role, firstName, gender, sport, position, height, country, profilePictureBase64, profilePictureContentType } = body;
+    const { email, password, role, name, gender, sport, position, height, weight, date_of_birth, country, profilePictureBase64, profilePictureContentType } = body;
 
-    if (!email || !password || !firstName || !role) {
+    if (!email || !password || !name || !role) {
         return {
             statusCode: 400,
             headers: { "Access-Control-Allow-Origin": "*" },
-            body: JSON.stringify({ message: "Missing required fields (email, password, firstName, role)." }),
+            body: JSON.stringify({ message: "Missing required fields (email, password, name, role)." }),
         };
     }
 
     const userAttributes = [
         { Name: "email", Value: email },
-        { Name: "name", Value: firstName },
-        { Name: "given_name", Value: firstName },
+        { Name: "name", Value: name },
+        { Name: "given_name", Value: name },
         { Name: "gender", Value: gender },
         { Name: "custom:role", Value: role },
         { Name: "custom:sport", Value: sport },
@@ -56,7 +56,19 @@ export const handler = async (event) => {
     }
 
     if (role && role.toLowerCase() === 'athlete' && height) {
-        userAttributes.push({ Name: "custom:height", Value: height });
+        // Ensure height meets minimum length validation by padding with leading zeros if needed
+        const heightStr = height.toString().padStart(3, '0');
+        userAttributes.push({ Name: "custom:height", Value: heightStr });
+    }
+
+    if (role && role.toLowerCase() === 'athlete' && weight) {
+        // Ensure weight meets minimum length validation by padding with leading zeros if needed
+        const weightStr = weight.toString().padStart(3, '0');
+        userAttributes.push({ Name: "custom:weight", Value: weightStr });
+    }
+
+    if (date_of_birth) {
+        userAttributes.push({ Name: "custom:date_of_birth", Value: date_of_birth });
     }
 
     if (country) {
@@ -159,7 +171,7 @@ export const handler = async (event) => {
         }
 
         // Before DB sync
-        console.log("Attempting to sync user to users table:", { cognitoSub, email, firstName, role, profilePictureUrl });
+        console.log("Attempting to sync user to users table:", { cognitoSub, email, name, role, profilePictureUrl });
 
         // Step 5: Sync user to users table in PostgreSQL (even if auto-login failed)
         try {
@@ -167,14 +179,16 @@ export const handler = async (event) => {
                 const client = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
                 await client.connect();
                 await client.query(
-                    `INSERT INTO users (id, email, name, role, profile_picture_url, height, country, sport, position)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                    `INSERT INTO users (id, email, name, role, profile_picture_url, height, weight, date_of_birth, country, sport, position)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                      ON CONFLICT (id) DO UPDATE SET
                        email = EXCLUDED.email,
                        name = EXCLUDED.name,
                        role = EXCLUDED.role,
                        profile_picture_url = EXCLUDED.profile_picture_url,
                        height = EXCLUDED.height,
+                       weight = EXCLUDED.weight,
+                       date_of_birth = EXCLUDED.date_of_birth,
                        country = EXCLUDED.country,
                        sport = EXCLUDED.sport,
                        position = EXCLUDED.position,
@@ -182,10 +196,12 @@ export const handler = async (event) => {
                     [
                         cognitoSub,
                         email,
-                        firstName,
+                        name,
                         role,
                         profilePictureUrl,
                         role && role.toLowerCase() === 'athlete' ? height : null,
+                        role && role.toLowerCase() === 'athlete' ? weight : null,
+                        date_of_birth || null,
                         country,
                         sport,
                         position
@@ -200,13 +216,15 @@ export const handler = async (event) => {
         }
 
         const userProfile = {
-            name: firstName,
+            name: name,
             email: email,
             role: role,
             gender: gender,
             sport: sport,
             position: position,
             height: role && role.toLowerCase() === 'athlete' ? height : null,
+            weight: role && role.toLowerCase() === 'athlete' ? weight : null,
+            date_of_birth: date_of_birth,
             country: country,
             profilePictureUrl: profilePictureUrl
         };

@@ -105,6 +105,7 @@ export const getLeaderboard = (filters = {}) => {
   if (filters.limit) params.append('limit', filters.limit);
   if (filters.offset) params.append('offset', filters.offset);
   if (filters.role) params.append('role', filters.role);
+  if (filters.gender) params.append('gender', filters.gender);
   
   return userApiClient.get(`/leaderboard?${params.toString()}`);
 };
