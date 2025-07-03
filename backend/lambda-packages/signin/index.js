@@ -74,6 +74,7 @@ export const handler = async (event) => {
                         case 'custom:role': userProfile.role = attr.Value; break;
                         case 'custom:sport': userProfile.sport = attr.Value; break;
                         case 'custom:position': userProfile.position = attr.Value; break;
+                        case 'custom:height': userProfile.height = attr.Value; break;
                         case 'custom:profilePictureUrl': 
                             profilePictureUrl = attr.Value;
                             userProfile.profilePictureUrl = attr.Value; 
@@ -100,20 +101,22 @@ export const handler = async (event) => {
                 const dbClient = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
                 await dbClient.connect();
                 await dbClient.query(
-                    `INSERT INTO users (id, email, name, role, profile_picture_url)
-                     VALUES ($1, $2, $3, $4, $5)
+                    `INSERT INTO users (id, email, name, role, profile_picture_url, height)
+                     VALUES ($1, $2, $3, $4, $5, $6)
                      ON CONFLICT (id) DO UPDATE SET
                        email = EXCLUDED.email,
                        name = EXCLUDED.name,
                        role = EXCLUDED.role,
                        profile_picture_url = EXCLUDED.profile_picture_url,
+                       height = EXCLUDED.height,
                        updated_at = CURRENT_TIMESTAMP`,
                     [
                         cognitoSub,
                         userProfile.email,
                         userProfile.name,
                         userProfile.role,
-                        userProfile.profilePictureUrl
+                        userProfile.profilePictureUrl,
+                        userProfile.height
                     ]
                 );
                 await dbClient.end();

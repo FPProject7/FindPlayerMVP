@@ -5,6 +5,7 @@ import FollowersModal from './FollowersModal';
 import { useState } from 'react';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useNavigate } from 'react-router-dom';
+import { formatHeight, formatWeight } from '../../utils/levelUtils';
 
 const AthleteProfile = ({
   profile,
@@ -44,11 +45,17 @@ const AthleteProfile = ({
         showShareButton={true}
       />
       {/* Height and Weight */}
-      {(height || weight) && (
-        <div className="flex flex-row justify-center gap-6 text-gray-500 text-sm mt-1">
-          {height && <span>Height: {height}</span>}
-          {weight && <span>Weight: {weight}</span>}
-        </div>
+      {(height || weight || profile.country) && (
+        <>
+          <div className="w-full flex justify-center">
+            <div className="h-px bg-gray-200 my-4" style={{ width: '70%' }}></div>
+          </div>
+          <div className="grid grid-cols-3 text-gray-500 text-sm mt-5 w-full max-w-xs mx-auto">
+            <div className="text-center">{height ? formatHeight(height) : ''}</div>
+            <div className="text-center">{weight ? formatWeight(weight) : ''}</div>
+            <div className="text-center">{profile.country ? profile.country : ''}</div>
+          </div>
+        </>
       )}
       {/* Stats Row */}
       <div className="flex justify-between my-6 max-w-xs mx-auto">
@@ -81,9 +88,11 @@ const AthleteProfile = ({
         <FollowersModal userId={userId} open={showFollowers} onClose={() => setShowFollowers(false)} />
       )}
       {currentUserId === profile.id && <UpgradePremiumButton />}
-      <div className="text-xs text-center text-gray-400 mb-4">
-        Stand out, get noticed, and unlock exclusive opportunities.
-      </div>
+      {currentUserId === profile.id && (
+        <div className="text-xs text-center text-gray-400 mb-4">
+          Stand out, get noticed, and unlock exclusive opportunities.
+        </div>
+      )}
       <ProfileTabs profile={profile} isOwnProfile={currentUserId === profile.id} />
       {currentUserId === profile.id && (
         <div className="flex justify-center mt-8 mb-24">

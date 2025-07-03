@@ -136,3 +136,25 @@ export async function createConversation(otherUserId) {
   });
   return data?.createConversation;
 }
+
+// Function to get leaderboard data
+export const getLeaderboard = (filters = {}) => {
+  const params = new URLSearchParams();
+  
+  if (filters.heightMin !== undefined) params.append('heightMin', filters.heightMin);
+  if (filters.heightMax !== undefined) params.append('heightMax', filters.heightMax);
+  if (filters.country) params.append('country', filters.country);
+  if (filters.sport) params.append('sport', filters.sport);
+  if (filters.position) params.append('position', filters.position);
+  if (filters.ageMin) params.append('ageMin', filters.ageMin);
+  if (filters.ageMax) params.append('ageMax', filters.ageMax);
+  if (filters.timeFrame) params.append('timeFrame', filters.timeFrame);
+  if (filters.sortBy) params.append('sortBy', filters.sortBy);
+  if (filters.sortOrder) params.append('sortOrder', filters.sortOrder);
+  if (filters.limit) params.append('limit', filters.limit);
+  if (filters.offset) params.append('offset', filters.offset);
+  if (filters.role) params.append('role', filters.role);
+  if (filters.gender) params.append('gender', filters.gender);
+  
+  return userApiClient.get(`/leaderboard?${params.toString()}`);
+};

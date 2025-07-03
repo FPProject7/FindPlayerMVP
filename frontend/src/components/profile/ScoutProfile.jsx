@@ -30,6 +30,11 @@ const ScoutProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
           {profile.name}
           {sport && <span className="text-gray-500 font-normal">, {sport}</span>}
         </div>
+        {profile.country && (
+          <div className="text-gray-500 text-sm mt-1">
+            Country: {profile.country}
+          </div>
+        )}
         {quote && (
           <div className="italic text-gray-400 text-center mt-1">"{quote}"</div>
         )}

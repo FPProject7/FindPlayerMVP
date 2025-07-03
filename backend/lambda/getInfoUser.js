@@ -1,7 +1,6 @@
 const { Client } = require('pg');
 
 exports.handler = async (event) => {
-  // Handle CORS preflight OPTIONS request
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
@@ -20,9 +19,7 @@ exports.handler = async (event) => {
     const requestedUserId = queryParams.userId;
     const requestedUsername = queryParams.username;
 
-    // If no userId or username param, get from token (assuming authorizer sets JWT claims)
     const currentUserId = event.requestContext?.authorizer?.jwt?.claims?.sub;
-
     const userIdToFetch = requestedUserId || currentUserId;
 
     if (!userIdToFetch && !requestedUsername) {
@@ -48,18 +45,19 @@ exports.handler = async (event) => {
     await client.connect();
 
     let result;
+
     if (requestedUsername) {
-      // Normalize the username for better matching
       const normalizedUsername = requestedUsername
         .trim()
         .toLowerCase()
-        .replace(/[-\s_]+/g, ' '); // Replace hyphens, underscores, multiple spaces with single space
-      
-      console.log('Searching for username:', requestedUsername, 'Normalized:', normalizedUsername);
-      
-      // Create a simplified query that handles various name formats
+        .replace(/[-\s_]+/g, ' ');
+
       const query = `
-        SELECT id, name, email, profile_picture_url AS "profilePictureUrl", role, xp_total AS "xpTotal"
+        SELECT 
+          id, name, email, profile_picture_url AS "profilePictureUrl", role, xp_total AS "xpTotal", height, weight, date_of_birth, country, sport, position,
+          (SELECT COUNT(*) FROM followers WHERE following_id = users.id) AS "followersCount",
+          (SELECT COUNT(*) FROM followers WHERE follower_id = users.id) AS "followingCount",
+          (SELECT COUNT(*) FROM user_completed_challenges WHERE user_id = users.id) AS "challengesCompleted"
         FROM users 
         WHERE LOWER(TRIM(name)) = LOWER($1)
         OR LOWER(REPLACE(TRIM(name), ' ', '')) = LOWER(REPLACE($1, ' ', ''))
@@ -68,12 +66,16 @@ exports.handler = async (event) => {
         OR LOWER(REPLACE(REPLACE(REPLACE(TRIM(name), ' ', ''), '-', ''), '_', '')) = LOWER(REPLACE(REPLACE(REPLACE($1, ' ', ''), '-', ''), '_', ''))
         LIMIT 1
       `;
-      
       result = await client.query(query, [normalizedUsername]);
+
     } else {
-      // Query by userId
+      // ✅ Enhanced userId-based query with counts
       result = await client.query(
-        `SELECT id, name, email, profile_picture_url AS "profilePictureUrl", role, xp_total AS "xpTotal"
+        `SELECT 
+           id, name, email, profile_picture_url AS "profilePictureUrl", role, xp_total AS "xpTotal", height, weight, date_of_birth, country, sport, position,
+           (SELECT COUNT(*) FROM followers WHERE following_id = users.id) AS "followersCount",
+           (SELECT COUNT(*) FROM followers WHERE follower_id = users.id) AS "followingCount",
+           (SELECT COUNT(*) FROM user_completed_challenges WHERE user_id = users.id) AS "challengesCompleted"
          FROM users 
          WHERE id = $1`,
         [userIdToFetch]
@@ -103,6 +105,7 @@ exports.handler = async (event) => {
       },
       body: JSON.stringify(result.rows[0]),
     };
+
   } catch (err) {
     console.error('Error in getUserInfo:', err);
     return {

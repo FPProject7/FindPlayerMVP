@@ -90,4 +90,61 @@ export function getXPDetails(xp) {
     xpNeeded,
     xpTotal: xp
   };
+}
+
+/**
+ * Calculate age from date of birth
+ * @param {string} dateOfBirth - Date of birth string
+ * @returns {string|number} Age in years or 'N/A' if invalid
+ */
+export function calculateAge(dateOfBirth) {
+  if (!dateOfBirth) return 'N/A';
+  
+  try {
+    const birthDate = new Date(dateOfBirth);
+    const today = new Date();
+    
+    // Check if the date is valid
+    if (isNaN(birthDate.getTime())) {
+      return 'N/A';
+    }
+    
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    
+    // If age is negative (future date) or unreasonably high, return N/A
+    if (age < 0 || age > 120) {
+      return 'N/A';
+    }
+    
+    return age;
+  } catch (error) {
+    return 'N/A';
+  }
+}
+
+/**
+ * Format height in inches to feet/inches and cm (e.g., 6'0" (183 cm))
+ * @param {number} height - Height in inches
+ * @returns {string} Formatted height string
+ */
+export function formatHeight(height) {
+  if (!height) return 'N/A';
+  const feet = Math.floor(height / 12);
+  const inches = height % 12;
+  return `${feet}'${inches}\"`;
+}
+
+/**
+ * Format weight in lbs to lbs and kg (e.g., 190 lbs (86 kg))
+ * @param {number} weight - Weight in lbs
+ * @returns {string} Formatted weight string
+ */
+export function formatWeight(weight) {
+  if (!weight) return 'N/A';
+  return `${weight} lbs`;
 } 
