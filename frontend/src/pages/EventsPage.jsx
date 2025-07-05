@@ -214,6 +214,61 @@ const hostedMockEvents = [
   },
 ];
 
+// Mock data for joined/participating events
+const joinedMockEvents = [
+  {
+    id: 4,
+    title: 'Weekend Football League',
+    image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=600&q=80',
+    date: 'Sep 25, 2025 4:00 PM',
+    location: 'Kuwait Sports Club',
+    registered: 22,
+    maxPlayers: 24,
+    price: 15,
+    priceType: 'player',
+    paymentNote: 'cash only',
+    dressCode: 'Red team jersey required',
+    description: 'Weekly football league for intermediate players. Teams will be formed on the day. Bring your own cleats and water.',
+    host: 'Ahmed Al Mansouri',
+    sport: 'Football',
+    type: 'League',
+  },
+  {
+    id: 5,
+    title: 'Basketball Pickup Games',
+    image: 'https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=600&q=80',
+    date: 'Sep 28, 2025 6:00 PM',
+    location: 'Al Shaab Indoor Court',
+    registered: 18,
+    maxPlayers: 20,
+    price: 8,
+    priceType: 'player',
+    paymentNote: 'cash only',
+    dressCode: 'Basketball shoes required',
+    description: 'Casual pickup basketball games. All skill levels welcome. Games will be 4v4 or 5v5 depending on turnout.',
+    host: 'Sarah Johnson',
+    sport: 'Basketball',
+    type: 'Pickup',
+  },
+  {
+    id: 6,
+    title: 'Youth Training Camp',
+    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80',
+    date: 'Oct 2, 2025 9:00 AM',
+    location: 'Kuwait National Stadium',
+    registered: 35,
+    maxPlayers: 40,
+    price: 25,
+    priceType: 'player',
+    paymentNote: 'online payment',
+    dressCode: 'Training gear provided',
+    description: 'Professional training camp for young athletes aged 16-21. Focus on technique, fitness, and game strategy.',
+    host: 'Coach Mohammed',
+    sport: 'Football',
+    type: 'Training',
+  },
+];
+
 const EventsPage = () => {
   const { isAuthenticated } = useAuthStore(); // Get the authentication status
   const navigate = useNavigate(); // Initialize navigate hook
@@ -328,9 +383,49 @@ const EventsPage = () => {
           </div>
         )}
         {activeTab === 'participating' && (
-          <div>
-            <h2 className="text-xl font-bold mb-2">Joined</h2>
-            <p>List of events the user is participating in will go here.</p>
+          <div className="flex flex-col gap-6">
+            {joinedMockEvents.length === 0 ? (
+              <div className="text-center text-gray-400 py-8">No joined events yet.</div>
+            ) : (
+              joinedMockEvents.map(event => (
+                <div
+                  key={event.id}
+                  className="bg-white rounded-2xl shadow border border-gray-100 p-4 cursor-pointer hover:shadow-lg transition-shadow"
+                  onClick={() => navigate(`/events/${event.id}`)}
+                >
+                  <div className="relative mb-3">
+                    <img src={event.image} alt={event.title} className="w-full h-32 object-cover rounded-xl" />
+                    {/* Share button in top right */}
+                    <div className="absolute top-2 right-2 z-10" onClick={(e) => e.stopPropagation()}>
+                      <ShareButton 
+                        url={`${window.location.origin}/events/${event.id}`}
+                        title={`Check out this event: ${event.title}`}
+                        iconSize={18}
+                      />
+                    </div>
+                  </div>
+                  <div className="font-bold text-lg mb-1">{event.title}</div>
+                  <div className="flex items-center text-gray-500 text-sm mb-1">
+                    <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="4"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    {event.date} <span className="mx-2">{event.location}</span>
+                  </div>
+                  <div className="text-gray-700 text-sm mb-3">{event.registered} / {event.maxPlayers} Registered</div>
+                  <div className="flex items-center justify-between">
+                    <div className="text-lg font-bold text-gray-900">${event.price} <span className="text-sm font-normal text-gray-500">/player</span></div>
+                    <button
+                      className="bg-red-500 text-white px-4 py-2 rounded-full font-semibold hover:bg-red-600 text-sm transition"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // TODO: Implement deregister functionality
+                        console.log('Deregister from event:', event.id);
+                      }}
+                    >
+                      Deregister
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         )}
       </div>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import ShareButton from '../components/common/ShareButton';
 
 // SVG icon for user (person)
 function UserIcon({ className = '', size = 20 }) {
@@ -128,6 +129,18 @@ const EventDetailPage = () => {
   const event = mockEvent;
   // Hide register button if ?hostView=1 is present
   const isHostView = new URLSearchParams(location.search).get('hostView') === '1';
+  
+  // Check if user is registered for this event (mock logic)
+  // In real app, this would check against the user's joined events
+  const isRegistered = [4, 5, 6].includes(Number(eventId)); // Mock: user is registered for events 4, 5, 6
+
+  const handleUnregister = () => {
+    // TODO: Implement deregister functionality
+    console.log('Deregister from event:', eventId);
+    // In real app, this would call an API to deregister the user
+    // Then navigate back to the events page
+    navigate('/events?tab=participating');
+  };
 
   return (
     <div className="max-w-md mx-auto bg-white rounded-2xl shadow-lg overflow-hidden mt-4 mb-8">
@@ -142,6 +155,15 @@ const EventDetailPage = () => {
             <path d="M15 18l-6-6 6-6" />
           </svg>
         </button>
+        {/* Share button in top right */}
+        <div className="absolute top-3 right-3">
+          <ShareButton 
+            url={`${window.location.origin}/events/${eventId}`}
+            title={`Check out this event: ${event.title}`}
+            className="bg-white bg-opacity-80 rounded-full p-2 hover:bg-opacity-100"
+            iconSize={20}
+          />
+        </div>
       </div>
       <div className="p-5">
         <div className="font-bold text-xl mb-1">{event.title}</div>
@@ -174,9 +196,20 @@ const EventDetailPage = () => {
         </div>
         <div className="font-bold text-lg mb-1">Description</div>
         <div className="text-gray-700 whitespace-pre-line text-sm mb-4">{event.description}</div>
-        {/* Register button placeholder */}
+        {/* Button logic */}
         {!isHostView && (
-          <button className="w-full py-3 rounded-full bg-red-500 text-white font-bold text-lg mt-2 hover:bg-red-600 transition">Register</button>
+          isRegistered ? (
+            <button 
+              className="w-full py-3 rounded-full bg-red-500 text-white font-bold text-lg mt-2 hover:bg-red-600 transition"
+              onClick={handleUnregister}
+            >
+              Deregister
+            </button>
+          ) : (
+            <button className="w-full py-3 rounded-full bg-red-500 text-white font-bold text-lg mt-2 hover:bg-red-600 transition">
+              Register
+            </button>
+          )
         )}
       </div>
     </div>
