@@ -1,9 +1,12 @@
 // frontend/src/pages/EventsPage.jsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom'; // Import useNavigate for redirection
 import { useAuthStore } from '../stores/useAuthStore'; // Import your authentication store
 import ShareButton from '../components/common/ShareButton';
+import { FiSearch, FiMapPin } from 'react-icons/fi';
+import { GoogleMap, Marker, useLoadScript } from '@react-google-maps/api';
+import usePlacesAutocomplete, { getGeocode, getLatLng } from 'use-places-autocomplete';
 
 import './EventsPage.css';
 
@@ -13,7 +16,7 @@ const tabOptions = [
   { key: 'participating', label: 'Joined' },
 ];
 
-// Mock event data
+// Mock event data with coordinates for map
 const mockEvents = [
   {
     id: 1,
@@ -25,6 +28,7 @@ const mockEvents = [
     priceType: 'Team',
     date: 'Sep 20, 2025',
     location: 'Kuwait City',
+    coordinates: { lat: 29.3759, lng: 47.9774 },
     isFavorite: false,
   },
   {
@@ -37,7 +41,21 @@ const mockEvents = [
     priceType: 'Player',
     date: 'Sep 22, 2025',
     location: 'Kuwait Arena',
+    coordinates: { lat: 29.3786, lng: 47.9902 },
     isFavorite: true,
+  },
+  {
+    id: 3,
+    title: 'Beach Volleyball Tournament',
+    image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=600&q=80',
+    registered: 85,
+    distance: '0.8 miles away',
+    price: 30,
+    priceType: 'Player',
+    date: 'Sep 25, 2025',
+    location: 'Kuwait Beach',
+    coordinates: { lat: 29.3721, lng: 47.9824 },
+    isFavorite: false,
   },
 ];
 
@@ -269,6 +287,90 @@ const joinedMockEvents = [
   },
 ];
 
+const mapContainerStyle = {
+  width: '100%',
+  height: '350px',
+  borderRadius: '16px',
+  marginBottom: '1.5rem',
+};
+
+const mapOptions = {
+  streetViewControl: false,
+  mapTypeControl: false,
+  fullscreenControl: false,
+};
+
+const defaultCenter = { lat: 29.3759, lng: 47.9774 }; // Kuwait City
+const defaultZoom = 11;
+
+const GOOGLE_MAPS_LIBRARIES = ['places'];
+
+function LocationSearchBar({ onSelect }) {
+  const {
+    ready,
+    value,
+    suggestions: { status, data },
+    setValue,
+    clearSuggestions,
+  } = usePlacesAutocomplete({ debounce: 300 });
+
+  return (
+    <div className="search-container" style={{ position: 'relative' }}>
+      <FiSearch className="search-icon" size={20} />
+      <input
+        className="search-input"
+        value={value}
+        onChange={e => setValue(e.target.value)}
+        disabled={!ready}
+        placeholder="Search for a location..."
+        autoComplete="off"
+      />
+      {status === 'OK' && (
+        <ul className="autocomplete-dropdown">
+          {data.map(({ place_id, description }) => (
+            <li
+              key={place_id}
+              onClick={async () => {
+                setValue(description, false);
+                clearSuggestions();
+                const results = await getGeocode({ address: description });
+                const { lat, lng } = await getLatLng(results[0]);
+                // viewport may be present for any place
+                let viewport = results[0]?.geometry?.viewport;
+                let bounds = null;
+                if (viewport && typeof viewport.getNorthEast === 'function' && typeof viewport.getSouthWest === 'function') {
+                  bounds = {
+                    north: viewport.getNorthEast().lat(),
+                    east: viewport.getNorthEast().lng(),
+                    south: viewport.getSouthWest().lat(),
+                    west: viewport.getSouthWest().lng(),
+                  };
+                }
+                onSelect({ lat, lng, description, viewport: bounds });
+              }}
+              className="autocomplete-item"
+            >
+              {description}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// Helper to generate a custom SVG bubble for the marker
+function getBubbleSVG(price) {
+  const text = `$${price}`;
+  const width = 60;
+  const height = 36;
+  return {
+    url: `data:image/svg+xml;utf8,<svg width='${width}' height='${height}' xmlns='http://www.w3.org/2000/svg'><rect x='2' y='2' rx='18' ry='18' width='${width-4}' height='${height-4}' fill='%23ef4444' stroke='%23ef4444' stroke-width='3'/><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Inter,sans-serif' font-size='18' font-weight='500' fill='white'>${text}</text></svg>` ,
+    scaledSize: { width, height },
+    anchor: { x: width / 2, y: height / 2 },
+  };
+}
+
 const EventsPage = () => {
   const { isAuthenticated } = useAuthStore(); // Get the authentication status
   const navigate = useNavigate(); // Initialize navigate hook
@@ -276,6 +378,64 @@ const EventsPage = () => {
   // Hosted tab modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedParticipants, setSelectedParticipants] = useState([]);
+  
+  // Search and map state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showMap, setShowMap] = useState(true);
+  const [filteredEvents, setFilteredEvents] = useState(mockEvents);
+  const [mapCenter, setMapCenter] = useState(defaultCenter);
+  const [mapZoom, setMapZoom] = useState(defaultZoom);
+  const [mapBounds, setMapBounds] = useState(null);
+  const [visibleEvents, setVisibleEvents] = useState(mockEvents);
+
+  // Google Maps API
+  const { isLoaded } = useLoadScript({
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+    libraries: GOOGLE_MAPS_LIBRARIES,
+  });
+
+  const mapRef = useRef();
+
+  // Clean up mapRef on unmount
+  useEffect(() => {
+    return () => {
+      mapRef.current = null;
+    };
+  }, []);
+
+  // Filter events based on search query
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredEvents(mockEvents);
+    } else {
+      const filtered = mockEvents.filter(event =>
+        event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        event.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        event.sport?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredEvents(filtered);
+    }
+  }, [searchQuery]);
+
+  // Update visible events when map bounds change
+  useEffect(() => {
+    if (!mapBounds) {
+      setVisibleEvents(filteredEvents);
+      return;
+    }
+    setVisibleEvents(
+      filteredEvents.filter(event => {
+        if (!event.coordinates) return false;
+        const { lat, lng } = event.coordinates;
+        return (
+          lat >= mapBounds.south &&
+          lat <= mapBounds.north &&
+          lng >= mapBounds.west &&
+          lng <= mapBounds.east
+        );
+      })
+    );
+  }, [filteredEvents, mapBounds]);
 
   const handleSignInClick = () => {
     navigate('/login'); // Redirect to the login page
@@ -314,29 +474,95 @@ const EventsPage = () => {
       <div className="mt-4">
         {activeTab === 'available' && (
           <div>
-            {/* Map Placeholder */}
-            <div className="w-full h-56 bg-gray-200 rounded-xl mb-6 flex items-center justify-center relative max-w-xl mx-auto">
-              <span className="text-gray-400 text-lg">[Map Placeholder]</span>
-              {/* Show price bubbles for each event */}
-              {mockEvents.map((event, idx) => (
-                <div
-                  key={event.id}
-                  className="absolute bg-white rounded-full px-3 py-1 shadow text-sm font-bold text-gray-700 border border-gray-300 cursor-pointer hover:bg-red-100 transition"
-                  style={{
-                    left: `${30 + idx * 30}%`,
-                    top: `${30 + idx * 20}%`,
-                    transform: 'translate(-50%, -50%)',
-                    zIndex: 2,
-                  }}
-                  onClick={() => navigate(`/events/${event.id}`)}
-                >
-                  ${event.price}
-                </div>
-              ))}
+            {/* Location Autocomplete Search Bar */}
+            <LocationSearchBar
+              onSelect={({ lat, lng, viewport }) => {
+                if (viewport && mapRef.current) {
+                  // Fit map to place bounds
+                  const bounds = new window.google.maps.LatLngBounds(
+                    { lat: viewport.south, lng: viewport.west },
+                    { lat: viewport.north, lng: viewport.east }
+                  );
+                  if (mapRef.current && typeof mapRef.current.fitBounds === 'function') {
+                    mapRef.current.fitBounds(bounds);
+                  }
+                } else {
+                  setMapCenter({ lat, lng });
+                  setMapZoom(13);
+                }
+              }}
+            />
+            {/* Map Toggle */}
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="event-count">
+                {visibleEvents.length} {visibleEvents.length === 1 ? 'Event' : 'Events'} Found
+              </h2>
+              <button
+                onClick={() => setShowMap(!showMap)}
+                className="map-toggle"
+              >
+                <FiMapPin size={18} />
+                {showMap ? 'Hide Map' : 'Show Map'}
+              </button>
             </div>
+            {/* Google Map */}
+            {showMap && isLoaded && (
+              <GoogleMap
+                mapContainerStyle={mapContainerStyle}
+                center={mapCenter}
+                zoom={mapZoom}
+                onLoad={map => { if (map) mapRef.current = map; }}
+                onUnmount={() => { mapRef.current = null; }}
+                onBoundsChanged={() => {
+                  if (!mapRef.current) return;
+                  const bounds = mapRef.current.getBounds && mapRef.current.getBounds();
+                  if (!bounds) return;
+                  setMapBounds({
+                    north: bounds.getNorthEast().lat(),
+                    east: bounds.getNorthEast().lng(),
+                    south: bounds.getSouthWest().lat(),
+                    west: bounds.getSouthWest().lng(),
+                  });
+                }}
+                onDragEnd={e => {
+                  if (!mapRef.current) return;
+                  const bounds = mapRef.current.getBounds && mapRef.current.getBounds();
+                  if (!bounds) return;
+                  setMapBounds({
+                    north: bounds.getNorthEast().lat(),
+                    east: bounds.getNorthEast().lng(),
+                    south: bounds.getSouthWest().lat(),
+                    west: bounds.getSouthWest().lng(),
+                  });
+                }}
+                onZoomChanged={e => {
+                  if (!mapRef.current) return;
+                  const bounds = mapRef.current.getBounds && mapRef.current.getBounds();
+                  if (!bounds) return;
+                  setMapBounds({
+                    north: bounds.getNorthEast().lat(),
+                    east: bounds.getNorthEast().lng(),
+                    south: bounds.getSouthWest().lat(),
+                    west: bounds.getSouthWest().lng(),
+                  });
+                }}
+                options={mapOptions}
+              >
+                {filteredEvents.map(event =>
+                  event.coordinates ? (
+                    <Marker
+                      key={event.id}
+                      position={event.coordinates}
+                      onClick={() => navigate(`/events/${event.id}`)}
+                      icon={getBubbleSVG(event.price)}
+                    />
+                  ) : null
+                )}
+              </GoogleMap>
+            )}
             {/* Event List */}
             <div>
-              {mockEvents.map(event => (
+              {visibleEvents.map(event => (
                 <EventCard key={event.id} event={event} />
               ))}
             </div>
