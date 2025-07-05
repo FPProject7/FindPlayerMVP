@@ -20,6 +20,8 @@ import NotificationsPage from './pages/NotificationsPage'; // <--- New page impo
 import MessagesPage from './pages/MessagesPage';         // <--- New page import
 // --- END NEW ---
 import ReviewSubmissionPage from './pages/challenges/ReviewModal';
+import EventDetailPage from './pages/EventDetailPage';
+import HostedEventsPage from './pages/HostedEventsPage';
 
 // ProtectedRoute Component (remains unchanged)
 const ProtectedRoute = ({ children }) => {
@@ -82,7 +84,10 @@ function App() {
         <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         {/* Public Content Route - Accessible to all, not blocked by modal */}
-        <Route path="/events" element={<MainLayout><EventsPage /></MainLayout>} />
+        <Route path="/events" element={<MainLayout />}>
+          <Route index element={<EventsPage />} />
+          <Route path=":eventId" element={<EventDetailPage />} />
+        </Route>
         
         {/* Main Application Content Routes (Viewable with modal if unauthenticated) */}
         <Route element={<MainLayout />}>
@@ -103,6 +108,10 @@ function App() {
             <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} /> {/* <--- New Route */}
             <Route path="/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />
             {/* --- END NEW --- */}
+        </Route>
+
+        <Route path="/my-events" element={<MainLayout />}>
+          <Route index element={<HostedEventsPage />} />
         </Route>
 
         {/* Catch-all route */}

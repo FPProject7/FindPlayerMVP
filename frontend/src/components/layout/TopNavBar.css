@@ -99,3 +99,20 @@
   .action-icons-container .action-icon-button:hover {
     background-color: #f0f0f0; /* Subtle hover effect */
   }
+
+@media (max-width: 500px) {
+  .search-bar-container {
+    max-width: 180px;
+    min-width: 60px;
+    flex-basis: 100px;
+    margin: 0 6px;
+  }
+  .search-bar-container .search-input {
+    min-width: 0;
+    font-size: 0.95em;
+  }
+  .profile-icon-container .profile-pic-thumbnail {
+    width: 32px;
+    height: 32px;
+  }
+}

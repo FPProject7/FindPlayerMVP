@@ -54,7 +54,7 @@ const BottomNavBar = () => {
                         return (
                             <button
                                 key={index}
-                                onClick={openCreateModal}
+                                onClick={() => openCreateModal('post')}
                                 className="nav-center-button"
                                 aria-label={item.label}
                             >
