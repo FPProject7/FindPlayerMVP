@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom'; // Import useNavigate for redirection
 import { useAuthStore } from '../stores/useAuthStore'; // Import your authentication store
+import ShareButton from '../components/common/ShareButton';
 
 import './EventsPage.css';
 
@@ -89,7 +90,14 @@ const EventCard = ({ event }) => {
     >
       <div className="w-full h-40 bg-gray-200 relative">
         <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
-        {/* Removed Favorite icon */}
+        {/* Share button in top right */}
+        <div className="absolute top-3 right-3 z-10" onClick={(e) => e.stopPropagation()}>
+          <ShareButton 
+            url={`${window.location.origin}/events/${event.id}`}
+            title={`Check out this event: ${event.title}`}
+            iconSize={20}
+          />
+        </div>
       </div>
       <div className="p-4">
         <div className="font-semibold text-lg mb-1">{event.title}</div>
@@ -292,6 +300,14 @@ const EventsPage = () => {
                 >
                   <div className="relative mb-3">
                     <img src={event.image} alt={event.title} className="w-full h-32 object-cover rounded-xl" />
+                    {/* Share button in top right */}
+                    <div className="absolute top-2 right-2 z-10" onClick={(e) => e.stopPropagation()}>
+                      <ShareButton 
+                        url={`${window.location.origin}/events/${event.id}`}
+                        title={`Check out this event: ${event.title}`}
+                        iconSize={18}
+                      />
+                    </div>
                   </div>
                   <div className="font-bold text-lg mb-1">{event.title}</div>
                   <div className="flex items-center text-gray-500 text-sm mb-1">
