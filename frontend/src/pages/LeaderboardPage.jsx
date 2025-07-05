@@ -612,14 +612,14 @@ const LeaderboardPage = () => {
                   {activeTab === 'athletes' ? (
                     <>
                       {/* Challenges - Use API data */}
-                      <div className="flex items-center gap-1 sm:gap-2 justify-center text-xs sm:text-lg">
-                        <LeaderboardCheckIcon className="text-lg sm:text-3xl" size={24} />
+                      <div className="flex items-center gap-0.5 sm:gap-1 justify-center flex-wrap break-words text-[7px] sm:text-xs">
+                        <LeaderboardCheckIcon className="text-[10px] sm:text-xs" size={13} />
                         <span className="font-bold">{top3[0]?.challengesSubmitted || 0}</span>
                         <span className="italic font-semibold text-gray-700 truncate">Challenges</span>
                       </div>
                       {/* Approvals - Use API data */}
-                      <div className="flex items-center gap-1 sm:gap-2 justify-center text-xs sm:text-lg">
-                        <UserIcon className="text-lg sm:text-3xl" size={24} />
+                      <div className="flex items-center gap-0.5 sm:gap-1 justify-center flex-wrap break-words text-[7px] sm:text-xs">
+                        <UserIcon className="text-[10px] sm:text-xs" size={13} />
                         <span className="font-bold">{top3[0]?.coachApprovals || 0}</span>
                         <span className="italic font-semibold text-gray-700 truncate">Approvals</span>
                       </div>
@@ -627,14 +627,14 @@ const LeaderboardPage = () => {
                   ) : (
                     <>
                       {/* Challenges Created */}
-                      <div className="flex items-center gap-1 sm:gap-2 justify-center text-xs sm:text-lg">
-                        <LeaderboardCheckIcon className="text-lg sm:text-3xl" size={24} />
+                      <div className="flex items-center gap-0.5 sm:gap-1 justify-center flex-wrap break-words text-[7px] sm:text-xs">
+                        <LeaderboardCheckIcon className="text-[10px] sm:text-xs" size={13} />
                         <span className="font-bold">{top3[0]?.challengesCreated || 0}</span>
                         <span className="italic font-semibold text-gray-700 truncate">Created</span>
                       </div>
                       {/* Challenges Approved */}
-                      <div className="flex items-center gap-1 sm:gap-2 justify-center text-xs sm:text-lg">
-                        <UserIcon className="text-lg sm:text-3xl" size={24} />
+                      <div className="flex items-center gap-0.5 sm:gap-1 justify-center flex-wrap break-words text-[7px] sm:text-xs">
+                        <UserIcon className="text-[10px] sm:text-xs" size={13} />
                         <span className="font-bold">{top3[0]?.challengesApproved || 0}</span>
                         <span className="italic font-semibold text-gray-700 truncate">Approved</span>
                       </div>
@@ -724,26 +724,26 @@ const LeaderboardPage = () => {
                     <div className="flex flex-col gap-0.5 sm:gap-1 w-full mt-1 items-center text-[8px] sm:text-xs">
                       {activeTab === 'athletes' ? (
                         <>
-                          <div className="flex items-center gap-0.5 sm:gap-1 justify-center">
-                            <LeaderboardCheckIcon className="text-xs sm:text-base" size={18} />
+                          <div className="flex items-center gap-0.5 sm:gap-1 justify-center flex-wrap break-words text-[7px] sm:text-xs">
+                            <LeaderboardCheckIcon className="text-[10px] sm:text-xs" size={13} />
                             <span className="font-bold">{top3[1].challengesSubmitted || 0}</span>
                             <span className="italic font-semibold text-gray-700 truncate">Challenges</span>
                           </div>
-                          <div className="flex items-center gap-0.5 sm:gap-1 justify-center">
-                            <UserIcon className="text-xs sm:text-base" size={18} />
+                          <div className="flex items-center gap-0.5 sm:gap-1 justify-center flex-wrap break-words text-[7px] sm:text-xs">
+                            <UserIcon className="text-[10px] sm:text-xs" size={13} />
                             <span className="font-bold">{top3[1].coachApprovals || 0}</span>
                             <span className="italic font-semibold text-gray-700 truncate">Approvals</span>
                           </div>
                         </>
                       ) : (
                         <>
-                          <div className="flex items-center gap-0.5 sm:gap-1 justify-center">
-                            <LeaderboardCheckIcon className="text-xs sm:text-base" size={18} />
+                          <div className="flex items-center gap-0.5 sm:gap-1 justify-center flex-wrap break-words text-[7px] sm:text-xs">
+                            <LeaderboardCheckIcon className="text-[10px] sm:text-xs" size={13} />
                             <span className="font-bold">{top3[1].challengesCreated || 0}</span>
                             <span className="italic font-semibold text-gray-700 truncate">Created</span>
                           </div>
-                          <div className="flex items-center gap-0.5 sm:gap-1 justify-center">
-                            <UserIcon className="text-xs sm:text-base" size={18} />
+                          <div className="flex items-center gap-0.5 sm:gap-1 justify-center flex-wrap break-words text-[7px] sm:text-xs">
+                            <UserIcon className="text-[10px] sm:text-xs" size={13} />
                             <span className="font-bold">{top3[1].challengesApproved || 0}</span>
                             <span className="italic font-semibold text-gray-700 truncate">Approved</span>
                           </div>
@@ -824,26 +824,26 @@ const LeaderboardPage = () => {
                     <div className="flex flex-col gap-0.5 sm:gap-1 w-full mt-1 items-center text-[8px] sm:text-xs">
                       {activeTab === 'athletes' ? (
                         <>
-                          <div className="flex items-center gap-0.5 sm:gap-1 justify-center">
-                            <LeaderboardCheckIcon className="text-xs sm:text-base" size={18} />
+                          <div className="flex items-center gap-0.5 sm:gap-1 justify-center flex-wrap break-words text-[7px] sm:text-xs">
+                            <LeaderboardCheckIcon className="text-[10px] sm:text-xs" size={13} />
                             <span className="font-bold">{top3[2].challengesSubmitted || 0}</span>
                             <span className="italic font-semibold text-gray-700 truncate">Challenges</span>
                           </div>
-                          <div className="flex items-center gap-0.5 sm:gap-1 justify-center">
-                            <UserIcon className="text-xs sm:text-base" size={18} />
+                          <div className="flex items-center gap-0.5 sm:gap-1 justify-center flex-wrap break-words text-[7px] sm:text-xs">
+                            <UserIcon className="text-[10px] sm:text-xs" size={13} />
                             <span className="font-bold">{top3[2].coachApprovals || 0}</span>
                             <span className="italic font-semibold text-gray-700 truncate">Approvals</span>
                           </div>
                         </>
                       ) : (
                         <>
-                          <div className="flex items-center gap-0.5 sm:gap-1 justify-center">
-                            <LeaderboardCheckIcon className="text-xs sm:text-base" size={18} />
+                          <div className="flex items-center gap-0.5 sm:gap-1 justify-center flex-wrap break-words text-[7px] sm:text-xs">
+                            <LeaderboardCheckIcon className="text-[10px] sm:text-xs" size={13} />
                             <span className="font-bold">{top3[2].challengesCreated || 0}</span>
                             <span className="italic font-semibold text-gray-700 truncate">Created</span>
                           </div>
-                          <div className="flex items-center gap-0.5 sm:gap-1 justify-center">
-                            <UserIcon className="text-xs sm:text-base" size={18} />
+                          <div className="flex items-center gap-0.5 sm:gap-1 justify-center flex-wrap break-words text-[7px] sm:text-xs">
+                            <UserIcon className="text-[10px] sm:text-xs" size={13} />
                             <span className="font-bold">{top3[2].challengesApproved || 0}</span>
                             <span className="italic font-semibold text-gray-700 truncate">Approved</span>
                           </div>
