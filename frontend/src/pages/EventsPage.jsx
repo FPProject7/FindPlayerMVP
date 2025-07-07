@@ -7,6 +7,7 @@ import ShareButton from '../components/common/ShareButton';
 import { FiSearch, FiMapPin } from 'react-icons/fi';
 import { GoogleMap, Marker, useLoadScript } from '@react-google-maps/api';
 import usePlacesAutocomplete, { getGeocode, getLatLng } from 'use-places-autocomplete';
+import { eventsApi } from '../api/eventsApi';
 
 import './EventsPage.css';
 
@@ -16,48 +17,9 @@ const tabOptions = [
   { key: 'participating', label: 'Joined' },
 ];
 
-// Mock event data with coordinates for map
-const mockEvents = [
-  {
-    id: 1,
-    title: 'Kuwait City (Football Volta)',
-    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80',
-    registered: 312,
-    distance: '1.2 miles away',
-    price: 100,
-    priceType: 'Team',
-    date: 'Sep 20, 2025',
-    location: 'Kuwait City',
-    coordinates: { lat: 29.3759, lng: 47.9774 },
-    isFavorite: false,
-  },
-  {
-    id: 2,
-    title: 'Court Clash',
-    image: 'https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=600&q=80',
-    registered: 120,
-    distance: '2.5 miles away',
-    price: 50,
-    priceType: 'Player',
-    date: 'Sep 22, 2025',
-    location: 'Kuwait Arena',
-    coordinates: { lat: 29.3786, lng: 47.9902 },
-    isFavorite: true,
-  },
-  {
-    id: 3,
-    title: 'Beach Volleyball Tournament',
-    image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=600&q=80',
-    registered: 85,
-    distance: '0.8 miles away',
-    price: 30,
-    priceType: 'Player',
-    date: 'Sep 25, 2025',
-    location: 'Kuwait Beach',
-    coordinates: { lat: 29.3721, lng: 47.9824 },
-    isFavorite: false,
-  },
-];
+// Default map center (Kuwait City)
+const defaultCenter = { lat: 29.3759, lng: 47.9774 };
+const defaultZoom = 10;
 
 // SVG icon for user (person) - copied from LeaderboardPage
 function UserIcon({ className = '', size = 20 }) {
@@ -107,7 +69,13 @@ const EventCard = ({ event }) => {
       onClick={() => navigate(`/events/${event.id}`)}
     >
       <div className="w-full h-40 bg-gray-200 relative">
-        <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
+        {event.imageUrl ? (
+          <img src={event.imageUrl} alt={event.title} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gray-300">
+            <span className="text-gray-500">No Image</span>
+          </div>
+        )}
         {/* Share button in top right */}
         <div className="absolute top-3 right-3 z-10" onClick={(e) => e.stopPropagation()}>
           <ShareButton 
@@ -186,106 +154,7 @@ function ParticipantsModal({ open, onClose, participants }) {
   );
 }
 
-const hostedMockEvents = [
-  {
-    id: 1,
-    title: 'Kuwait City (Football Volta)',
-    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80',
-    date: 'Sep 20, 2025 5:00 PM',
-    location: 'Kuwait City',
-    registered: 15,
-    maxPlayers: 20,
-    isLive: true,
-    participants: [
-      { id: 1, name: 'Faisal Ahmad', profilePictureUrl: 'https://randomuser.me/api/portraits/men/1.jpg' },
-      { id: 2, name: 'Ali Yousef', profilePictureUrl: 'https://randomuser.me/api/portraits/men/2.jpg' },
-      { id: 3, name: 'Sara Khaled', profilePictureUrl: 'https://randomuser.me/api/portraits/women/3.jpg' },
-    ],
-  },
-  {
-    id: 2,
-    title: 'Streetball Tournament',
-    image: 'https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=600&q=80',
-    date: 'Aug 15, 2025 2:00 PM',
-    location: 'Kuwait Arena',
-    registered: 8,
-    maxPlayers: 12,
-    isLive: true,
-    participants: [
-      { id: 4, name: 'Mohammed Al Sabah', profilePictureUrl: 'https://randomuser.me/api/portraits/men/4.jpg' },
-      { id: 5, name: 'Fatima Noor', profilePictureUrl: 'https://randomuser.me/api/portraits/women/5.jpg' },
-    ],
-  },
-  {
-    id: 3,
-    title: 'U18 Scouting Combine',
-    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80',
-    date: 'Jul 5, 2025 9:00 AM',
-    location: 'Kuwait City',
-    registered: 50,
-    maxPlayers: 50,
-    isLive: true,
-    participants: [
-      { id: 6, name: 'Yousef Al Rashid', profilePictureUrl: 'https://randomuser.me/api/portraits/men/6.jpg' },
-      { id: 7, name: 'Mona Al Sabah', profilePictureUrl: 'https://randomuser.me/api/portraits/women/7.jpg' },
-    ],
-  },
-];
 
-// Mock data for joined/participating events
-const joinedMockEvents = [
-  {
-    id: 4,
-    title: 'Weekend Football League',
-    image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=600&q=80',
-    date: 'Sep 25, 2025 4:00 PM',
-    location: 'Kuwait Sports Club',
-    registered: 22,
-    maxPlayers: 24,
-    price: 15,
-    priceType: 'player',
-    paymentNote: 'cash only',
-    dressCode: 'Red team jersey required',
-    description: 'Weekly football league for intermediate players. Teams will be formed on the day. Bring your own cleats and water.',
-    host: 'Ahmed Al Mansouri',
-    sport: 'Football',
-    type: 'League',
-  },
-  {
-    id: 5,
-    title: 'Basketball Pickup Games',
-    image: 'https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=600&q=80',
-    date: 'Sep 28, 2025 6:00 PM',
-    location: 'Al Shaab Indoor Court',
-    registered: 18,
-    maxPlayers: 20,
-    price: 8,
-    priceType: 'player',
-    paymentNote: 'cash only',
-    dressCode: 'Basketball shoes required',
-    description: 'Casual pickup basketball games. All skill levels welcome. Games will be 4v4 or 5v5 depending on turnout.',
-    host: 'Sarah Johnson',
-    sport: 'Basketball',
-    type: 'Pickup',
-  },
-  {
-    id: 6,
-    title: 'Youth Training Camp',
-    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80',
-    date: 'Oct 2, 2025 9:00 AM',
-    location: 'Kuwait National Stadium',
-    registered: 35,
-    maxPlayers: 40,
-    price: 25,
-    priceType: 'player',
-    paymentNote: 'online payment',
-    dressCode: 'Training gear provided',
-    description: 'Professional training camp for young athletes aged 16-21. Focus on technique, fitness, and game strategy.',
-    host: 'Coach Mohammed',
-    sport: 'Football',
-    type: 'Training',
-  },
-];
 
 const mapContainerStyle = {
   width: '100%',
@@ -300,8 +169,7 @@ const mapOptions = {
   fullscreenControl: false,
 };
 
-const defaultCenter = { lat: 29.3759, lng: 47.9774 }; // Kuwait City
-const defaultZoom = 11;
+
 
 const GOOGLE_MAPS_LIBRARIES = ['places'];
 
@@ -379,14 +247,21 @@ const EventsPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedParticipants, setSelectedParticipants] = useState([]);
   
+  // API data state
+  const [events, setEvents] = useState([]);
+  const [hostedEvents, setHostedEvents] = useState([]);
+  const [registeredEvents, setRegisteredEvents] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  
   // Search and map state
   const [searchQuery, setSearchQuery] = useState('');
   const [showMap, setShowMap] = useState(true);
-  const [filteredEvents, setFilteredEvents] = useState(mockEvents);
+  const [filteredEvents, setFilteredEvents] = useState([]);
   const [mapCenter, setMapCenter] = useState(defaultCenter);
   const [mapZoom, setMapZoom] = useState(defaultZoom);
   const [mapBounds, setMapBounds] = useState(null);
-  const [visibleEvents, setVisibleEvents] = useState(mockEvents);
+  const [visibleEvents, setVisibleEvents] = useState([]);
 
   // Google Maps API
   const { isLoaded } = useLoadScript({
@@ -403,19 +278,57 @@ const EventsPage = () => {
     };
   }, []);
 
+  // Fetch data based on active tab
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!isAuthenticated) return;
+      
+      setLoading(true);
+      setError('');
+      
+      try {
+        switch (activeTab) {
+          case 'available':
+            const eventsData = await eventsApi.getEvents();
+            setEvents((eventsData.events || []).map(e => ({ ...e, id: e.eventId })));
+            break;
+          case 'my':
+            const hostedData = await eventsApi.getMyHostedEvents();
+            setHostedEvents((hostedData.events || []).map(e => ({ ...e, id: e.eventId })));
+            break;
+          case 'participating':
+            const registeredData = await eventsApi.getMyRegisteredEvents();
+            setRegisteredEvents((registeredData.events || []).map(e => ({ ...e, id: e.eventId })));
+            break;
+        }
+      } catch (err) {
+        console.error('Error fetching events:', err);
+        setError('Failed to load events. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [activeTab, isAuthenticated]);
+
   // Filter events based on search query
   useEffect(() => {
+    const currentEvents = activeTab === 'available' ? events : 
+                         activeTab === 'my' ? hostedEvents : 
+                         registeredEvents;
+    
     if (!searchQuery.trim()) {
-      setFilteredEvents(mockEvents);
+      setFilteredEvents(currentEvents);
     } else {
-      const filtered = mockEvents.filter(event =>
+      const filtered = currentEvents.filter(event =>
         event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         event.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
         event.sport?.toLowerCase().includes(searchQuery.toLowerCase())
       );
       setFilteredEvents(filtered);
     }
-  }, [searchQuery]);
+  }, [searchQuery, activeTab, events, hostedEvents, registeredEvents]);
 
   // Update visible events when map bounds change
   useEffect(() => {
@@ -470,9 +383,23 @@ const EventsPage = () => {
         ))}
       </div>
 
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {error}
+        </div>
+      )}
+
       {/* Tab Content */}
       <div className="mt-4">
-        {activeTab === 'available' && (
+        {loading && (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500 mx-auto"></div>
+            <p className="mt-2 text-gray-600">Loading events...</p>
+          </div>
+        )}
+        
+        {!loading && activeTab === 'available' && (
           <div>
             {/* Location Autocomplete Search Bar */}
             <LocationSearchBar
@@ -568,19 +495,25 @@ const EventsPage = () => {
             </div>
           </div>
         )}
-        {activeTab === 'my' && (
+        {!loading && activeTab === 'my' && (
           <div className="flex flex-col gap-6">
-            {hostedMockEvents.length === 0 ? (
+            {hostedEvents.length === 0 ? (
               <div className="text-center text-gray-400 py-8">No events yet.</div>
             ) : (
-              hostedMockEvents.map(event => (
+              hostedEvents.map(event => (
                 <div
                   key={event.id}
                   className="bg-white rounded-2xl shadow border border-gray-100 p-4 cursor-pointer hover:shadow-lg transition-shadow"
                   onClick={() => navigate(`/events/${event.id}?hostView=1`)}
                 >
                   <div className="relative mb-3">
-                    <img src={event.image} alt={event.title} className="w-full h-32 object-cover rounded-xl" />
+                    {event.imageUrl ? (
+                      <img src={event.imageUrl} alt={event.title} className="w-full h-32 object-cover rounded-xl" />
+                    ) : (
+                      <div className="w-full h-32 flex items-center justify-center bg-gray-300 rounded-xl">
+                        <span className="text-gray-500">No Image</span>
+                      </div>
+                    )}
                     {/* Share button in top right */}
                     <div className="absolute top-2 right-2 z-10" onClick={(e) => e.stopPropagation()}>
                       <ShareButton 
@@ -595,10 +528,20 @@ const EventsPage = () => {
                     <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="4"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                     {event.date} <span className="mx-2">{event.location}</span>
                   </div>
-                  <div className="text-gray-700 text-sm mb-3">{event.registered} / {event.maxPlayers} Registered</div>
+                  <div className="text-gray-700 text-sm mb-3">{event.registeredPlayers || 0} / {event.maxPlayers} Registered</div>
                   <button
                     className="border border-gray-300 rounded-lg px-4 py-2 font-semibold text-gray-800 hover:bg-gray-100 transition"
-                    onClick={e => { e.stopPropagation(); setSelectedParticipants(event.participants); setModalOpen(true); }}
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      try {
+                        const playersData = await eventsApi.getRegisteredPlayers(event.id);
+                        setSelectedParticipants(playersData.players || []);
+                        setModalOpen(true);
+                      } catch (error) {
+                        console.error('Error fetching registered players:', error);
+                        alert('Failed to load registered players. Please try again.');
+                      }
+                    }}
                   >
                     View Players
                   </button>
@@ -608,19 +551,25 @@ const EventsPage = () => {
             <ParticipantsModal open={modalOpen} onClose={() => setModalOpen(false)} participants={selectedParticipants} />
           </div>
         )}
-        {activeTab === 'participating' && (
+        {!loading && activeTab === 'participating' && (
           <div className="flex flex-col gap-6">
-            {joinedMockEvents.length === 0 ? (
+            {registeredEvents.length === 0 ? (
               <div className="text-center text-gray-400 py-8">No joined events yet.</div>
             ) : (
-              joinedMockEvents.map(event => (
+              registeredEvents.map(event => (
                 <div
                   key={event.id}
                   className="bg-white rounded-2xl shadow border border-gray-100 p-4 cursor-pointer hover:shadow-lg transition-shadow"
                   onClick={() => navigate(`/events/${event.id}`)}
                 >
                   <div className="relative mb-3">
-                    <img src={event.image} alt={event.title} className="w-full h-32 object-cover rounded-xl" />
+                    {event.imageUrl ? (
+                      <img src={event.imageUrl} alt={event.title} className="w-full h-32 object-cover rounded-xl" />
+                    ) : (
+                      <div className="w-full h-32 flex items-center justify-center bg-gray-300 rounded-xl">
+                        <span className="text-gray-500">No Image</span>
+                      </div>
+                    )}
                     {/* Share button in top right */}
                     <div className="absolute top-2 right-2 z-10" onClick={(e) => e.stopPropagation()}>
                       <ShareButton 
@@ -635,15 +584,22 @@ const EventsPage = () => {
                     <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="4"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                     {event.date} <span className="mx-2">{event.location}</span>
                   </div>
-                  <div className="text-gray-700 text-sm mb-3">{event.registered} / {event.maxPlayers} Registered</div>
+                  <div className="text-gray-700 text-sm mb-3">{event.registeredPlayers || 0} / {event.maxPlayers} Registered</div>
                   <div className="flex items-center justify-between">
-                    <div className="text-lg font-bold text-gray-900">${event.price} <span className="text-sm font-normal text-gray-500">/player</span></div>
+                    <div className="text-lg font-bold text-gray-900">${event.participationFee} <span className="text-sm font-normal text-gray-500">/player</span></div>
                     <button
                       className="bg-red-500 text-white px-4 py-2 rounded-full font-semibold hover:bg-red-600 text-sm transition"
-                      onClick={(e) => {
+                      onClick={async (e) => {
                         e.stopPropagation();
-                        // TODO: Implement deregister functionality
-                        console.log('Deregister from event:', event.id);
+                        try {
+                          await eventsApi.deregisterFromEvent(event.id);
+                          // Refresh the registered events
+                          const registeredData = await eventsApi.getMyRegisteredEvents();
+                          setRegisteredEvents(registeredData.events || []);
+                        } catch (error) {
+                          console.error('Error deregistering from event:', error);
+                          alert('Failed to deregister from event. Please try again.');
+                        }
                       }}
                     >
                       Deregister

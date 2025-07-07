@@ -1,0 +1,14 @@
+{
+  "name": "deregister-from-event",
+  "version": "1.0.0",
+  "description": "Lambda function to deregister a user from an event in DynamoDB.",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "test": "echo \"No tests yet\""
+  },
+  "dependencies": {
+    "aws-sdk": "^2.1485.0",
+    "dotenv": "^16.3.1"
+  }
+} 

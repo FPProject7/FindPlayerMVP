@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import ShareButton from '../components/common/ShareButton';
+import { eventsApi } from '../api/eventsApi';
+import { useAuthStore } from '../stores/useAuthStore';
 
 // SVG icon for user (person)
 function UserIcon({ className = '', size = 20 }) {
@@ -103,50 +105,148 @@ function TshirtIcon({ className = '', size = 20 }) {
   );
 }
 
-const mockEvent = {
-  id: 1,
-  title: 'Kuwait City (Football Volta)',
-  image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80',
-  host: 'Faisal Ahmad',
-  sport: 'Football',
-  type: 'Volta',
-  location: 'Kuwait City',
-  date: 'Saturday, Sep 19, 6:00 PM',
-  registered: 58,
-  maxPlayers: 80,
-  price: 10,
-  priceType: 'player',
-  paymentNote: 'cash only',
-  dressCode: 'Come in sportswear',
-  description: `Join our four-side  Volta football tournament!\nKnockout format. Teams of five. Rules:\nNo offsides, no sliding tackles. First team team to score three goals wins.\nNice for\nlan`,
-};
+
 
 const EventDetailPage = () => {
   const { eventId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  // In real app, fetch event by eventId
-  const event = mockEvent;
+  const { isAuthenticated } = useAuthStore();
+  
+  // State for event data and loading
+  const [event, setEvent] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [isRegistered, setIsRegistered] = useState(false);
+  const [isHost, setIsHost] = useState(false);
+  const [registering, setRegistering] = useState(false);
+  
   // Hide register button if ?hostView=1 is present
   const isHostView = new URLSearchParams(location.search).get('hostView') === '1';
-  
-  // Check if user is registered for this event (mock logic)
-  // In real app, this would check against the user's joined events
-  const isRegistered = [4, 5, 6].includes(Number(eventId)); // Mock: user is registered for events 4, 5, 6
 
-  const handleUnregister = () => {
-    // TODO: Implement deregister functionality
-    console.log('Deregister from event:', eventId);
-    // In real app, this would call an API to deregister the user
-    // Then navigate back to the events page
-    navigate('/events?tab=participating');
+  // Fetch event data
+  useEffect(() => {
+    const fetchEvent = async () => {
+      if (!eventId) return;
+      
+      setLoading(true);
+      setError('');
+      
+      try {
+        const eventData = await eventsApi.getEvent(eventId);
+        setEvent(eventData.event);
+        
+        // Check if user is the host
+        setIsHost(eventData.event.hostId === useAuthStore.getState().user?.id);
+        
+        // Check if user is registered (this would need to be implemented in the backend)
+        // For now, we'll assume the backend returns this information
+        setIsRegistered(eventData.event.isRegistered || false);
+        
+      } catch (err) {
+        console.error('Error fetching event:', err);
+        setError('Failed to load event. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvent();
+  }, [eventId]);
+
+  const handleRegister = async () => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+    
+    setRegistering(true);
+    try {
+      await eventsApi.registerForEvent(eventId);
+      setIsRegistered(true);
+      // Refresh event data to update registration count
+      const eventData = await eventsApi.getEvent(eventId);
+      setEvent(eventData.event);
+    } catch (error) {
+      console.error('Error registering for event:', error);
+      alert('Failed to register for event. Please try again.');
+    } finally {
+      setRegistering(false);
+    }
   };
+
+  const handleUnregister = async () => {
+    setRegistering(true);
+    try {
+      await eventsApi.deregisterFromEvent(eventId);
+      setIsRegistered(false);
+      // Refresh event data to update registration count
+      const eventData = await eventsApi.getEvent(eventId);
+      setEvent(eventData.event);
+      navigate('/events?tab=participating');
+    } catch (error) {
+      console.error('Error deregistering from event:', error);
+      alert('Failed to deregister from event. Please try again.');
+    } finally {
+      setRegistering(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="max-w-md mx-auto bg-white rounded-2xl shadow-lg overflow-hidden mt-4 mb-8 p-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Loading event...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-md mx-auto bg-white rounded-2xl shadow-lg overflow-hidden mt-4 mb-8 p-8">
+        <div className="text-center">
+          <div className="text-red-500 text-lg mb-2">Error</div>
+          <p className="text-gray-600">{error}</p>
+          <button 
+            className="mt-4 bg-red-500 text-white px-4 py-2 rounded-full"
+            onClick={() => navigate('/events')}
+          >
+            Back to Events
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!event) {
+    return (
+      <div className="max-w-md mx-auto bg-white rounded-2xl shadow-lg overflow-hidden mt-4 mb-8 p-8">
+        <div className="text-center">
+          <p className="text-gray-600">Event not found</p>
+          <button 
+            className="mt-4 bg-red-500 text-white px-4 py-2 rounded-full"
+            onClick={() => navigate('/events')}
+          >
+            Back to Events
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-md mx-auto bg-white rounded-2xl shadow-lg overflow-hidden mt-4 mb-8">
       {/* Header image and back button */}
       <div className="relative w-full h-48 sm:h-64 bg-gray-200">
-        <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
+        {event.imageUrl ? (
+          <img src={event.imageUrl} alt={event.title} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gray-300">
+            <span className="text-gray-500 text-lg">No Image</span>
+          </div>
+        )}
         <button
           className="absolute top-3 left-3 bg-white bg-opacity-80 rounded-full p-2 shadow hover:bg-opacity-100"
           onClick={() => navigate(-1)}
@@ -167,15 +267,15 @@ const EventDetailPage = () => {
       </div>
       <div className="p-5">
         <div className="font-bold text-xl mb-1">{event.title}</div>
-        <div className="text-gray-500 text-sm mb-2">{event.type} | {event.sport}</div>
+        <div className="text-gray-500 text-sm mb-2">{event.eventType} | {event.sport}</div>
         <div className="flex items-center text-gray-600 mb-2">
           <UserIcon className="text-black mr-2" size={18} />
-          <span>Hosted by <span className="font-semibold text-gray-800">{event.host}</span></span>
+          <span>Hosted by <span className="font-semibold text-gray-800">{event.hostName || 'Unknown Host'}</span></span>
         </div>
         <div className="flex flex-col gap-2 mb-4">
           <div className="flex items-center text-gray-800">
             <CalendarIcon className="text-black mr-2" size={18} />
-            <span>{event.date}</span>
+            <span>{new Date(event.date + 'T' + event.time).toLocaleString()}</span>
           </div>
           <div className="flex items-center text-gray-800">
             <LocationIcon className="text-black mr-2" size={18} />
@@ -183,31 +283,42 @@ const EventDetailPage = () => {
           </div>
           <div className="flex items-center text-gray-800">
             <UserIcon className="text-black mr-2" size={18} />
-            <span>{event.registered} / {event.maxPlayers} players registered</span>
+            <span>{event.registeredPlayers || 0} / {event.maxPlayers} players registered</span>
           </div>
           <div className="flex items-center text-gray-800">
             <DollarIcon className="text-black mr-2" size={18} />
-            <span>${event.price} per player <span className="text-gray-500">({event.paymentNote})</span></span>
+            <span>${event.participationFee} per player</span>
           </div>
-          <div className="flex items-center text-gray-800">
-            <TshirtIcon className="text-black mr-2" size={18} />
-            <span>{event.dressCode}</span>
-          </div>
+          {event.dressCode && (
+            <div className="flex items-center text-gray-800">
+              <TshirtIcon className="text-black mr-2" size={18} />
+              <span>{event.dressCode}</span>
+            </div>
+          )}
         </div>
-        <div className="font-bold text-lg mb-1">Description</div>
-        <div className="text-gray-700 whitespace-pre-line text-sm mb-4">{event.description}</div>
+        {event.description && (
+          <>
+            <div className="font-bold text-lg mb-1">Description</div>
+            <div className="text-gray-700 whitespace-pre-line text-sm mb-4">{event.description}</div>
+          </>
+        )}
         {/* Button logic */}
-        {!isHostView && (
+        {!isHostView && !isHost && (
           isRegistered ? (
             <button 
-              className="w-full py-3 rounded-full bg-red-500 text-white font-bold text-lg mt-2 hover:bg-red-600 transition"
+              className="w-full py-3 rounded-full bg-red-500 text-white font-bold text-lg mt-2 hover:bg-red-600 transition disabled:opacity-50"
               onClick={handleUnregister}
+              disabled={registering}
             >
-              Deregister
+              {registering ? 'Deregistering...' : 'Deregister'}
             </button>
           ) : (
-            <button className="w-full py-3 rounded-full bg-red-500 text-white font-bold text-lg mt-2 hover:bg-red-600 transition">
-              Register
+            <button 
+              className="w-full py-3 rounded-full bg-red-500 text-white font-bold text-lg mt-2 hover:bg-red-600 transition disabled:opacity-50"
+              onClick={handleRegister}
+              disabled={registering}
+            >
+              {registering ? 'Registering...' : 'Register'}
             </button>
           )
         )}
