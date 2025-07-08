@@ -4,10 +4,12 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom'; // Import useNavigate for redirection
 import { useAuthStore } from '../stores/useAuthStore'; // Import your authentication store
 import ShareButton from '../components/common/ShareButton';
+import ChallengeLoader from '../components/common/ChallengeLoader';
 import { FiSearch, FiMapPin } from 'react-icons/fi';
 import { GoogleMap, Marker, useLoadScript } from '@react-google-maps/api';
 import usePlacesAutocomplete, { getGeocode, getLatLng } from 'use-places-autocomplete';
 import { eventsApi } from '../api/eventsApi';
+import { getUserInfo } from '../api/userApi';
 
 import './EventsPage.css';
 
@@ -17,8 +19,8 @@ const tabOptions = [
   { key: 'participating', label: 'Joined' },
 ];
 
-// Default map center (Kuwait City)
-const defaultCenter = { lat: 29.3759, lng: 47.9774 };
+// Default map center (Beirut, Lebanon)
+const defaultCenter = { lat: 33.8935, lng: 35.5018 };
 const defaultZoom = 10;
 
 // SVG icon for user (person) - copied from LeaderboardPage
@@ -63,10 +65,71 @@ function LocationIcon({ className = '', size = 20 }) {
 
 const EventCard = ({ event }) => {
   const navigate = useNavigate();
+  const [hostInfo, setHostInfo] = useState(null);
+  
+  // Fetch host info when component mounts
+  useEffect(() => {
+    const fetchHostInfo = async () => {
+      if (event.hostUserId) {
+        try {
+          const hostData = await getUserInfo(event.hostUserId);
+          setHostInfo(hostData);
+        } catch (error) {
+          console.error('Error fetching host info:', error);
+          setHostInfo({
+            id: event.hostUserId,
+            name: `User ${event.hostUserId.slice(0, 6)}`,
+            profilePictureUrl: null
+          });
+        }
+      }
+    };
+    
+    fetchHostInfo();
+  }, [event.hostUserId]);
+
+  // Helper function to format date and time
+  const formatDateTime = (date, time) => {
+    if (!date) return 'Date not set';
+    
+    try {
+      if (time) {
+        // If we have both date and time, create a full datetime
+        const dateTime = new Date(`${date}T${time}`);
+        if (!isNaN(dateTime.getTime())) {
+          return dateTime.toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+        }
+      }
+      
+      // If no time or invalid datetime, just show the date
+      const dateOnly = new Date(date);
+      if (!isNaN(dateOnly.getTime())) {
+        return dateOnly.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric'
+        });
+      }
+      
+      return 'Invalid date';
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Date not set';
+    }
+  };
+
+  const fee =
+    event.participationFee === undefined || event.participationFee === null || event.participationFee === ''
+      ? 'Free'
+      : event.participationFee;
   return (
     <div
       className="bg-white rounded-xl shadow-md mb-6 overflow-hidden border border-gray-200 max-w-xl mx-auto cursor-pointer hover:shadow-lg transition-shadow"
-      onClick={() => navigate(`/events/${event.id}`)}
+      onClick={() => navigate(`/events/${event.eventId}`)}
     >
       <div className="w-full h-40 bg-gray-200 relative">
         {event.imageUrl ? (
@@ -79,7 +142,7 @@ const EventCard = ({ event }) => {
         {/* Share button in top right */}
         <div className="absolute top-3 right-3 z-10" onClick={(e) => e.stopPropagation()}>
           <ShareButton 
-            url={`${window.location.origin}/events/${event.id}`}
+            url={`${window.location.origin}/events/${event.eventId}`}
             title={`Check out this event: ${event.title}`}
             iconSize={20}
           />
@@ -88,13 +151,22 @@ const EventCard = ({ event }) => {
       <div className="p-4">
         <div className="font-semibold text-lg mb-1">{event.title}</div>
         <div className="flex flex-col text-gray-500 text-sm mb-2">
-          {/* Participants icon and count */}
+          {/* Host name */}
           <span className="flex items-center mb-1">
             <UserIcon className="text-black mr-1" size={18} />
-            <span className="font-semibold text-gray-700">{event.registered}</span>
-            <span className="ml-1">Participants</span>
+            <span className="font-semibold text-gray-700">{hostInfo?.name || `User ${event.hostUserId?.slice(0, 6) || 'Unknown'}`}</span>
           </span>
-          {/* Show location under participants */}
+          {/* Date and time */}
+          <span className="flex items-center mb-1">
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <rect x="3" y="4" width="18" height="18" rx="4"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            {formatDateTime(event.date, event.time)}
+          </span>
+          {/* Show location under date/time */}
           <span className="flex items-center">
             <LocationIcon className="text-black mr-1" size={18} />
             {event.location}
@@ -102,7 +174,7 @@ const EventCard = ({ event }) => {
         </div>
         <div className="flex items-center justify-between mt-2">
           {/* Always show fee per player */}
-          <div className="text-xl font-bold text-gray-900">${event.price} <span className="text-sm font-normal text-gray-500">/player</span></div>
+          <div className="text-xl font-bold text-gray-900">{fee} <span className="text-sm font-normal text-gray-500">/player</span></div>
           <button className="bg-red-500 text-white px-4 py-2 rounded-full font-semibold hover:bg-red-600 text-sm">Register now</button>
         </div>
       </div>
@@ -154,7 +226,202 @@ function ParticipantsModal({ open, onClose, participants }) {
   );
 }
 
+// Hosted Event Card Component
+const HostedEventCard = ({ event }) => {
+  const navigate = useNavigate();
+  const [hostInfo, setHostInfo] = useState(null);
+  
+  // Fetch host info when component mounts
+  useEffect(() => {
+    const fetchHostInfo = async () => {
+      if (event.hostUserId) {
+        try {
+          const hostData = await getUserInfo(event.hostUserId);
+          setHostInfo(hostData);
+        } catch (error) {
+          console.error('Error fetching host info:', error);
+          setHostInfo({
+            id: event.hostUserId,
+            name: `User ${event.hostUserId.slice(0, 6)}`,
+            profilePictureUrl: null
+          });
+        }
+      }
+    };
+    
+    fetchHostInfo();
+  }, [event.hostUserId]);
 
+  // Helper function to format date and time
+  const formatDateTime = (date, time) => {
+    if (!date) return 'Date not set';
+    
+    try {
+      if (time) {
+        // If we have both date and time, create a full datetime
+        const dateTime = new Date(`${date}T${time}`);
+        if (!isNaN(dateTime.getTime())) {
+          return dateTime.toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+        }
+      }
+      
+      // If no time or invalid datetime, just show the date
+      const dateOnly = new Date(date);
+      if (!isNaN(dateOnly.getTime())) {
+        return dateOnly.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric'
+        });
+      }
+      
+      return 'Invalid date';
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Date not set';
+    }
+  };
+
+  return (
+    <div
+      className="bg-white rounded-2xl shadow border border-gray-100 p-4 cursor-pointer hover:shadow-lg transition-shadow"
+      onClick={() => navigate(`/events/${event.eventId}?hostView=1`)}
+    >
+      <div className="relative mb-3">
+        {event.imageUrl ? (
+          <img src={event.imageUrl} alt={event.title} className="w-full h-32 object-cover rounded-xl" />
+        ) : (
+          <div className="w-full h-32 flex items-center justify-center bg-gray-300 rounded-xl">
+            <span className="text-gray-500">No Image</span>
+          </div>
+        )}
+        {/* Share button in top right */}
+        <div className="absolute top-2 right-2 z-10" onClick={(e) => e.stopPropagation()}>
+          <ShareButton 
+            url={`${window.location.origin}/events/${event.eventId}`}
+            title={`Check out this event: ${event.title}`}
+            iconSize={18}
+          />
+        </div>
+      </div>
+      <div className="font-bold text-lg mb-1">{event.title}</div>
+      <div className="flex items-center text-gray-500 text-sm mb-1">
+        <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="4"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        {formatDateTime(event.date, event.time)} <span className="mx-2">{event.location}</span>
+      </div>
+      <div className="text-gray-700 text-sm mb-3">{event.registeredPlayers || 0} / {event.maxParticipants || event.maxPlayers} Registered</div>
+      {/* Removed View Players button */}
+    </div>
+  );
+};
+
+// Participating Event Card Component
+const ParticipatingEventCard = ({ event, onDeregister }) => {
+  const navigate = useNavigate();
+  const [hostInfo, setHostInfo] = useState(null);
+  
+  // Fetch host info when component mounts
+  useEffect(() => {
+    const fetchHostInfo = async () => {
+      if (event.hostUserId) {
+        try {
+          const hostData = await getUserInfo(event.hostUserId);
+          setHostInfo(hostData);
+        } catch (error) {
+          console.error('Error fetching host info:', error);
+          setHostInfo({
+            id: event.hostUserId,
+            name: `User ${event.hostUserId.slice(0, 6)}`,
+            profilePictureUrl: null
+          });
+        }
+      }
+    };
+    
+    fetchHostInfo();
+  }, [event.hostUserId]);
+
+  // Helper function to format date and time
+  const formatDateTime = (date, time) => {
+    if (!date) return 'Date not set';
+    
+    try {
+      if (time) {
+        // If we have both date and time, create a full datetime
+        const dateTime = new Date(`${date}T${time}`);
+        if (!isNaN(dateTime.getTime())) {
+          return dateTime.toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+        }
+      }
+      
+      // If no time or invalid datetime, just show the date
+      const dateOnly = new Date(date);
+      if (!isNaN(dateOnly.getTime())) {
+        return dateOnly.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric'
+        });
+      }
+      
+      return 'Invalid date';
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Date not set';
+    }
+  };
+
+  return (
+    <div
+      className="bg-white rounded-2xl shadow border border-gray-100 p-4 cursor-pointer hover:shadow-lg transition-shadow"
+      onClick={() => navigate(`/events/${event.id}`)}
+    >
+      <div className="relative mb-3">
+        {event.imageUrl ? (
+          <img src={event.imageUrl} alt={event.title} className="w-full h-32 object-cover rounded-xl" />
+        ) : (
+          <div className="w-full h-32 flex items-center justify-center bg-gray-300 rounded-xl">
+            <span className="text-gray-500">No Image</span>
+          </div>
+        )}
+        {/* Share button in top right */}
+        <div className="absolute top-2 right-2 z-10" onClick={(e) => e.stopPropagation()}>
+          <ShareButton 
+            url={`${window.location.origin}/events/${event.id}`}
+            title={`Check out this event: ${event.title}`}
+            iconSize={18}
+          />
+        </div>
+      </div>
+      <div className="font-bold text-lg mb-1">{event.title}</div>
+      <div className="flex items-center text-gray-500 text-sm mb-1">
+        <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="4"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        {formatDateTime(event.date, event.time)} <span className="mx-2">{event.location}</span>
+      </div>
+      <div className="text-gray-700 text-sm mb-3">{event.registeredPlayers || 0} / {event.maxParticipants || event.maxPlayers} Registered</div>
+      <div className="flex items-center justify-between">
+        <div className="text-lg font-bold text-gray-900">{event.participationFee || 'Free'} <span className="text-sm font-normal text-gray-500">/player</span></div>
+        <button
+          className="bg-red-500 text-white px-4 py-2 rounded-full font-semibold hover:bg-red-600 text-sm transition"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDeregister(event.id);
+          }}
+        >
+          Deregister
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const mapContainerStyle = {
   width: '100%',
@@ -169,18 +436,19 @@ const mapOptions = {
   fullscreenControl: false,
 };
 
-
-
 const GOOGLE_MAPS_LIBRARIES = ['places'];
 
-function LocationSearchBar({ onSelect }) {
+function LocationSearchBar({ onSelect, isLoaded }) {
   const {
     ready,
     value,
     suggestions: { status, data },
     setValue,
     clearSuggestions,
-  } = usePlacesAutocomplete({ debounce: 300 });
+  } = usePlacesAutocomplete({ 
+    debounce: 300,
+    enabled: isLoaded // Only enable when Google Maps is loaded
+  });
 
   return (
     <div className="search-container" style={{ position: 'relative' }}>
@@ -189,8 +457,8 @@ function LocationSearchBar({ onSelect }) {
         className="search-input"
         value={value}
         onChange={e => setValue(e.target.value)}
-        disabled={!ready}
-        placeholder="Search for a location..."
+        disabled={!ready || !isLoaded}
+        placeholder={isLoaded ? "Search for a location..." : "Loading map..."}
         autoComplete="off"
       />
       {status === 'OK' && (
@@ -228,8 +496,11 @@ function LocationSearchBar({ onSelect }) {
 }
 
 // Helper to generate a custom SVG bubble for the marker
-function getBubbleSVG(price) {
-  const text = `$${price}`;
+function getBubbleSVG(participationFee) {
+  const text =
+    participationFee === undefined || participationFee === null || participationFee === ''
+      ? 'Free'
+      : participationFee;
   const width = 60;
   const height = 36;
   return {
@@ -237,6 +508,13 @@ function getBubbleSVG(price) {
     scaledSize: { width, height },
     anchor: { x: width / 2, y: height / 2 },
   };
+}
+
+// Helper to check if event is in the future
+function isFutureEvent(event) {
+  if (!event.date) return true; // If no date, show by default
+  const eventDateTime = new Date(event.date + 'T' + (event.time || '00:00'));
+  return eventDateTime >= new Date();
 }
 
 const EventsPage = () => {
@@ -290,15 +568,34 @@ const EventsPage = () => {
         switch (activeTab) {
           case 'available':
             const eventsData = await eventsApi.getEvents();
-            setEvents((eventsData.events || []).map(e => ({ ...e, id: e.eventId })));
+            setEvents((eventsData.events || []).map(e => ({ ...e, id: e.eventId, eventId: e.eventId })));
             break;
           case 'my':
             const hostedData = await eventsApi.getMyHostedEvents();
-            setHostedEvents((hostedData.events || []).map(e => ({ ...e, id: e.eventId })));
+            setHostedEvents((hostedData.events || []).map(e => ({ ...e, id: e.eventId, eventId: e.eventId })));
             break;
           case 'participating':
             const registeredData = await eventsApi.getMyRegisteredEvents();
-            setRegisteredEvents((registeredData.events || []).map(e => ({ ...e, id: e.eventId })));
+            const registrations = registeredData.events || [];
+            // Fetch full event details for each registration
+            const eventDetails = await Promise.all(
+              registrations.map(async (reg) => {
+                const eventId = reg.eventId || reg.id;
+                try {
+                  const event = await eventsApi.getEvent(eventId);
+                  return { ...event, id: event.id || event.eventId, eventId: event.eventId };
+                } catch (e) {
+                  // If event not found (404), return null
+                  return null;
+                }
+              })
+            );
+            // Remove nulls (404s) and duplicates based on id
+            const uniqueEvents = eventDetails.filter(event => event && event.id)
+              .filter((event, index, self) =>
+                index === self.findIndex(e => e.id === event.id)
+              );
+            setRegisteredEvents(uniqueEvents);
             break;
         }
       } catch (err) {
@@ -312,16 +609,17 @@ const EventsPage = () => {
     fetchData();
   }, [activeTab, isAuthenticated]);
 
-  // Filter events based on search query
+  // Filter events based on search query and date
   useEffect(() => {
     const currentEvents = activeTab === 'available' ? events : 
-                         activeTab === 'my' ? hostedEvents : 
-                         registeredEvents;
-    
+                       activeTab === 'my' ? hostedEvents : 
+                       registeredEvents;
+    // Only show future events
+    const futureEvents = currentEvents.filter(isFutureEvent);
     if (!searchQuery.trim()) {
-      setFilteredEvents(currentEvents);
+      setFilteredEvents(futureEvents);
     } else {
-      const filtered = currentEvents.filter(event =>
+      const filtered = futureEvents.filter(event =>
         event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         event.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
         event.sport?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -394,98 +692,107 @@ const EventsPage = () => {
       <div className="mt-4">
         {loading && (
           <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500 mx-auto"></div>
-            <p className="mt-2 text-gray-600">Loading events...</p>
+            <ChallengeLoader />
           </div>
         )}
         
         {!loading && activeTab === 'available' && (
           <div>
-            {/* Location Autocomplete Search Bar */}
-            <LocationSearchBar
-              onSelect={({ lat, lng, viewport }) => {
-                if (viewport && mapRef.current) {
-                  // Fit map to place bounds
-                  const bounds = new window.google.maps.LatLngBounds(
-                    { lat: viewport.south, lng: viewport.west },
-                    { lat: viewport.north, lng: viewport.east }
-                  );
-                  if (mapRef.current && typeof mapRef.current.fitBounds === 'function') {
-                    mapRef.current.fitBounds(bounds);
-                  }
-                } else {
-                  setMapCenter({ lat, lng });
-                  setMapZoom(13);
-                }
-              }}
-            />
-            {/* Map Toggle */}
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="event-count">
-                {visibleEvents.length} {visibleEvents.length === 1 ? 'Event' : 'Events'} Found
-              </h2>
-              <button
-                onClick={() => setShowMap(!showMap)}
-                className="map-toggle"
-              >
-                <FiMapPin size={18} />
-                {showMap ? 'Hide Map' : 'Show Map'}
-              </button>
-            </div>
-            {/* Google Map */}
-            {showMap && isLoaded && (
-              <GoogleMap
-                mapContainerStyle={mapContainerStyle}
-                center={mapCenter}
-                zoom={mapZoom}
-                onLoad={map => { if (map) mapRef.current = map; }}
-                onUnmount={() => { mapRef.current = null; }}
-                onBoundsChanged={() => {
-                  if (!mapRef.current) return;
-                  const bounds = mapRef.current.getBounds && mapRef.current.getBounds();
-                  if (!bounds) return;
-                  setMapBounds({
-                    north: bounds.getNorthEast().lat(),
-                    east: bounds.getNorthEast().lng(),
-                    south: bounds.getSouthWest().lat(),
-                    west: bounds.getSouthWest().lng(),
-                  });
-                }}
-                onDragEnd={e => {
-                  if (!mapRef.current) return;
-                  const bounds = mapRef.current.getBounds && mapRef.current.getBounds();
-                  if (!bounds) return;
-                  setMapBounds({
-                    north: bounds.getNorthEast().lat(),
-                    east: bounds.getNorthEast().lng(),
-                    south: bounds.getSouthWest().lat(),
-                    west: bounds.getSouthWest().lng(),
-                  });
-                }}
-                onZoomChanged={e => {
-                  if (!mapRef.current) return;
-                  const bounds = mapRef.current.getBounds && mapRef.current.getBounds();
-                  if (!bounds) return;
-                  setMapBounds({
-                    north: bounds.getNorthEast().lat(),
-                    east: bounds.getNorthEast().lng(),
-                    south: bounds.getSouthWest().lat(),
-                    west: bounds.getSouthWest().lng(),
-                  });
-                }}
-                options={mapOptions}
-              >
-                {filteredEvents.map(event =>
-                  event.coordinates ? (
-                    <Marker
-                      key={event.id}
-                      position={event.coordinates}
-                      onClick={() => navigate(`/events/${event.id}`)}
-                      icon={getBubbleSVG(event.price)}
-                    />
-                  ) : null
+            {/* Only render map and search bar after Google Maps is loaded */}
+            {!isLoaded ? (
+              <div className="text-center py-8">
+                <ChallengeLoader />
+              </div>
+            ) : (
+              <>
+                {/* Location Autocomplete Search Bar */}
+                <LocationSearchBar
+                  onSelect={({ lat, lng, viewport }) => {
+                    if (viewport && mapRef.current) {
+                      // Fit map to place bounds
+                      const bounds = new window.google.maps.LatLngBounds(
+                        { lat: viewport.south, lng: viewport.west },
+                        { lat: viewport.north, lng: viewport.east }
+                      );
+                      if (mapRef.current && typeof mapRef.current.fitBounds === 'function') {
+                        mapRef.current.fitBounds(bounds);
+                      }
+                    } else {
+                      setMapCenter({ lat, lng });
+                      setMapZoom(13);
+                    }
+                  }}
+                  isLoaded={isLoaded}
+                />
+                {/* Map Toggle */}
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="event-count">
+                    {visibleEvents.length} {visibleEvents.length === 1 ? 'Event' : 'Events'} Found
+                  </h2>
+                  <button
+                    onClick={() => setShowMap(!showMap)}
+                    className="map-toggle"
+                  >
+                    <FiMapPin size={18} />
+                    {showMap ? 'Hide Map' : 'Show Map'}
+                  </button>
+                </div>
+                {/* Google Map */}
+                {showMap && (
+                  <GoogleMap
+                    mapContainerStyle={mapContainerStyle}
+                    center={mapCenter}
+                    zoom={mapZoom}
+                    onLoad={map => { if (map) mapRef.current = map; }}
+                    onUnmount={() => { mapRef.current = null; }}
+                    onBoundsChanged={() => {
+                      if (!mapRef.current) return;
+                      const bounds = mapRef.current.getBounds && mapRef.current.getBounds();
+                      if (!bounds) return;
+                      setMapBounds({
+                        north: bounds.getNorthEast().lat(),
+                        east: bounds.getNorthEast().lng(),
+                        south: bounds.getSouthWest().lat(),
+                        west: bounds.getSouthWest().lng(),
+                      });
+                    }}
+                    onDragEnd={e => {
+                      if (!mapRef.current) return;
+                      const bounds = mapRef.current.getBounds && mapRef.current.getBounds();
+                      if (!bounds) return;
+                      setMapBounds({
+                        north: bounds.getNorthEast().lat(),
+                        east: bounds.getNorthEast().lng(),
+                        south: bounds.getSouthWest().lat(),
+                        west: bounds.getSouthWest().lng(),
+                      });
+                    }}
+                    onZoomChanged={e => {
+                      if (!mapRef.current) return;
+                      const bounds = mapRef.current.getBounds && mapRef.current.getBounds();
+                      if (!bounds) return;
+                      setMapBounds({
+                        north: bounds.getNorthEast().lat(),
+                        east: bounds.getNorthEast().lng(),
+                        south: bounds.getSouthWest().lat(),
+                        west: bounds.getSouthWest().lng(),
+                      });
+                    }}
+                    options={mapOptions}
+                  >
+                    {filteredEvents.map(event =>
+                      event.coordinates ? (
+                        <Marker
+                          key={event.id}
+                          position={event.coordinates}
+                          onClick={() => navigate(`/events/${event.eventId}`)}
+                          icon={getBubbleSVG(event.participationFee)}
+                        />
+                      ) : null
+                    )}
+                  </GoogleMap>
                 )}
-              </GoogleMap>
+              </>
             )}
             {/* Event List */}
             <div>
@@ -501,112 +808,40 @@ const EventsPage = () => {
               <div className="text-center text-gray-400 py-8">No events yet.</div>
             ) : (
               hostedEvents.map(event => (
-                <div
+                <HostedEventCard
                   key={event.id}
-                  className="bg-white rounded-2xl shadow border border-gray-100 p-4 cursor-pointer hover:shadow-lg transition-shadow"
-                  onClick={() => navigate(`/events/${event.id}?hostView=1`)}
-                >
-                  <div className="relative mb-3">
-                    {event.imageUrl ? (
-                      <img src={event.imageUrl} alt={event.title} className="w-full h-32 object-cover rounded-xl" />
-                    ) : (
-                      <div className="w-full h-32 flex items-center justify-center bg-gray-300 rounded-xl">
-                        <span className="text-gray-500">No Image</span>
-                      </div>
-                    )}
-                    {/* Share button in top right */}
-                    <div className="absolute top-2 right-2 z-10" onClick={(e) => e.stopPropagation()}>
-                      <ShareButton 
-                        url={`${window.location.origin}/events/${event.id}`}
-                        title={`Check out this event: ${event.title}`}
-                        iconSize={18}
-                      />
-                    </div>
-                  </div>
-                  <div className="font-bold text-lg mb-1">{event.title}</div>
-                  <div className="flex items-center text-gray-500 text-sm mb-1">
-                    <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="4"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                    {event.date} <span className="mx-2">{event.location}</span>
-                  </div>
-                  <div className="text-gray-700 text-sm mb-3">{event.registeredPlayers || 0} / {event.maxPlayers} Registered</div>
-                  <button
-                    className="border border-gray-300 rounded-lg px-4 py-2 font-semibold text-gray-800 hover:bg-gray-100 transition"
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      try {
-                        const playersData = await eventsApi.getRegisteredPlayers(event.id);
-                        setSelectedParticipants(playersData.players || []);
-                        setModalOpen(true);
-                      } catch (error) {
-                        console.error('Error fetching registered players:', error);
-                        alert('Failed to load registered players. Please try again.');
-                      }
-                    }}
-                  >
-                    View Players
-                  </button>
-                </div>
+                  event={event}
+                  // Remove onViewPlayers prop and related logic
+                />
               ))
             )}
-            <ParticipantsModal open={modalOpen} onClose={() => setModalOpen(false)} participants={selectedParticipants} />
+            {/* Remove ParticipantsModal for hosted tab */}
           </div>
         )}
         {!loading && activeTab === 'participating' && (
           <div className="flex flex-col gap-6">
-            {registeredEvents.length === 0 ? (
+            {registeredEvents.filter(event => !!event && !!event.id).length === 0 ? (
               <div className="text-center text-gray-400 py-8">No joined events yet.</div>
             ) : (
-              registeredEvents.map(event => (
-                <div
-                  key={event.id}
-                  className="bg-white rounded-2xl shadow border border-gray-100 p-4 cursor-pointer hover:shadow-lg transition-shadow"
-                  onClick={() => navigate(`/events/${event.id}`)}
-                >
-                  <div className="relative mb-3">
-                    {event.imageUrl ? (
-                      <img src={event.imageUrl} alt={event.title} className="w-full h-32 object-cover rounded-xl" />
-                    ) : (
-                      <div className="w-full h-32 flex items-center justify-center bg-gray-300 rounded-xl">
-                        <span className="text-gray-500">No Image</span>
-                      </div>
-                    )}
-                    {/* Share button in top right */}
-                    <div className="absolute top-2 right-2 z-10" onClick={(e) => e.stopPropagation()}>
-                      <ShareButton 
-                        url={`${window.location.origin}/events/${event.id}`}
-                        title={`Check out this event: ${event.title}`}
-                        iconSize={18}
-                      />
-                    </div>
-                  </div>
-                  <div className="font-bold text-lg mb-1">{event.title}</div>
-                  <div className="flex items-center text-gray-500 text-sm mb-1">
-                    <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="4"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                    {event.date} <span className="mx-2">{event.location}</span>
-                  </div>
-                  <div className="text-gray-700 text-sm mb-3">{event.registeredPlayers || 0} / {event.maxPlayers} Registered</div>
-                  <div className="flex items-center justify-between">
-                    <div className="text-lg font-bold text-gray-900">${event.participationFee} <span className="text-sm font-normal text-gray-500">/player</span></div>
-                    <button
-                      className="bg-red-500 text-white px-4 py-2 rounded-full font-semibold hover:bg-red-600 text-sm transition"
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        try {
-                          await eventsApi.deregisterFromEvent(event.id);
-                          // Refresh the registered events
-                          const registeredData = await eventsApi.getMyRegisteredEvents();
-                          setRegisteredEvents(registeredData.events || []);
-                        } catch (error) {
-                          console.error('Error deregistering from event:', error);
-                          alert('Failed to deregister from event. Please try again.');
-                        }
-                      }}
-                    >
-                      Deregister
-                    </button>
-                  </div>
-                </div>
-              ))
+              registeredEvents
+                .filter(event => !!event && !!event.id)
+                .map(event => (
+                  <ParticipatingEventCard
+                    key={event.id}
+                    event={event}
+                    onDeregister={async (id) => {
+                      try {
+                        await eventsApi.deregisterFromEvent(id);
+                        // Refresh the registered events
+                        const registeredData = await eventsApi.getMyRegisteredEvents();
+                        setRegisteredEvents(registeredData.events || []);
+                      } catch (error) {
+                        console.error('Error deregistering from event:', error);
+                        alert('Failed to deregister from event. Please try again.');
+                      }
+                    }}
+                  />
+                ))
             )}
           </div>
         )}

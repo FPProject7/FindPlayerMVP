@@ -38,7 +38,7 @@ export const eventsApi = {
   // Get events hosted by the current user
   getMyHostedEvents: async () => {
     try {
-      const response = await eventsApiClient.get('/events/my-hosted');
+      const response = await eventsApiClient.get('/my-events/hosted');
       return response.data;
     } catch (error) {
       console.error('Error fetching hosted events:', error);
@@ -49,7 +49,7 @@ export const eventsApi = {
   // Get events the current user is registered for
   getMyRegisteredEvents: async () => {
     try {
-      const response = await eventsApiClient.get('/events/my-registered');
+      const response = await eventsApiClient.get('/my-events/registered');
       return response.data;
     } catch (error) {
       console.error('Error fetching registered events:', error);

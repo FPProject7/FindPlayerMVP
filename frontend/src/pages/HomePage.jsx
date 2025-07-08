@@ -147,8 +147,8 @@ const HomePage = () => {
         <div className="flex justify-center items-center py-4 text-gray-500">
           {pullDistance >= PULL_THRESHOLD ? (
             <div className="flex items-center">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500 mr-2"></div>
-              Release to refresh
+              <ChallengeLoader />
+              <span className="ml-2">Release to refresh</span>
             </div>
           ) : (
             <div className="flex items-center">
@@ -161,8 +161,8 @@ const HomePage = () => {
 
       {refreshing && (
         <div className="flex justify-center items-center py-2 text-gray-500">
-          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500 mr-2"></div>
-          Refreshing feed...
+          <ChallengeLoader />
+          <span className="ml-2">Refreshing feed...</span>
         </div>
       )}
 

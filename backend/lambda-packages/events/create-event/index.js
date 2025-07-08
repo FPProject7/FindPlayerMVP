@@ -8,21 +8,48 @@ const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 
 exports.handler = async (event) => {
   console.log("Received event:", JSON.stringify(event));
+  
+  // Handle CORS preflight requests
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'
+      },
+      body: ''
+    };
+  }
+  
   const userId = event.requestContext?.authorizer?.claims?.sub;
   if (!userId) {
     console.error("Unauthorized: No userId in event.requestContext.authorizer.claims");
-    return { statusCode: 401, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type,Authorization' }, body: JSON.stringify({ error: 'Unauthorized' }) };
+    return { 
+      statusCode: 401, 
+      headers: { 
+        'Access-Control-Allow-Origin': '*', 
+        'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS', 
+        'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token' 
+      }, 
+      body: JSON.stringify({ error: 'Unauthorized' }) 
+    };
   }
+  
   try {
     const body = JSON.parse(event.body || '{}');
     console.log("Parsed body:", body);
     
     // Validate required fields
-    const { title, description, date, location, maxParticipants } = body;
+    const { title, description, date, time, location, maxParticipants, participationFee, eventType, sport } = body;
     if (!title || !description || !date || !location) {
       return { 
         statusCode: 400, 
-        headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type,Authorization' },
+        headers: { 
+          'Access-Control-Allow-Origin': '*', 
+          'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS', 
+          'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token' 
+        },
         body: JSON.stringify({ error: 'title, description, date, and location are required' }) 
       };
     }
@@ -49,7 +76,11 @@ exports.handler = async (event) => {
     if (!coordinates) {
       return {
         statusCode: 400,
-        headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type,Authorization' },
+        headers: { 
+          'Access-Control-Allow-Origin': '*', 
+          'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS', 
+          'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token' 
+        },
         body: JSON.stringify({ error: 'Could not determine coordinates for event location.' })
       };
     }
@@ -60,9 +91,14 @@ exports.handler = async (event) => {
       title,
       description,
       date,
+      time: time || null,
+      eventType: eventType || null,
+      sport: sport || null,
       location,
       maxParticipants: maxParticipants || null,
+      participationFee: participationFee || null,
       imageUrl,
+      registeredPlayers: 0, // Initialize with 0 registered players
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       coordinates,
@@ -70,9 +106,25 @@ exports.handler = async (event) => {
     
     await dynamoDb.put({ TableName: EVENTS_TABLE, Item: newEvent }).promise();
     console.log("Put item succeeded:", newEvent);
-    return { statusCode: 201, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type,Authorization' }, body: JSON.stringify(newEvent) };
+    return { 
+      statusCode: 201, 
+      headers: { 
+        'Access-Control-Allow-Origin': '*', 
+        'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS', 
+        'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token' 
+      }, 
+      body: JSON.stringify(newEvent) 
+    };
   } catch (err) {
     console.error("Error in create-event:", err);
-    return { statusCode: 500, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type,Authorization' }, body: JSON.stringify({ error: err.message }) };
+    return { 
+      statusCode: 500, 
+      headers: { 
+        'Access-Control-Allow-Origin': '*', 
+        'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS', 
+        'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token' 
+      }, 
+      body: JSON.stringify({ error: err.message }) 
+    };
   }
 }; 

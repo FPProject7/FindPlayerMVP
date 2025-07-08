@@ -2,6 +2,15 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { eventsApi } from '../../api/eventsApi';
 
+// Toast for share/copy feedback - exact same as profile page
+const ShareToast = ({ message }) => (
+  <div className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none">
+    <div className="bg-red-500 text-white px-8 py-4 rounded-2xl shadow-2xl text-lg font-semibold opacity-95 animate-fade-in-out">
+      {message}
+    </div>
+  </div>
+);
+
 const initialState = {
   title: '',
   sport: '',
@@ -51,7 +60,7 @@ const DRESS_CODE_LIMIT = 40;
 const PARTICIPATION_FEE_LIMIT = 30;
 const DESCRIPTION_LIMIT = 300;
 
-const CreateEventForm = () => {
+const CreateEventForm = ({ onClose }) => {
   const [form, setForm] = useState(initialState);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -69,7 +78,8 @@ const CreateEventForm = () => {
   const [isGoogleMapsReady, setIsGoogleMapsReady] = useState(false);
 
   // Additional state for event confirmation modal
-  const [showCopied, setShowCopied] = useState(false);
+  const [showShareToast, setShowShareToast] = useState(false);
+  const [shareToastMsg, setShareToastMsg] = useState('');
 
   // Initialize Google Maps services
   useEffect(() => {
@@ -219,6 +229,16 @@ const CreateEventForm = () => {
     if (!form.cityVenue.trim()) newErrors.cityVenue = 'City & Venue is required.';
     if (!form.date) newErrors.date = 'Date is required.';
     if (!form.time) newErrors.time = 'Time is required.';
+    if (form.date && form.time) {
+      // Combine date and time into a Date object
+      const [year, month, day] = form.date.split('-').map(Number);
+      const [hour, minute] = form.time.split(':').map(Number);
+      const eventDate = new Date(year, month - 1, day, hour, minute);
+      if (isNaN(eventDate.getTime()) || eventDate <= new Date()) {
+        newErrors.date = 'Date and time must be in the future.';
+        newErrors.time = 'Date and time must be in the future.';
+      }
+    }
     if (!form.maxPlayers || isNaN(form.maxPlayers) || !Number.isInteger(Number(form.maxPlayers)) || Number(form.maxPlayers) <= 0) newErrors.maxPlayers = 'Enter a valid integer number of players.';
     if (String(form.maxPlayers).length > MAX_PLAYERS_LIMIT) newErrors.maxPlayers = `Max ${MAX_PLAYERS_LIMIT} digits.`;
     if (!form.participationFee.trim()) newErrors.participationFee = 'Participation fee is required.';
@@ -227,6 +247,7 @@ const CreateEventForm = () => {
     if (!form.description.trim()) newErrors.description = 'Description is required.';
     if (form.description.length > DESCRIPTION_LIMIT) newErrors.description = `Max ${DESCRIPTION_LIMIT} characters.`;
     if (!form.agree) newErrors.agree = 'You must agree to the terms.';
+    // imageFile is optional, so no validation here
     return newErrors;
   };
 
@@ -308,8 +329,8 @@ const CreateEventForm = () => {
         location: form.cityVenue,
         date: form.date,
         time: form.time,
-        maxPlayers: parseInt(form.maxPlayers),
-        participationFee: parseFloat(form.participationFee),
+        maxParticipants: parseInt(form.maxPlayers),
+        participationFee: form.participationFee,
         dressCode: form.dressCode,
         description: form.description,
         imageUrl: imageUrl,
@@ -343,20 +364,47 @@ const CreateEventForm = () => {
 
   // Functions for event confirmation modal
   const handleViewMyEvent = () => {
-    if (createdEventData?.id) {
-      navigate(`/events/${createdEventData.id}?hostView=1`);
+    if (createdEventData?.id || createdEventData?.eventId) {
+      // Always use eventId if present, fallback to id
+      const eventId = createdEventData.eventId || createdEventData.id;
+      navigate(`/events/${eventId}?hostView=1`);
       setShowConfirmation(false);
       setCreatedEventData(null);
       setForm(initialState);
+      // Close the modal if onClose prop is provided
+      if (onClose) {
+        onClose();
+      }
     }
   };
 
-  const handleShare = () => {
-    if (createdEventData?.id) {
-      const shareUrl = `${window.location.origin}/events/${createdEventData.id}`;
-      navigator.clipboard.writeText(shareUrl);
-      setShowCopied(true);
-      setTimeout(() => setShowCopied(false), 1500);
+  const handleShare = async () => {
+    if (createdEventData?.id || createdEventData?.eventId) {
+      const eventId = createdEventData.eventId || createdEventData.id;
+      const shareUrl = `${window.location.origin}/events/${eventId}`;
+      // Try Web Share API first (mobile)
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: createdEventData.title || 'Check out this event!', url: shareUrl });
+          setShareToastMsg('Link shared!');
+          setShowShareToast(true);
+          setTimeout(() => setShowShareToast(false), 1500);
+          return;
+        } catch (e) {
+          // fallback to copy
+        }
+      }
+      // Fallback: copy to clipboard
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        setShareToastMsg('Copied!');
+        setShowShareToast(true);
+        setTimeout(() => setShowShareToast(false), 1500);
+      } catch (e) {
+        setShareToastMsg('Failed to copy');
+        setShowShareToast(true);
+        setTimeout(() => setShowShareToast(false), 1500);
+      }
     }
   };
 
@@ -368,7 +416,7 @@ const CreateEventForm = () => {
   };
 
   // EventCreatedConfirmation component
-  const EventCreatedConfirmation = ({ event, onViewMyEvent, onShare, onClose, showCopied }) => (
+  const EventCreatedConfirmation = ({ event, onViewMyEvent, onShare, onClose, showShareToast, shareToastMsg }) => (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
       <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4 text-center shadow-xl relative">
         <div className="text-green-500 text-4xl mb-4">✓</div>
@@ -386,9 +434,6 @@ const CreateEventForm = () => {
             className="w-full py-2 bg-gray-200 text-gray-800 rounded-full font-semibold hover:bg-gray-300 relative"
           >
             Share Event
-            {showCopied && (
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-green-500 text-xs">Copied!</span>
-            )}
           </button>
           <button
             onClick={onClose}
@@ -397,6 +442,7 @@ const CreateEventForm = () => {
             Close
           </button>
         </div>
+        {showShareToast && <ShareToast message={shareToastMsg} />}
       </div>
     </div>
   );
@@ -409,7 +455,8 @@ const CreateEventForm = () => {
           onViewMyEvent={handleViewMyEvent}
           onShare={handleShare}
           onClose={handleClose}
-          showCopied={showCopied}
+          showShareToast={showShareToast}
+          shareToastMsg={shareToastMsg}
         />
       )}
       {!showConfirmation && (
@@ -555,7 +602,7 @@ const CreateEventForm = () => {
                 {errors.maxPlayers && <div className="text-red-500 text-xs mt-1">{errors.maxPlayers}</div>}
               </div>
               <div className="flex-1">
-                <label className="block font-medium mb-1">Participation Fee</label>
+                <label className="block font-medium mb-1">Player fee</label>
                 <input
                   type="text"
                   name="participationFee"
