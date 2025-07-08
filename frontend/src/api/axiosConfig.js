@@ -3,63 +3,89 @@
 import axios from 'axios';
 import { useAuthStore } from '../stores/useAuthStore';
 
-// Create a new Axios instance
+// Main API client for auth, feed, etc.
 const apiClient = axios.create({
-  // You will replace this with your actual API Gateway URL from the DevOps engineer
-  baseURL: 'https://iaulcttcsl.execute-api.us-east-1.amazonaws.com',
+  baseURL: 'https://iaulcttcsl.execute-api.us-east-1.amazonaws.com', // original API Gateway for non-events
 });
 
-// Request interceptor
+// Events API client (use ONLY for events)
+const eventsApiClient = axios.create({
+  baseURL: 'https://frf2mofcw1.execute-api.us-east-1.amazonaws.com/prod', // events API Gateway
+});
+
+// Request interceptor for main API client
 apiClient.interceptors.request.use(
   async (config) => {
     try {
-      // Get a valid token (will refresh if needed)
       const token = await useAuthStore.getState().getValidToken();
-      
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
     } catch (error) {
-      // Don't throw here, let the request fail naturally
+      // Let the request fail naturally
     }
-
     return config;
   },
-  (error) => {
+  (error) => Promise.reject(error)
+);
+
+// Request interceptor for events API client
+eventsApiClient.interceptors.request.use(
+  async (config) => {
+    try {
+      const token = await useAuthStore.getState().getValidToken();
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    } catch (error) {
+      // Let the request fail naturally
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Response interceptor for main API client
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 401) {
+      try {
+        await useAuthStore.getState().refreshToken();
+        const originalRequest = error.config;
+        const token = await useAuthStore.getState().getValidToken();
+        if (token) {
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+        }
+        return apiClient(originalRequest);
+      } catch (refreshError) {
+        useAuthStore.getState().logout();
+      }
+    }
     return Promise.reject(error);
   }
 );
 
-// Response interceptor to handle 401 errors
-apiClient.interceptors.response.use(
+// Response interceptor for events API client
+eventsApiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config;
-
-    // If we get a 401 and haven't already tried to refresh
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
+    if (error.response?.status === 401) {
       try {
-        // Try to refresh the token
-        const newToken = await useAuthStore.getState().refreshToken();
-        
-        // Retry the original request with new token
-        originalRequest.headers.Authorization = `Bearer ${newToken}`;
-        return apiClient(originalRequest);
-      } catch (refreshError) {
-        // Refresh failed, redirect to login
-        // BUT don't redirect if this is already a login request
-        if (!originalRequest.url?.includes('/signin') && !originalRequest.url?.includes('/login')) {
-          useAuthStore.getState().logout();
-          window.location.href = '/login';
+        await useAuthStore.getState().refreshToken();
+        const originalRequest = error.config;
+        const token = await useAuthStore.getState().getValidToken();
+        if (token) {
+          originalRequest.headers.Authorization = `Bearer ${token}`;
         }
-        return Promise.reject(refreshError);
+        return eventsApiClient(originalRequest);
+      } catch (refreshError) {
+        useAuthStore.getState().logout();
       }
     }
-
     return Promise.reject(error);
   }
 );
 
 export default apiClient;
+export { eventsApiClient };

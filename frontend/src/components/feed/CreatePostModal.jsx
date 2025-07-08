@@ -242,7 +242,7 @@ const CreatePostModal = ({ isOpen, onClose, onPostCreated }) => {
             </div>
           </form>
         ) : (
-          <CreateEventForm />
+          <CreateEventForm onClose={onClose} />
         )}
       </div>
     </div>

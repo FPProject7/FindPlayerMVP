@@ -4,9 +4,12 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom'; // Import useNavigate for redirection
 import { useAuthStore } from '../stores/useAuthStore'; // Import your authentication store
 import ShareButton from '../components/common/ShareButton';
+import ChallengeLoader from '../components/common/ChallengeLoader';
 import { FiSearch, FiMapPin } from 'react-icons/fi';
 import { GoogleMap, Marker, useLoadScript } from '@react-google-maps/api';
 import usePlacesAutocomplete, { getGeocode, getLatLng } from 'use-places-autocomplete';
+import { eventsApi } from '../api/eventsApi';
+import { getUserInfo } from '../api/userApi';
 
 import './EventsPage.css';
 
@@ -16,48 +19,9 @@ const tabOptions = [
   { key: 'participating', label: 'Joined' },
 ];
 
-// Mock event data with coordinates for map
-const mockEvents = [
-  {
-    id: 1,
-    title: 'Kuwait City (Football Volta)',
-    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80',
-    registered: 312,
-    distance: '1.2 miles away',
-    price: 100,
-    priceType: 'Team',
-    date: 'Sep 20, 2025',
-    location: 'Kuwait City',
-    coordinates: { lat: 29.3759, lng: 47.9774 },
-    isFavorite: false,
-  },
-  {
-    id: 2,
-    title: 'Court Clash',
-    image: 'https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=600&q=80',
-    registered: 120,
-    distance: '2.5 miles away',
-    price: 50,
-    priceType: 'Player',
-    date: 'Sep 22, 2025',
-    location: 'Kuwait Arena',
-    coordinates: { lat: 29.3786, lng: 47.9902 },
-    isFavorite: true,
-  },
-  {
-    id: 3,
-    title: 'Beach Volleyball Tournament',
-    image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=600&q=80',
-    registered: 85,
-    distance: '0.8 miles away',
-    price: 30,
-    priceType: 'Player',
-    date: 'Sep 25, 2025',
-    location: 'Kuwait Beach',
-    coordinates: { lat: 29.3721, lng: 47.9824 },
-    isFavorite: false,
-  },
-];
+// Default map center (Beirut, Lebanon)
+const defaultCenter = { lat: 33.8935, lng: 35.5018 };
+const defaultZoom = 10;
 
 // SVG icon for user (person) - copied from LeaderboardPage
 function UserIcon({ className = '', size = 20 }) {
@@ -101,17 +65,84 @@ function LocationIcon({ className = '', size = 20 }) {
 
 const EventCard = ({ event }) => {
   const navigate = useNavigate();
+  const [hostInfo, setHostInfo] = useState(null);
+  
+  // Fetch host info when component mounts
+  useEffect(() => {
+    const fetchHostInfo = async () => {
+      if (event.hostUserId) {
+        try {
+          const hostData = await getUserInfo(event.hostUserId);
+          setHostInfo(hostData);
+        } catch (error) {
+          console.error('Error fetching host info:', error);
+          setHostInfo({
+            id: event.hostUserId,
+            name: `User ${event.hostUserId.slice(0, 6)}`,
+            profilePictureUrl: null
+          });
+        }
+      }
+    };
+    
+    fetchHostInfo();
+  }, [event.hostUserId]);
+
+  // Helper function to format date and time
+  const formatDateTime = (date, time) => {
+    if (!date) return 'Date not set';
+    
+    try {
+      if (time) {
+        // If we have both date and time, create a full datetime
+        const dateTime = new Date(`${date}T${time}`);
+        if (!isNaN(dateTime.getTime())) {
+          return dateTime.toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+        }
+      }
+      
+      // If no time or invalid datetime, just show the date
+      const dateOnly = new Date(date);
+      if (!isNaN(dateOnly.getTime())) {
+        return dateOnly.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric'
+        });
+      }
+      
+      return 'Invalid date';
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Date not set';
+    }
+  };
+
+  const fee =
+    event.participationFee === undefined || event.participationFee === null || event.participationFee === ''
+      ? 'Free'
+      : event.participationFee;
   return (
     <div
       className="bg-white rounded-xl shadow-md mb-6 overflow-hidden border border-gray-200 max-w-xl mx-auto cursor-pointer hover:shadow-lg transition-shadow"
-      onClick={() => navigate(`/events/${event.id}`)}
+      onClick={() => navigate(`/events/${event.eventId}`)}
     >
       <div className="w-full h-40 bg-gray-200 relative">
-        <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
+        {event.imageUrl ? (
+          <img src={event.imageUrl} alt={event.title} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gray-300">
+            <span className="text-gray-500">No Image</span>
+          </div>
+        )}
         {/* Share button in top right */}
         <div className="absolute top-3 right-3 z-10" onClick={(e) => e.stopPropagation()}>
           <ShareButton 
-            url={`${window.location.origin}/events/${event.id}`}
+            url={`${window.location.origin}/events/${event.eventId}`}
             title={`Check out this event: ${event.title}`}
             iconSize={20}
           />
@@ -120,13 +151,22 @@ const EventCard = ({ event }) => {
       <div className="p-4">
         <div className="font-semibold text-lg mb-1">{event.title}</div>
         <div className="flex flex-col text-gray-500 text-sm mb-2">
-          {/* Participants icon and count */}
+          {/* Host name */}
           <span className="flex items-center mb-1">
             <UserIcon className="text-black mr-1" size={18} />
-            <span className="font-semibold text-gray-700">{event.registered}</span>
-            <span className="ml-1">Participants</span>
+            <span className="font-semibold text-gray-700">{hostInfo?.name || `User ${event.hostUserId?.slice(0, 6) || 'Unknown'}`}</span>
           </span>
-          {/* Show location under participants */}
+          {/* Date and time */}
+          <span className="flex items-center mb-1">
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <rect x="3" y="4" width="18" height="18" rx="4"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            {formatDateTime(event.date, event.time)}
+          </span>
+          {/* Show location under date/time */}
           <span className="flex items-center">
             <LocationIcon className="text-black mr-1" size={18} />
             {event.location}
@@ -134,7 +174,7 @@ const EventCard = ({ event }) => {
         </div>
         <div className="flex items-center justify-between mt-2">
           {/* Always show fee per player */}
-          <div className="text-xl font-bold text-gray-900">${event.price} <span className="text-sm font-normal text-gray-500">/player</span></div>
+          <div className="text-xl font-bold text-gray-900">{fee} <span className="text-sm font-normal text-gray-500">/player</span></div>
           <button className="bg-red-500 text-white px-4 py-2 rounded-full font-semibold hover:bg-red-600 text-sm">Register now</button>
         </div>
       </div>
@@ -186,106 +226,202 @@ function ParticipantsModal({ open, onClose, participants }) {
   );
 }
 
-const hostedMockEvents = [
-  {
-    id: 1,
-    title: 'Kuwait City (Football Volta)',
-    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80',
-    date: 'Sep 20, 2025 5:00 PM',
-    location: 'Kuwait City',
-    registered: 15,
-    maxPlayers: 20,
-    isLive: true,
-    participants: [
-      { id: 1, name: 'Faisal Ahmad', profilePictureUrl: 'https://randomuser.me/api/portraits/men/1.jpg' },
-      { id: 2, name: 'Ali Yousef', profilePictureUrl: 'https://randomuser.me/api/portraits/men/2.jpg' },
-      { id: 3, name: 'Sara Khaled', profilePictureUrl: 'https://randomuser.me/api/portraits/women/3.jpg' },
-    ],
-  },
-  {
-    id: 2,
-    title: 'Streetball Tournament',
-    image: 'https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=600&q=80',
-    date: 'Aug 15, 2025 2:00 PM',
-    location: 'Kuwait Arena',
-    registered: 8,
-    maxPlayers: 12,
-    isLive: true,
-    participants: [
-      { id: 4, name: 'Mohammed Al Sabah', profilePictureUrl: 'https://randomuser.me/api/portraits/men/4.jpg' },
-      { id: 5, name: 'Fatima Noor', profilePictureUrl: 'https://randomuser.me/api/portraits/women/5.jpg' },
-    ],
-  },
-  {
-    id: 3,
-    title: 'U18 Scouting Combine',
-    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80',
-    date: 'Jul 5, 2025 9:00 AM',
-    location: 'Kuwait City',
-    registered: 50,
-    maxPlayers: 50,
-    isLive: true,
-    participants: [
-      { id: 6, name: 'Yousef Al Rashid', profilePictureUrl: 'https://randomuser.me/api/portraits/men/6.jpg' },
-      { id: 7, name: 'Mona Al Sabah', profilePictureUrl: 'https://randomuser.me/api/portraits/women/7.jpg' },
-    ],
-  },
-];
+// Hosted Event Card Component
+const HostedEventCard = ({ event }) => {
+  const navigate = useNavigate();
+  const [hostInfo, setHostInfo] = useState(null);
+  
+  // Fetch host info when component mounts
+  useEffect(() => {
+    const fetchHostInfo = async () => {
+      if (event.hostUserId) {
+        try {
+          const hostData = await getUserInfo(event.hostUserId);
+          setHostInfo(hostData);
+        } catch (error) {
+          console.error('Error fetching host info:', error);
+          setHostInfo({
+            id: event.hostUserId,
+            name: `User ${event.hostUserId.slice(0, 6)}`,
+            profilePictureUrl: null
+          });
+        }
+      }
+    };
+    
+    fetchHostInfo();
+  }, [event.hostUserId]);
 
-// Mock data for joined/participating events
-const joinedMockEvents = [
-  {
-    id: 4,
-    title: 'Weekend Football League',
-    image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=600&q=80',
-    date: 'Sep 25, 2025 4:00 PM',
-    location: 'Kuwait Sports Club',
-    registered: 22,
-    maxPlayers: 24,
-    price: 15,
-    priceType: 'player',
-    paymentNote: 'cash only',
-    dressCode: 'Red team jersey required',
-    description: 'Weekly football league for intermediate players. Teams will be formed on the day. Bring your own cleats and water.',
-    host: 'Ahmed Al Mansouri',
-    sport: 'Football',
-    type: 'League',
-  },
-  {
-    id: 5,
-    title: 'Basketball Pickup Games',
-    image: 'https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=600&q=80',
-    date: 'Sep 28, 2025 6:00 PM',
-    location: 'Al Shaab Indoor Court',
-    registered: 18,
-    maxPlayers: 20,
-    price: 8,
-    priceType: 'player',
-    paymentNote: 'cash only',
-    dressCode: 'Basketball shoes required',
-    description: 'Casual pickup basketball games. All skill levels welcome. Games will be 4v4 or 5v5 depending on turnout.',
-    host: 'Sarah Johnson',
-    sport: 'Basketball',
-    type: 'Pickup',
-  },
-  {
-    id: 6,
-    title: 'Youth Training Camp',
-    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80',
-    date: 'Oct 2, 2025 9:00 AM',
-    location: 'Kuwait National Stadium',
-    registered: 35,
-    maxPlayers: 40,
-    price: 25,
-    priceType: 'player',
-    paymentNote: 'online payment',
-    dressCode: 'Training gear provided',
-    description: 'Professional training camp for young athletes aged 16-21. Focus on technique, fitness, and game strategy.',
-    host: 'Coach Mohammed',
-    sport: 'Football',
-    type: 'Training',
-  },
-];
+  // Helper function to format date and time
+  const formatDateTime = (date, time) => {
+    if (!date) return 'Date not set';
+    
+    try {
+      if (time) {
+        // If we have both date and time, create a full datetime
+        const dateTime = new Date(`${date}T${time}`);
+        if (!isNaN(dateTime.getTime())) {
+          return dateTime.toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+        }
+      }
+      
+      // If no time or invalid datetime, just show the date
+      const dateOnly = new Date(date);
+      if (!isNaN(dateOnly.getTime())) {
+        return dateOnly.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric'
+        });
+      }
+      
+      return 'Invalid date';
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Date not set';
+    }
+  };
+
+  return (
+    <div
+      className="bg-white rounded-2xl shadow border border-gray-100 p-4 cursor-pointer hover:shadow-lg transition-shadow"
+      onClick={() => navigate(`/events/${event.eventId}?hostView=1`)}
+    >
+      <div className="relative mb-3">
+        {event.imageUrl ? (
+          <img src={event.imageUrl} alt={event.title} className="w-full h-32 object-cover rounded-xl" />
+        ) : (
+          <div className="w-full h-32 flex items-center justify-center bg-gray-300 rounded-xl">
+            <span className="text-gray-500">No Image</span>
+          </div>
+        )}
+        {/* Share button in top right */}
+        <div className="absolute top-2 right-2 z-10" onClick={(e) => e.stopPropagation()}>
+          <ShareButton 
+            url={`${window.location.origin}/events/${event.eventId}`}
+            title={`Check out this event: ${event.title}`}
+            iconSize={18}
+          />
+        </div>
+      </div>
+      <div className="font-bold text-lg mb-1">{event.title}</div>
+      <div className="flex items-center text-gray-500 text-sm mb-1">
+        <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="4"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        {formatDateTime(event.date, event.time)} <span className="mx-2">{event.location}</span>
+      </div>
+      <div className="text-gray-700 text-sm mb-3">{event.registeredPlayers || 0} / {event.maxParticipants || event.maxPlayers} Registered</div>
+      {/* Removed View Players button */}
+    </div>
+  );
+};
+
+// Participating Event Card Component
+const ParticipatingEventCard = ({ event, onDeregister }) => {
+  const navigate = useNavigate();
+  const [hostInfo, setHostInfo] = useState(null);
+  
+  // Fetch host info when component mounts
+  useEffect(() => {
+    const fetchHostInfo = async () => {
+      if (event.hostUserId) {
+        try {
+          const hostData = await getUserInfo(event.hostUserId);
+          setHostInfo(hostData);
+        } catch (error) {
+          console.error('Error fetching host info:', error);
+          setHostInfo({
+            id: event.hostUserId,
+            name: `User ${event.hostUserId.slice(0, 6)}`,
+            profilePictureUrl: null
+          });
+        }
+      }
+    };
+    
+    fetchHostInfo();
+  }, [event.hostUserId]);
+
+  // Helper function to format date and time
+  const formatDateTime = (date, time) => {
+    if (!date) return 'Date not set';
+    
+    try {
+      if (time) {
+        // If we have both date and time, create a full datetime
+        const dateTime = new Date(`${date}T${time}`);
+        if (!isNaN(dateTime.getTime())) {
+          return dateTime.toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+        }
+      }
+      
+      // If no time or invalid datetime, just show the date
+      const dateOnly = new Date(date);
+      if (!isNaN(dateOnly.getTime())) {
+        return dateOnly.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric'
+        });
+      }
+      
+      return 'Invalid date';
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Date not set';
+    }
+  };
+
+  return (
+    <div
+      className="bg-white rounded-2xl shadow border border-gray-100 p-4 cursor-pointer hover:shadow-lg transition-shadow"
+      onClick={() => navigate(`/events/${event.id}`)}
+    >
+      <div className="relative mb-3">
+        {event.imageUrl ? (
+          <img src={event.imageUrl} alt={event.title} className="w-full h-32 object-cover rounded-xl" />
+        ) : (
+          <div className="w-full h-32 flex items-center justify-center bg-gray-300 rounded-xl">
+            <span className="text-gray-500">No Image</span>
+          </div>
+        )}
+        {/* Share button in top right */}
+        <div className="absolute top-2 right-2 z-10" onClick={(e) => e.stopPropagation()}>
+          <ShareButton 
+            url={`${window.location.origin}/events/${event.id}`}
+            title={`Check out this event: ${event.title}`}
+            iconSize={18}
+          />
+        </div>
+      </div>
+      <div className="font-bold text-lg mb-1">{event.title}</div>
+      <div className="flex items-center text-gray-500 text-sm mb-1">
+        <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="4"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        {formatDateTime(event.date, event.time)} <span className="mx-2">{event.location}</span>
+      </div>
+      <div className="text-gray-700 text-sm mb-3">{event.registeredPlayers || 0} / {event.maxParticipants || event.maxPlayers} Registered</div>
+      <div className="flex items-center justify-between">
+        <div className="text-lg font-bold text-gray-900">{event.participationFee || 'Free'} <span className="text-sm font-normal text-gray-500">/player</span></div>
+        <button
+          className="bg-red-500 text-white px-4 py-2 rounded-full font-semibold hover:bg-red-600 text-sm transition"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDeregister(event.id);
+          }}
+        >
+          Deregister
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const mapContainerStyle = {
   width: '100%',
@@ -300,19 +436,19 @@ const mapOptions = {
   fullscreenControl: false,
 };
 
-const defaultCenter = { lat: 29.3759, lng: 47.9774 }; // Kuwait City
-const defaultZoom = 11;
-
 const GOOGLE_MAPS_LIBRARIES = ['places'];
 
-function LocationSearchBar({ onSelect }) {
+function LocationSearchBar({ onSelect, isLoaded }) {
   const {
     ready,
     value,
     suggestions: { status, data },
     setValue,
     clearSuggestions,
-  } = usePlacesAutocomplete({ debounce: 300 });
+  } = usePlacesAutocomplete({ 
+    debounce: 300,
+    enabled: isLoaded // Only enable when Google Maps is loaded
+  });
 
   return (
     <div className="search-container" style={{ position: 'relative' }}>
@@ -321,8 +457,8 @@ function LocationSearchBar({ onSelect }) {
         className="search-input"
         value={value}
         onChange={e => setValue(e.target.value)}
-        disabled={!ready}
-        placeholder="Search for a location..."
+        disabled={!ready || !isLoaded}
+        placeholder={isLoaded ? "Search for a location..." : "Loading map..."}
         autoComplete="off"
       />
       {status === 'OK' && (
@@ -360,8 +496,11 @@ function LocationSearchBar({ onSelect }) {
 }
 
 // Helper to generate a custom SVG bubble for the marker
-function getBubbleSVG(price) {
-  const text = `$${price}`;
+function getBubbleSVG(participationFee) {
+  const text =
+    participationFee === undefined || participationFee === null || participationFee === ''
+      ? 'Free'
+      : participationFee;
   const width = 60;
   const height = 36;
   return {
@@ -369,6 +508,13 @@ function getBubbleSVG(price) {
     scaledSize: { width, height },
     anchor: { x: width / 2, y: height / 2 },
   };
+}
+
+// Helper to check if event is in the future
+function isFutureEvent(event) {
+  if (!event.date) return true; // If no date, show by default
+  const eventDateTime = new Date(event.date + 'T' + (event.time || '00:00'));
+  return eventDateTime >= new Date();
 }
 
 const EventsPage = () => {
@@ -379,14 +525,21 @@ const EventsPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedParticipants, setSelectedParticipants] = useState([]);
   
+  // API data state
+  const [events, setEvents] = useState([]);
+  const [hostedEvents, setHostedEvents] = useState([]);
+  const [registeredEvents, setRegisteredEvents] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  
   // Search and map state
   const [searchQuery, setSearchQuery] = useState('');
   const [showMap, setShowMap] = useState(true);
-  const [filteredEvents, setFilteredEvents] = useState(mockEvents);
+  const [filteredEvents, setFilteredEvents] = useState([]);
   const [mapCenter, setMapCenter] = useState(defaultCenter);
   const [mapZoom, setMapZoom] = useState(defaultZoom);
   const [mapBounds, setMapBounds] = useState(null);
-  const [visibleEvents, setVisibleEvents] = useState(mockEvents);
+  const [visibleEvents, setVisibleEvents] = useState([]);
 
   // Google Maps API
   const { isLoaded } = useLoadScript({
@@ -403,19 +556,77 @@ const EventsPage = () => {
     };
   }, []);
 
-  // Filter events based on search query
+  // Fetch data based on active tab
   useEffect(() => {
+    const fetchData = async () => {
+      if (!isAuthenticated) return;
+      
+      setLoading(true);
+      setError('');
+      
+      try {
+        switch (activeTab) {
+          case 'available':
+            const eventsData = await eventsApi.getEvents();
+            setEvents((eventsData.events || []).map(e => ({ ...e, id: e.eventId, eventId: e.eventId })));
+            break;
+          case 'my':
+            const hostedData = await eventsApi.getMyHostedEvents();
+            setHostedEvents((hostedData.events || []).map(e => ({ ...e, id: e.eventId, eventId: e.eventId })));
+            break;
+          case 'participating':
+            const registeredData = await eventsApi.getMyRegisteredEvents();
+            const registrations = registeredData.events || [];
+            // Fetch full event details for each registration
+            const eventDetails = await Promise.all(
+              registrations.map(async (reg) => {
+                const eventId = reg.eventId || reg.id;
+                try {
+                  const event = await eventsApi.getEvent(eventId);
+                  return { ...event, id: event.id || event.eventId, eventId: event.eventId };
+                } catch (e) {
+                  // If event not found (404), return null
+                  return null;
+                }
+              })
+            );
+            // Remove nulls (404s) and duplicates based on id
+            const uniqueEvents = eventDetails.filter(event => event && event.id)
+              .filter((event, index, self) =>
+                index === self.findIndex(e => e.id === event.id)
+              );
+            setRegisteredEvents(uniqueEvents);
+            break;
+        }
+      } catch (err) {
+        console.error('Error fetching events:', err);
+        setError('Failed to load events. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [activeTab, isAuthenticated]);
+
+  // Filter events based on search query and date
+  useEffect(() => {
+    const currentEvents = activeTab === 'available' ? events : 
+                       activeTab === 'my' ? hostedEvents : 
+                       registeredEvents;
+    // Only show future events
+    const futureEvents = currentEvents.filter(isFutureEvent);
     if (!searchQuery.trim()) {
-      setFilteredEvents(mockEvents);
+      setFilteredEvents(futureEvents);
     } else {
-      const filtered = mockEvents.filter(event =>
+      const filtered = futureEvents.filter(event =>
         event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         event.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
         event.sport?.toLowerCase().includes(searchQuery.toLowerCase())
       );
       setFilteredEvents(filtered);
     }
-  }, [searchQuery]);
+  }, [searchQuery, activeTab, events, hostedEvents, registeredEvents]);
 
   // Update visible events when map bounds change
   useEffect(() => {
@@ -470,95 +681,118 @@ const EventsPage = () => {
         ))}
       </div>
 
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {error}
+        </div>
+      )}
+
       {/* Tab Content */}
       <div className="mt-4">
-        {activeTab === 'available' && (
+        {loading && (
+          <div className="text-center py-8">
+            <ChallengeLoader />
+          </div>
+        )}
+        
+        {!loading && activeTab === 'available' && (
           <div>
-            {/* Location Autocomplete Search Bar */}
-            <LocationSearchBar
-              onSelect={({ lat, lng, viewport }) => {
-                if (viewport && mapRef.current) {
-                  // Fit map to place bounds
-                  const bounds = new window.google.maps.LatLngBounds(
-                    { lat: viewport.south, lng: viewport.west },
-                    { lat: viewport.north, lng: viewport.east }
-                  );
-                  if (mapRef.current && typeof mapRef.current.fitBounds === 'function') {
-                    mapRef.current.fitBounds(bounds);
-                  }
-                } else {
-                  setMapCenter({ lat, lng });
-                  setMapZoom(13);
-                }
-              }}
-            />
-            {/* Map Toggle */}
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="event-count">
-                {visibleEvents.length} {visibleEvents.length === 1 ? 'Event' : 'Events'} Found
-              </h2>
-              <button
-                onClick={() => setShowMap(!showMap)}
-                className="map-toggle"
-              >
-                <FiMapPin size={18} />
-                {showMap ? 'Hide Map' : 'Show Map'}
-              </button>
-            </div>
-            {/* Google Map */}
-            {showMap && isLoaded && (
-              <GoogleMap
-                mapContainerStyle={mapContainerStyle}
-                center={mapCenter}
-                zoom={mapZoom}
-                onLoad={map => { if (map) mapRef.current = map; }}
-                onUnmount={() => { mapRef.current = null; }}
-                onBoundsChanged={() => {
-                  if (!mapRef.current) return;
-                  const bounds = mapRef.current.getBounds && mapRef.current.getBounds();
-                  if (!bounds) return;
-                  setMapBounds({
-                    north: bounds.getNorthEast().lat(),
-                    east: bounds.getNorthEast().lng(),
-                    south: bounds.getSouthWest().lat(),
-                    west: bounds.getSouthWest().lng(),
-                  });
-                }}
-                onDragEnd={e => {
-                  if (!mapRef.current) return;
-                  const bounds = mapRef.current.getBounds && mapRef.current.getBounds();
-                  if (!bounds) return;
-                  setMapBounds({
-                    north: bounds.getNorthEast().lat(),
-                    east: bounds.getNorthEast().lng(),
-                    south: bounds.getSouthWest().lat(),
-                    west: bounds.getSouthWest().lng(),
-                  });
-                }}
-                onZoomChanged={e => {
-                  if (!mapRef.current) return;
-                  const bounds = mapRef.current.getBounds && mapRef.current.getBounds();
-                  if (!bounds) return;
-                  setMapBounds({
-                    north: bounds.getNorthEast().lat(),
-                    east: bounds.getNorthEast().lng(),
-                    south: bounds.getSouthWest().lat(),
-                    west: bounds.getSouthWest().lng(),
-                  });
-                }}
-                options={mapOptions}
-              >
-                {filteredEvents.map(event =>
-                  event.coordinates ? (
-                    <Marker
-                      key={event.id}
-                      position={event.coordinates}
-                      onClick={() => navigate(`/events/${event.id}`)}
-                      icon={getBubbleSVG(event.price)}
-                    />
-                  ) : null
+            {/* Only render map and search bar after Google Maps is loaded */}
+            {!isLoaded ? (
+              <div className="text-center py-8">
+                <ChallengeLoader />
+              </div>
+            ) : (
+              <>
+                {/* Location Autocomplete Search Bar */}
+                <LocationSearchBar
+                  onSelect={({ lat, lng, viewport }) => {
+                    if (viewport && mapRef.current) {
+                      // Fit map to place bounds
+                      const bounds = new window.google.maps.LatLngBounds(
+                        { lat: viewport.south, lng: viewport.west },
+                        { lat: viewport.north, lng: viewport.east }
+                      );
+                      if (mapRef.current && typeof mapRef.current.fitBounds === 'function') {
+                        mapRef.current.fitBounds(bounds);
+                      }
+                    } else {
+                      setMapCenter({ lat, lng });
+                      setMapZoom(13);
+                    }
+                  }}
+                  isLoaded={isLoaded}
+                />
+                {/* Map Toggle */}
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="event-count">
+                    {visibleEvents.length} {visibleEvents.length === 1 ? 'Event' : 'Events'} Found
+                  </h2>
+                  <button
+                    onClick={() => setShowMap(!showMap)}
+                    className="map-toggle"
+                  >
+                    <FiMapPin size={18} />
+                    {showMap ? 'Hide Map' : 'Show Map'}
+                  </button>
+                </div>
+                {/* Google Map */}
+                {showMap && (
+                  <GoogleMap
+                    mapContainerStyle={mapContainerStyle}
+                    center={mapCenter}
+                    zoom={mapZoom}
+                    onLoad={map => { if (map) mapRef.current = map; }}
+                    onUnmount={() => { mapRef.current = null; }}
+                    onBoundsChanged={() => {
+                      if (!mapRef.current) return;
+                      const bounds = mapRef.current.getBounds && mapRef.current.getBounds();
+                      if (!bounds) return;
+                      setMapBounds({
+                        north: bounds.getNorthEast().lat(),
+                        east: bounds.getNorthEast().lng(),
+                        south: bounds.getSouthWest().lat(),
+                        west: bounds.getSouthWest().lng(),
+                      });
+                    }}
+                    onDragEnd={e => {
+                      if (!mapRef.current) return;
+                      const bounds = mapRef.current.getBounds && mapRef.current.getBounds();
+                      if (!bounds) return;
+                      setMapBounds({
+                        north: bounds.getNorthEast().lat(),
+                        east: bounds.getNorthEast().lng(),
+                        south: bounds.getSouthWest().lat(),
+                        west: bounds.getSouthWest().lng(),
+                      });
+                    }}
+                    onZoomChanged={e => {
+                      if (!mapRef.current) return;
+                      const bounds = mapRef.current.getBounds && mapRef.current.getBounds();
+                      if (!bounds) return;
+                      setMapBounds({
+                        north: bounds.getNorthEast().lat(),
+                        east: bounds.getNorthEast().lng(),
+                        south: bounds.getSouthWest().lat(),
+                        west: bounds.getSouthWest().lng(),
+                      });
+                    }}
+                    options={mapOptions}
+                  >
+                    {filteredEvents.map(event =>
+                      event.coordinates ? (
+                        <Marker
+                          key={event.id}
+                          position={event.coordinates}
+                          onClick={() => navigate(`/events/${event.eventId}`)}
+                          icon={getBubbleSVG(event.participationFee)}
+                        />
+                      ) : null
+                    )}
+                  </GoogleMap>
                 )}
-              </GoogleMap>
+              </>
             )}
             {/* Event List */}
             <div>
@@ -568,89 +802,46 @@ const EventsPage = () => {
             </div>
           </div>
         )}
-        {activeTab === 'my' && (
+        {!loading && activeTab === 'my' && (
           <div className="flex flex-col gap-6">
-            {hostedMockEvents.length === 0 ? (
+            {hostedEvents.length === 0 ? (
               <div className="text-center text-gray-400 py-8">No events yet.</div>
             ) : (
-              hostedMockEvents.map(event => (
-                <div
+              hostedEvents.map(event => (
+                <HostedEventCard
                   key={event.id}
-                  className="bg-white rounded-2xl shadow border border-gray-100 p-4 cursor-pointer hover:shadow-lg transition-shadow"
-                  onClick={() => navigate(`/events/${event.id}?hostView=1`)}
-                >
-                  <div className="relative mb-3">
-                    <img src={event.image} alt={event.title} className="w-full h-32 object-cover rounded-xl" />
-                    {/* Share button in top right */}
-                    <div className="absolute top-2 right-2 z-10" onClick={(e) => e.stopPropagation()}>
-                      <ShareButton 
-                        url={`${window.location.origin}/events/${event.id}`}
-                        title={`Check out this event: ${event.title}`}
-                        iconSize={18}
-                      />
-                    </div>
-                  </div>
-                  <div className="font-bold text-lg mb-1">{event.title}</div>
-                  <div className="flex items-center text-gray-500 text-sm mb-1">
-                    <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="4"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                    {event.date} <span className="mx-2">{event.location}</span>
-                  </div>
-                  <div className="text-gray-700 text-sm mb-3">{event.registered} / {event.maxPlayers} Registered</div>
-                  <button
-                    className="border border-gray-300 rounded-lg px-4 py-2 font-semibold text-gray-800 hover:bg-gray-100 transition"
-                    onClick={e => { e.stopPropagation(); setSelectedParticipants(event.participants); setModalOpen(true); }}
-                  >
-                    View Players
-                  </button>
-                </div>
+                  event={event}
+                  // Remove onViewPlayers prop and related logic
+                />
               ))
             )}
-            <ParticipantsModal open={modalOpen} onClose={() => setModalOpen(false)} participants={selectedParticipants} />
+            {/* Remove ParticipantsModal for hosted tab */}
           </div>
         )}
-        {activeTab === 'participating' && (
+        {!loading && activeTab === 'participating' && (
           <div className="flex flex-col gap-6">
-            {joinedMockEvents.length === 0 ? (
+            {registeredEvents.filter(event => !!event && !!event.id).length === 0 ? (
               <div className="text-center text-gray-400 py-8">No joined events yet.</div>
             ) : (
-              joinedMockEvents.map(event => (
-                <div
-                  key={event.id}
-                  className="bg-white rounded-2xl shadow border border-gray-100 p-4 cursor-pointer hover:shadow-lg transition-shadow"
-                  onClick={() => navigate(`/events/${event.id}`)}
-                >
-                  <div className="relative mb-3">
-                    <img src={event.image} alt={event.title} className="w-full h-32 object-cover rounded-xl" />
-                    {/* Share button in top right */}
-                    <div className="absolute top-2 right-2 z-10" onClick={(e) => e.stopPropagation()}>
-                      <ShareButton 
-                        url={`${window.location.origin}/events/${event.id}`}
-                        title={`Check out this event: ${event.title}`}
-                        iconSize={18}
-                      />
-                    </div>
-                  </div>
-                  <div className="font-bold text-lg mb-1">{event.title}</div>
-                  <div className="flex items-center text-gray-500 text-sm mb-1">
-                    <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="4"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                    {event.date} <span className="mx-2">{event.location}</span>
-                  </div>
-                  <div className="text-gray-700 text-sm mb-3">{event.registered} / {event.maxPlayers} Registered</div>
-                  <div className="flex items-center justify-between">
-                    <div className="text-lg font-bold text-gray-900">${event.price} <span className="text-sm font-normal text-gray-500">/player</span></div>
-                    <button
-                      className="bg-red-500 text-white px-4 py-2 rounded-full font-semibold hover:bg-red-600 text-sm transition"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // TODO: Implement deregister functionality
-                        console.log('Deregister from event:', event.id);
-                      }}
-                    >
-                      Deregister
-                    </button>
-                  </div>
-                </div>
-              ))
+              registeredEvents
+                .filter(event => !!event && !!event.id)
+                .map(event => (
+                  <ParticipatingEventCard
+                    key={event.id}
+                    event={event}
+                    onDeregister={async (id) => {
+                      try {
+                        await eventsApi.deregisterFromEvent(id);
+                        // Refresh the registered events
+                        const registeredData = await eventsApi.getMyRegisteredEvents();
+                        setRegisteredEvents(registeredData.events || []);
+                      } catch (error) {
+                        console.error('Error deregistering from event:', error);
+                        alert('Failed to deregister from event. Please try again.');
+                      }
+                    }}
+                  />
+                ))
             )}
           </div>
         )}

@@ -1,0 +1,14 @@
+{
+  "name": "list-my-registered-events",
+  "version": "1.0.0",
+  "description": "Lambda function to list events the user is registered for.",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "test": "echo \"No tests yet\""
+  },
+  "dependencies": {
+    "aws-sdk": "^2.1485.0",
+    "dotenv": "^16.3.1"
+  }
+} 
