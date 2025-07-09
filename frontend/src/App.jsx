@@ -63,7 +63,9 @@ function App() {
     const isAuthRelatedPath = authRelatedPaths.includes(location.pathname);
     // Allow /profile/:role/:profileUserId as public (regex match)
     const isProfileUserPage = /^\/profile\/(athlete|coach|scout)\/[^/]+$/.test(location.pathname);
-    const isTrulyPublicPage = trulyPublicPages.includes(location.pathname) || isProfileUserPage;
+    // Allow /events/:eventId as public (detailed event view)
+    const isEventDetailPage = /^\/events\/[^/]+$/.test(location.pathname);
+    const isTrulyPublicPage = trulyPublicPages.includes(location.pathname) || isProfileUserPage || isEventDetailPage;
     if (!isAuthenticated && !isAuthRelatedPath && !isTrulyPublicPage) {
       setShowModal(true);
     } else {

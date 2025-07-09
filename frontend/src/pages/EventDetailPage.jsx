@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import ShareButton from '../components/common/ShareButton';
+import LoginPromptModal from '../components/common/LoginPromptModal';
 import { eventsApi } from '../api/eventsApi';
 import { getUserInfo } from '../api/userApi';
 import { useAuthStore } from '../stores/useAuthStore';
@@ -183,6 +184,7 @@ const EventDetailPage = () => {
   const [participants, setParticipants] = useState([]);
   const [loadingParticipants, setLoadingParticipants] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const participantsPerPage = 10;
   
   // Hide register button if ?hostView=1 is present
@@ -199,10 +201,12 @@ const EventDetailPage = () => {
       try {
         const eventData = await eventsApi.getEvent(eventId);
         setEvent(eventData);
-        // Check if user is the host
-        setIsHost(eventData.hostUserId === useAuthStore.getState().user?.id);
-        // Check if user is registered (this would need to be implemented in the backend)
-        setIsRegistered(eventData.isRegistered || false);
+        // Check if user is the host (only if authenticated)
+        if (isAuthenticated) {
+          setIsHost(eventData.hostUserId === useAuthStore.getState().user?.id);
+          // Check if user is registered (this would need to be implemented in the backend)
+          setIsRegistered(eventData.isRegistered || false);
+        }
         
         // Fetch host info if we have a hostUserId
         if (eventData.hostUserId) {
@@ -228,11 +232,11 @@ const EventDetailPage = () => {
     };
 
     fetchEvent();
-  }, [eventId]);
+  }, [eventId, isAuthenticated]);
 
   const handleRegister = async () => {
     if (!isAuthenticated) {
-      navigate('/login');
+      setShowLoginModal(true);
       return;
     }
     
@@ -387,96 +391,95 @@ const EventDetailPage = () => {
   }
 
   return (
-    <div className="max-w-md mx-auto bg-white rounded-2xl shadow-lg overflow-hidden mt-4 mb-8">
-      {/* Header image and back button */}
-      <div className="relative w-full h-48 sm:h-64 bg-gray-200">
-        {event.imageUrl ? (
-          <img src={event.imageUrl} alt={event.title} className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gray-300">
-            <span className="text-gray-500 text-lg">No Image</span>
-          </div>
-        )}
-        <button
-          className="absolute top-3 left-3 bg-white bg-opacity-80 rounded-full p-2 shadow hover:bg-opacity-100"
-          onClick={() => navigate(-1)}
-        >
-          <svg width={24} height={24} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-        </button>
-        {/* Share button in top right */}
-        <div className="absolute top-3 right-3">
-          <ShareButton 
-            url={`${window.location.origin}/events/${eventId}`}
-            title={`Check out this event: ${event.title}`}
-            className="bg-white bg-opacity-80 rounded-full p-2 hover:bg-opacity-100"
-            iconSize={20}
-          />
-        </div>
-      </div>
-      <div className="p-5">
-        <div className="font-bold text-xl mb-1">{event.title}</div>
-        <div className="text-gray-500 text-sm mb-2">
-          {event.sport && event.eventType
-            ? `${event.sport} | ${event.eventType}`
-            : event.sport || event.eventType || ''}
-        </div>
-        <div className="flex items-center text-gray-600 mb-2">
-          <UserIcon className="text-black mr-2" size={18} />
-          <span>Hosted by <span className="font-semibold text-gray-800">{hostInfo?.name || event.hostUserId || 'Unknown Host'}</span></span>
-        </div>
-        <div className="flex flex-col gap-2 mb-4">
-          <div className="flex items-center text-gray-800">
-            <CalendarIcon className="text-black mr-2" size={18} />
-            <span>{formatDateTime(event.date, event.time)}</span>
-          </div>
-          <div className="flex items-center text-gray-800">
-            <LocationIcon className="text-black mr-2" size={18} />
-            <span>{event.location || 'Location not set'}</span>
-          </div>
-          <div className="flex items-center text-gray-800">
-            <UserIcon className="text-black mr-2" size={18} />
-            <span>{event.registeredPlayers || 0} / {event.maxParticipants || event.maxPlayers || 0} players registered</span>
-          </div>
-          <div className="flex items-center text-gray-800">
-            <DollarIcon className="text-black mr-2" size={18} />
-            <span>{event.participationFee ? event.participationFee : 'Free'} per player</span>
-          </div>
-          {event.dressCode && (
-            <div className="flex items-center text-gray-800">
-              <TshirtIcon className="text-black mr-2" size={18} />
-              <span>{event.dressCode}</span>
+    <>
+      <div className="max-w-md mx-auto bg-white rounded-2xl shadow-lg overflow-hidden mt-4 mb-8">
+        {/* Header image and back button */}
+        <div className="relative w-full h-48 sm:h-64 bg-gray-200">
+          {event.imageUrl ? (
+            <img src={event.imageUrl} alt={event.title} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gray-300">
+              <span className="text-gray-500 text-lg">No Image</span>
             </div>
           )}
+          <button
+            className="absolute top-3 left-3 bg-white bg-opacity-80 rounded-full p-2 shadow hover:bg-opacity-100"
+            onClick={() => navigate(-1)}
+          >
+            <svg width={24} height={24} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </button>
+          {/* Share button in top right */}
+          <div className="absolute top-3 right-3">
+            <ShareButton 
+              url={`${window.location.origin}/events/${eventId}`}
+              title={`Check out this event: ${event.title}`}
+              className="bg-white bg-opacity-80 rounded-full p-2 hover:bg-opacity-100"
+              iconSize={20}
+            />
+          </div>
         </div>
-        {event.description && (
-          <>
-            <div className="font-bold text-lg mb-1">Description</div>
-            <div className="text-gray-700 whitespace-pre-line text-sm mb-4">{event.description}</div>
-          </>
-        )}
-        {/* Button logic */}
-        {!isHostView && (
-          isRegistered ? (
-            <button 
-              className="w-full py-3 rounded-full bg-red-500 text-white font-bold text-lg mt-2 hover:bg-red-600 transition disabled:opacity-50"
-              onClick={handleUnregister}
-              disabled={registering}
-            >
-              {registering ? 'Deregistering...' : 'Deregister'}
-            </button>
-          ) : (
-            // Check if event is full
-            (event.registeredPlayers || 0) >= (event.maxParticipants || event.maxPlayers || 0) ? (
-              <button 
+        <div className="p-5">
+          <div className="font-bold text-xl mb-1">{event.title}</div>
+          <div className="text-gray-500 text-sm mb-2">
+            {event.sport && event.eventType
+              ? `${event.sport} | ${event.eventType}`
+              : event.sport || event.eventType || ''}
+          </div>
+          <div className="flex items-center text-gray-600 mb-2">
+            <UserIcon className="text-black mr-2" size={18} />
+            <span>Hosted by <span className="font-semibold text-gray-800">{hostInfo?.name || event.hostUserId || 'Unknown Host'}</span></span>
+          </div>
+          <div className="flex flex-col gap-2 mb-4">
+            <div className="flex items-center text-gray-800">
+              <CalendarIcon className="text-black mr-2" size={18} />
+              <span>{formatDateTime(event.date, event.time)}</span>
+            </div>
+            <div className="flex items-center text-gray-800">
+              <LocationIcon className="text-black mr-2" size={18} />
+              <span>{event.location || 'Location not set'}</span>
+            </div>
+            <div className="flex items-center text-gray-800">
+              <UserIcon className="text-black mr-2" size={18} />
+              <span>{(event.currentParticipantCount !== undefined ? event.currentParticipantCount : (event.registeredPlayers || 0))} / {event.maxParticipants || event.maxPlayers || 0} players registered</span>
+            </div>
+            <div className="flex items-center text-gray-800">
+              <DollarIcon className="text-black mr-2" size={18} />
+              <span>{event.participationFee ? event.participationFee : 'Free'} per player</span>
+            </div>
+            {event.dressCode && (
+              <div className="flex items-center text-gray-800">
+                <TshirtIcon className="text-black mr-2" size={18} />
+                <span>{event.dressCode}</span>
+              </div>
+            )}
+          </div>
+          {event.description && (
+            <>
+              <div className="font-bold text-lg mb-1">Description</div>
+              <div className="text-gray-700 whitespace-pre-line text-sm mb-4">{event.description}</div>
+            </>
+          )}
+          {/* Button logic */}
+          {!isHostView && (
+            isRegistered ? (
+              <button
+                className="w-full py-3 rounded-full bg-red-500 text-white font-bold text-lg mt-2 hover:bg-red-600 transition disabled:opacity-50"
+                onClick={handleUnregister}
+                disabled={registering}
+              >
+                {registering ? 'Deregistering...' : 'Deregister'}
+              </button>
+            ) : ((event.currentParticipantCount !== undefined ? event.currentParticipantCount : (event.registeredPlayers || 0)) >= (event.maxParticipants || event.maxPlayers || 0)) ? (
+              <button
                 className="w-full py-3 rounded-full bg-gray-400 text-white font-bold text-lg mt-2 cursor-not-allowed"
                 disabled={true}
               >
                 Event Full
               </button>
             ) : (
-              <button 
+              <button
                 className="w-full py-3 rounded-full bg-red-500 text-white font-bold text-lg mt-2 hover:bg-red-600 transition disabled:opacity-50"
                 onClick={handleRegister}
                 disabled={registering}
@@ -484,28 +487,33 @@ const EventDetailPage = () => {
                 {registering ? 'Registering...' : 'Register'}
               </button>
             )
-          )
-        )}
-        {/* View Participants button for everyone */}
-        <button
-          className="w-full py-3 rounded-full bg-red-500 text-white font-bold text-lg mt-2 hover:bg-red-600 transition"
-          onClick={handleViewParticipants}
-        >
-          View Participants
-        </button>
+          )}
+          {/* View Participants button for everyone */}
+          <button
+            className="w-full py-3 rounded-full bg-red-500 text-white font-bold text-lg mt-2 hover:bg-red-600 transition"
+            onClick={handleViewParticipants}
+          >
+            View Participants
+          </button>
+        </div>
+        <ParticipantsModal
+          open={participantsModalOpen}
+          onClose={() => setParticipantsModalOpen(false)}
+          participants={paginatedParticipants}
+          loading={loadingParticipants}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPrevPage={handlePrevPage}
+          onNextPage={handleNextPage}
+          onParticipantClick={handleParticipantClick}
+        />
       </div>
-      <ParticipantsModal
-        open={participantsModalOpen}
-        onClose={() => setParticipantsModalOpen(false)}
-        participants={paginatedParticipants}
-        loading={loadingParticipants}
-        currentPage={currentPage}
-        totalPages={totalPages}
-        onPrevPage={handlePrevPage}
-        onNextPage={handleNextPage}
-        onParticipantClick={handleParticipantClick}
-      />
-    </div>
+      
+      {/* Login Modal */}
+      {showLoginModal && (
+        <LoginPromptModal onClose={() => setShowLoginModal(false)} />
+      )}
+    </>
   );
 };
 

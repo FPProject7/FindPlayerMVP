@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "aws-sdk": "^2.1485.0",
-    "dotenv": "^16.3.1"
+    "dotenv": "^16.3.1",
+    "jsonwebtoken": "^9.0.2"
   }
 } 
