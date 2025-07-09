@@ -1,0 +1,17 @@
+{
+  "name": "get-unread-counts-lambda",
+  "version": "1.0.0",
+  "description": "Lambda function to get unread counts for notifications and messages",
+  "main": "getUnreadCounts.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "pg": "^8.11.3",
+    "@aws-sdk/client-dynamodb": "^3.450.0",
+    "@aws-sdk/lib-dynamodb": "^3.450.0"
+  },
+  "keywords": ["aws", "lambda", "notifications", "messages", "dynamodb", "postgresql"],
+  "author": "",
+  "license": "ISC"
+} 

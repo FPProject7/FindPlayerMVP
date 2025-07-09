@@ -110,7 +110,8 @@ export const handler = async (event) => {
                 senderId: cognitoUsername,
                 receiverId: receiverId,
                 content: content,
-                timestamp: timestamp
+                timestamp: timestamp,
+                readStatus: 'SENT' // New messages start as SENT (unread)
             },
             userConversation: {
                 userId: cognitoUsername,

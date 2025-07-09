@@ -1,0 +1,17 @@
+{
+  "name": "mark-messages-read-lambda",
+  "version": "1.0.0",
+  "description": "Lambda function to mark messages as read",
+  "main": "markMessagesRead.js",
+  "type": "commonjs",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.500.0",
+    "@aws-sdk/lib-dynamodb": "^3.500.0"
+  },
+  "keywords": ["aws", "lambda", "messages", "dynamodb"],
+  "author": "",
+  "license": "ISC"
+} 

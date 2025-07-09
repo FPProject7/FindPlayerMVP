@@ -51,9 +51,9 @@ exports.handler = async (event) => {
     );
     if (notifCheck.rowCount === 0) {
       await client.query(
-        `INSERT INTO notifications (type, from_user_id, to_user_id, is_following_back)
-         VALUES ($1, $2, $3, $4)`,
-        ['follow', followerId, followingId, false]
+        `INSERT INTO notifications (type, from_user_id, to_user_id, is_following_back, is_read, created_at)
+         VALUES ($1, $2, $3, $4, $5, NOW())`,
+        ['follow', followerId, followingId, false, false]
       );
     }
 

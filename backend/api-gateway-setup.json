@@ -1,0 +1,101 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "updateStreak API",
+    "version": "1.0.0"
+  },
+  "host": "o6qnyipee0.execute-api.us-east-1.amazonaws.com",
+  "basePath": "/",
+  "schemes": ["https"],
+  "paths": {
+    "/updateStreak": {
+      "post": {
+        "summary": "Update user streak",
+        "description": "Updates the user's streak when they complete a challenge",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "userId": {
+                  "type": "string",
+                  "description": "The user ID"
+                }
+              },
+              "required": ["userId"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Streak updated successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "currentStreak": {
+                  "type": "integer",
+                  "description": "The updated streak count"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - missing userId"
+          },
+          "404": {
+            "description": "User not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "type": "aws_proxy",
+          "httpMethod": "POST",
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:325298451465:function:updateStreak/invocations",
+          "credentials": "arn:aws:iam::325298451465:role/apigateway-lambda-role"
+        }
+      },
+      "options": {
+        "summary": "CORS preflight",
+        "responses": {
+          "200": {
+            "description": "CORS preflight response",
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Headers": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Methods": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "type": "mock",
+          "requestTemplates": {
+            "application/json": "{\"statusCode\": 200}"
+          },
+          "responses": {
+            "default": {
+              "statusCode": "200",
+              "responseParameters": {
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'",
+                "method.response.header.Access-Control-Allow-Methods": "'POST,OPTIONS'"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+} 

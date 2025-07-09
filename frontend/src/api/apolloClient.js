@@ -22,19 +22,19 @@ const httpLink = createHttpLink({
 // Create auth link
 const authLink = setContext(async (_, { headers }) => {
   try {
-    const { getValidToken } = useAuthStore.getState();
-    const token = await getValidToken();
+    const { getValidIdToken } = useAuthStore.getState();
+    const token = await getValidIdToken();
     
     if (token) {
       return {
         headers: {
           ...headers,
-          authorization: token,
+          authorization: `Bearer ${token}`,
         }
       };
     }
   } catch (error) {
-    console.error('Error getting access token:', error);
+    console.error('Error getting ID token:', error);
   }
   
   return {
@@ -63,16 +63,16 @@ const wsLink = new GraphQLWsLink(createClient({
   url: APPSYNC_WS_URL,
   connectionParams: async () => {
     try {
-      const { getValidToken } = useAuthStore.getState();
-      const token = await getValidToken();
-      console.log('WebSocket: Attempting to connect with token');
+      const { getValidIdToken } = useAuthStore.getState();
+      const token = await getValidIdToken();
+      console.log('WebSocket: Attempting to connect with ID token');
       return {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       };
     } catch (error) {
-      console.error('Error getting token for WebSocket:', error);
+      console.error('Error getting ID token for WebSocket:', error);
       return {};
     }
   },

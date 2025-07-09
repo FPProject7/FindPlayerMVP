@@ -96,9 +96,9 @@ exports.handler = async (event) => {
         );
         if (notifCheck.rowCount === 0) {
           await client.query(
-            `INSERT INTO notifications (type, from_user_id, to_user_id, created_at)
-             VALUES ($1, $2, $3, NOW())`,
-            ['like_post', userId, postOwnerId]
+            `INSERT INTO notifications (type, from_user_id, to_user_id, is_read, created_at)
+             VALUES ($1, $2, $3, $4, NOW())`,
+            ['like_post', userId, postOwnerId, false]
           );
         }
       }

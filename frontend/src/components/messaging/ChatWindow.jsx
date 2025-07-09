@@ -4,6 +4,7 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import { useLocation } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import ChallengeLoader from '../common/ChallengeLoader';
+import { markMessagesRead } from '../../api/followApi';
 import './ChatWindow.css';
 
 const GET_MESSAGES = gql`
@@ -81,6 +82,9 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
   const [refreshing, setRefreshing] = useState(false);
   const messagesContainerRef = useRef(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [showAutomatedMessage, setShowAutomatedMessage] = useState(false);
+  const [automatedMessageText, setAutomatedMessageText] = useState('');
+  const [autoMessageHandled, setAutoMessageHandled] = useState(false);
 
   // Update currentConversationId when prop changes
   useEffect(() => {
@@ -89,6 +93,57 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
 
   // Check if this is a new conversation (no conversationId yet)
   const isNewConversation = !currentConversationId || currentConversationId === 'new';
+
+  // Check if this is a new conversation opened from "Book a Session" button
+  useEffect(() => {
+    console.log('Automated message debug:', {
+      isNewConversation,
+      locationState: location.state,
+      openChatWith: location.state?.openChatWith,
+      userRole: user?.role,
+      otherUserName,
+      showAutomatedMessage
+    });
+    
+    // Only show automated message if coming from booking flow (location.state.openChatWith)
+    if (isNewConversation && location.state?.openChatWith && user?.role?.toLowerCase() === 'athlete') {
+      setShowAutomatedMessage(true);
+      setAutomatedMessageText(`Hi ${otherUserName || 'Coach'}! I'm interested in booking a training session with you. What's your availability like?`);
+      // Clear the bookingFlow flag immediately so it doesn't persist after first render
+      localStorage.removeItem('bookingFlow');
+    } else {
+      setShowAutomatedMessage(false);
+      setAutomatedMessageText('');
+      // Also clear the flag if not in booking flow
+      localStorage.removeItem('bookingFlow');
+    }
+  }, [isNewConversation, location.state, user?.role, otherUserName]);
+
+  // Prefill chat input with automated message if sessionStorage flag is set
+  useEffect(() => {
+    if (isNewConversation && sessionStorage.getItem('showAutomatedMessage') === 'true') {
+      const autoMsg = sessionStorage.getItem('automatedMessageText');
+      if (autoMsg) {
+        setInput(autoMsg);
+        setAutoMessageHandled(true);
+      }
+      sessionStorage.removeItem('showAutomatedMessage');
+      sessionStorage.removeItem('automatedMessageText');
+    } else {
+      setAutoMessageHandled(false);
+    }
+  }, [isNewConversation, otherUserId, conversationId]);
+
+  // Reset input when starting a new conversation, unless booking flow flag is set
+  useEffect(() => {
+    if (
+      isNewConversation &&
+      !autoMessageHandled &&
+      sessionStorage.getItem('showAutomatedMessage') !== 'true'
+    ) {
+      setInput('');
+    }
+  }, [isNewConversation, otherUserId, conversationId, autoMessageHandled]);
 
   // Helper to get the real recipient UUID and name/profilePic
   function getOtherUserInfo() {
@@ -153,9 +208,24 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
   // Update messages when query data changes
   useEffect(() => {
     if (data?.getConversationMessages?.items) {
+      console.log('GraphQL response data:', data.getConversationMessages.items);
       setMessages(data.getConversationMessages.items);
+      
+      // Mark messages as read when conversation is opened
+      if (currentConversationId && currentConversationId !== 'new') {
+        try {
+          markMessagesRead(currentConversationId);
+          // Trigger a page refresh to update unread counts in TopNavBar
+          // This is a simple solution - in a more complex app you might use a state management solution
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('messagesRead'));
+          }, 100);
+        } catch (markError) {
+          console.error('Failed to mark messages as read:', markError);
+        }
+      }
     }
-  }, [data]);
+  }, [data, currentConversationId]);
 
   // Scroll to bottom on new message
   useEffect(() => {
@@ -202,6 +272,57 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
     };
   }, [loading, pullDistance]);
 
+  const handleSendAutomatedMessage = async () => {
+    if (!automatedMessageText.trim()) return;
+    const receiverId = otherUserId;
+    if (!receiverId || receiverId === 'new' || receiverId === myId) {
+      setErrorMessage('Invalid recipient. Please select a valid user to chat with.');
+      setTimeout(() => setErrorMessage(''), 2000);
+      return;
+    }
+    
+    // Check if user is premium before attempting to send
+    if (!user?.isPremiumMember) {
+      setErrorMessage('Premium Feature - Upgrade to send messages');
+      setTimeout(() => setErrorMessage(''), 3000);
+      return;
+    }
+    
+    try {
+      const result = await sendMessage({
+        variables: {
+          input: {
+            receiverId: receiverId,
+            content: automatedMessageText,
+          },
+        },
+      });
+      if (isNewConversation && result.data?.sendMessage?.userConversation?.conversationId) {
+        const newConversationId = result.data.sendMessage.userConversation.conversationId;
+        setCurrentConversationId(newConversationId);
+      }
+      if (currentConversationId) {
+        await refetch();
+      }
+      setShowAutomatedMessage(false);
+      
+      // Trigger unread counts refresh after sending message
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('messagesRead'));
+      }, 100);
+    } catch (error) {
+      const msg = error?.message || error?.graphQLErrors?.[0]?.message || '';
+      if (msg.includes('Only premium members can use messaging.')) {
+        setErrorMessage('Premium Feature');
+        setTimeout(() => setErrorMessage(''), 2000);
+      } else {
+        setErrorMessage(msg || 'Failed to send message.');
+        setTimeout(() => setErrorMessage(''), 2000);
+      }
+      console.error('Error sending automated message:', error);
+    }
+  };
+
   const handleSend = async e => {
     e.preventDefault();
     if (!input.trim()) return;
@@ -211,6 +332,18 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
       setTimeout(() => setErrorMessage(''), 2000);
       return;
     }
+    
+    // Debug: Log user premium status
+    console.log('User premium status:', user?.isPremiumMember);
+    console.log('User object:', user);
+    
+    // Check if user is premium before attempting to send
+    if (!user?.isPremiumMember) {
+      setErrorMessage('Premium Feature - Upgrade to send messages');
+      setTimeout(() => setErrorMessage(''), 3000);
+      return;
+    }
+    
     try {
       const result = await sendMessage({
         variables: {
@@ -228,6 +361,11 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
         await refetch();
       }
       setInput('');
+      
+      // Trigger unread counts refresh after sending message
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('messagesRead'));
+      }, 100);
     } catch (error) {
       // Show styled popup for non-premium error
       const msg = error?.message || error?.graphQLErrors?.[0]?.message || '';
@@ -241,6 +379,8 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
       console.error('Error sending message:', error);
     }
   };
+
+
 
   // Helper to get initials from a name
   function getInitials(name) {
@@ -308,27 +448,66 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
           )}
           {loading && !refreshing ? (
             <div className="flex justify-center items-center py-8"><ChallengeLoader /></div>
-          ) : isNewConversation ? (
-            <div className="text-center text-gray-400 mt-10">Start a new conversation</div>
           ) : (
-            messages.map(msg => {
-              const isMe = msg.senderId === myId;
-              return (
-                <div
-                  key={msg.messageId}
-                  className={`flex mb-2 ${isMe ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    className={`rounded-2xl px-4 py-2 max-w-[75%] text-[15px] break-words shadow-sm ${isMe ? 'bg-[#ff3b30] text-white rounded-br-md' : 'bg-gray-100 text-gray-900 rounded-bl-md'}`}
-                  >
-                    {msg.content}
-                    <div className="text-xs mt-1 text-right" style={{ color: isMe ? '#ffe' : '#888' }}>
-                      {msg.timestamp && new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </div>
+            <>
+              {/* Automated message for booking sessions - show for both new and existing conversations */}
+              {showAutomatedMessage && (
+                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="text-sm text-gray-600 mb-2 font-medium">Suggested message:</div>
+                  <div className="text-gray-800 mb-3">{automatedMessageText}</div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => { handleSendAutomatedMessage(); localStorage.removeItem('bookingFlow'); }}
+                      className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
+                    >
+                      Send Message
+                    </button>
+                    <button
+                      onClick={() => {
+                        setInput(automatedMessageText);
+                        setShowAutomatedMessage(false);
+                        localStorage.removeItem('bookingFlow');
+                      }}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                    >
+                      Edit & Send
+                    </button>
+                    <button
+                      onClick={() => { setShowAutomatedMessage(false); localStorage.removeItem('bookingFlow'); }}
+                      className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-400 transition-colors"
+                    >
+                      Dismiss
+                    </button>
                   </div>
                 </div>
-              );
-            })
+              )}
+              
+              {isNewConversation ? (
+                <div className="text-center text-gray-400 mt-10">Start a new conversation</div>
+              ) : (
+                messages.map(msg => {
+                  const isMe = msg.senderId === myId;
+                  console.log('Message:', msg.messageId, 'readStatus:', msg.readStatus, 'isMe:', isMe);
+                  const isUnread = !isMe && msg.readStatus === 'SENT'; // Only show unread for messages from others that are SENT
+                  console.log('Is unread:', isUnread);
+                  return (
+                    <div
+                      key={msg.messageId}
+                      className={`flex mb-2 ${isMe ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div
+                        className={`rounded-2xl px-4 py-2 max-w-[75%] text-[15px] break-words shadow-sm ${isMe ? 'bg-[#ff3b30] text-white rounded-br-md' : 'bg-gray-100 text-gray-900 rounded-bl-md'} ${isUnread ? 'font-bold bg-blue-50 border-2 border-blue-200' : ''}`}
+                      >
+                        {msg.content}
+                        <div className="text-xs mt-1 text-right" style={{ color: isMe ? '#ffe' : '#888' }}>
+                          {msg.timestamp && new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </>
           )}
           <div ref={messagesEndRef} />
         </div>

@@ -90,6 +90,7 @@ export const handler = async (event) => {
       timestamp: item.timestamp,
       senderName: item.senderName,
       receiverName: item.receiverName,
+      readStatus: item.isRead === false ? 'SENT' : 'READ', // Map isRead boolean to MessageStatus enum
     }));
     
     let nextTokenResult = null;

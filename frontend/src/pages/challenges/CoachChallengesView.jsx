@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import challengeClient, { reviewSubmission } from "../../api/challengeApi";
 import ChallengeLoader from "../../components/common/ChallengeLoader";
 import ReviewModal from "./ReviewModal";
+import { useAuthStore } from "../../stores/useAuthStore";
 
 const COACH_CHALLENGES_ENDPOINT = "https://a81zemot63.execute-api.us-east-1.amazonaws.com/default/coach/challenges";
 
@@ -136,6 +137,35 @@ export default function CoachChallengesView() {
   // Handle new challenge submission
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Debug: Check user role and authentication
+    const authState = useAuthStore.getState();
+    console.log('User authentication state:', {
+      isAuthenticated: authState.isAuthenticated,
+      user: authState.user,
+      role: authState.user?.role,
+      token: authState.token ? 'Present' : 'Missing'
+    });
+    
+    // Debug: Decode JWT token to see claims
+    if (authState.token) {
+      try {
+        const base64 = authState.token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        const payload = JSON.parse(atob(base64));
+        console.log('JWT Token Claims:', {
+          sub: payload.sub,
+          'custom:role': payload['custom:role'],
+          'cognito:groups': payload['cognito:groups'],
+          'cognito:username': payload['cognito:username'],
+          email: payload.email,
+          name: payload.name,
+          allClaims: payload
+        });
+      } catch (error) {
+        console.log('Error decoding JWT token:', error.message);
+      }
+    }
+    
     if (formData.title.length > TITLE_CHAR_LIMIT) {
       setErrorMessage(`Title cannot exceed ${TITLE_CHAR_LIMIT} characters.`);
       setTimeout(() => setErrorMessage(""), 2000);
@@ -178,6 +208,15 @@ export default function CoachChallengesView() {
       setSuccessMessage("Challenge created!");
       setTimeout(() => setSuccessMessage(""), 1200);
     } catch (error) {
+      console.log('Challenge creation error:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message,
+        url: error.config?.url,
+        headers: error.config?.headers
+      });
+      console.log('Full error response data:', JSON.stringify(error.response?.data, null, 2));
       setErrorMessage(error.response?.data?.message || error.message);
       setTimeout(() => setErrorMessage(""), 2000);
     }

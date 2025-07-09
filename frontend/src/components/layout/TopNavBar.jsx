@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { IoPersonCircleOutline, IoSearchOutline, IoNotificationsOutline, IoChatboxOutline } from 'react-icons/io5';
-import { getNotifications } from '../../api/followApi';
+import { getNotifications, getUnreadCounts } from '../../api/followApi';
 import { searchUsers } from '../../api/userApi';
 import { createProfileUrl } from '../../utils/profileUrlUtils';
 
@@ -14,25 +14,64 @@ const TopNavBar = () => {
   const { isAuthenticated, user } = useAuthStore();
   const navigate = useNavigate();
   const [hasNotifications, setHasNotifications] = useState(false);
+  const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [search, setSearch] = useState('');
   const [results, setResults] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const fetchNotifications = async () => {
+    const fetchUnreadCounts = async () => {
       if (!isAuthenticated) {
         setHasNotifications(false);
+        setHasUnreadMessages(false);
+        setUnreadNotificationCount(0);
+        setUnreadMessageCount(0);
         return;
       }
       try {
-        const res = await getNotifications();
-        setHasNotifications(Array.isArray(res.data) && res.data.length > 0);
-      } catch {
+        console.log('Fetching unread counts...');
+        const res = await getUnreadCounts();
+        console.log('Unread counts response:', res.data);
+        const { unreadNotificationCount, unreadMessageCount } = res.data;
+        console.log('Setting unread counts:', { unreadNotificationCount, unreadMessageCount });
+        setUnreadNotificationCount(unreadNotificationCount || 0);
+        setUnreadMessageCount(unreadMessageCount || 0);
+        setHasNotifications(unreadNotificationCount > 0);
+        setHasUnreadMessages(unreadMessageCount > 0);
+        console.log('Has unread messages:', unreadMessageCount > 0);
+        console.log('State after setting:', { 
+          hasNotifications: unreadNotificationCount > 0, 
+          hasUnreadMessages: unreadMessageCount > 0,
+          unreadMessageCount: unreadMessageCount || 0
+        });
+      } catch (error) {
+        console.error('Error fetching unread counts:', error);
         setHasNotifications(false);
+        setHasUnreadMessages(false);
+        setUnreadNotificationCount(0);
+        setUnreadMessageCount(0);
       }
     };
-    fetchNotifications();
+    fetchUnreadCounts();
+    
+    // Set up interval to refresh unread counts every 30 seconds
+    const interval = setInterval(fetchUnreadCounts, 30000);
+    
+    // Listen for custom events to refresh unread counts
+    const handleMessagesRead = () => {
+      console.log('Messages read event received, refreshing unread counts...');
+      fetchUnreadCounts();
+    };
+    
+    window.addEventListener('messagesRead', handleMessagesRead);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('messagesRead', handleMessagesRead);
+    };
   }, [isAuthenticated]);
 
   useEffect(() => {
@@ -68,12 +107,15 @@ const TopNavBar = () => {
   // --- NEW: Handlers for Notifications and Messages ---
   const handleNotificationsClick = () => {
     setHasNotifications(false);
+    setUnreadNotificationCount(0);
     navigate('/notifications');
   };
 
   const handleMessagesClick = () => {
     navigate('/messages');
   };
+
+
 
   const handleSelectUser = (user) => {
     setShowDropdown(false);
@@ -160,8 +202,11 @@ const TopNavBar = () => {
             <span className="absolute -top-1 -right-1 bg-red-500 rounded-full w-3 h-3"></span>
           )}
         </button>
-        <button className="action-icon-button" aria-label="Messages" onClick={handleMessagesClick}>
+        <button className="action-icon-button relative" aria-label="Messages" onClick={handleMessagesClick}>
           <IoChatboxOutline size={24} color="#6b7280" />
+          {hasUnreadMessages && (
+            <span className="absolute -top-1 -right-1 bg-red-500 rounded-full w-3 h-3"></span>
+          )}
         </button>
       </div>
     </header>

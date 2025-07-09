@@ -21,7 +21,7 @@ exports.handler = async (event) => {
 
   try {
     const body = JSON.parse(event.body);
-    const { userId, content, imageBase64, imageContentType } = body;
+    const { userId, content, imageBase64, imageContentType, videoBase64, videoContentType } = body;
 
     if (!userId || !content) {
       return {
@@ -36,6 +36,7 @@ exports.handler = async (event) => {
     }
 
     let imageUrl = null;
+    let videoUrl = null;
 
     // Handle image upload if provided
     if (imageBase64 && imageContentType && S3_BUCKET_NAME) {
@@ -75,6 +76,58 @@ exports.handler = async (event) => {
       }
     }
 
+    // Handle video upload if provided
+    if (videoBase64 && videoContentType && S3_BUCKET_NAME) {
+      try {
+        // Validate video size (max 50MB)
+        const videoBuffer = Buffer.from(videoBase64, 'base64');
+        if (videoBuffer.length > 50 * 1024 * 1024) {
+          return {
+            statusCode: 400,
+            headers: { 
+              'Access-Control-Allow-Origin': '*',
+              'Access-Control-Allow-Headers': 'Content-Type',
+              'Access-Control-Allow-Methods': 'POST, OPTIONS'
+            },
+            body: JSON.stringify({ message: "Video file size exceeds 50MB." })
+          };
+        }
+
+        // Validate video content type
+        const allowedVideoTypes = ['video/mp4', 'video/webm', 'video/quicktime'];
+        if (!allowedVideoTypes.includes(videoContentType)) {
+          return {
+            statusCode: 400,
+            headers: { 
+              'Access-Control-Allow-Origin': '*',
+              'Access-Control-Allow-Headers': 'Content-Type',
+              'Access-Control-Allow-Methods': 'POST, OPTIONS'
+            },
+            body: JSON.stringify({ message: "Unsupported video format. Please use MP4, WebM, or MOV." })
+          };
+        }
+
+        // Generate unique file name
+        const fileExtension = videoContentType.split('/')[1] || 'mp4';
+        const s3Key = `post-videos/${userId}-${Date.now()}.${fileExtension}`;
+        
+        const s3UploadParams = {
+          Bucket: S3_BUCKET_NAME,
+          Key: s3Key,
+          Body: videoBuffer,
+          ContentType: videoContentType
+        };
+        
+        await s3.upload(s3UploadParams).promise();
+        videoUrl = `https://${S3_BUCKET_NAME}.s3.${REGION}.amazonaws.com/${s3Key}`;
+        
+        console.log(`Post video uploaded to S3: ${videoUrl}`);
+      } catch (err) {
+        console.error("Error uploading post video to S3:", err);
+        videoUrl = null;
+      }
+    }
+
     const client = new Client({
       host: process.env.DB_HOST,
       user: process.env.DB_USER,
@@ -85,14 +138,14 @@ exports.handler = async (event) => {
 
     await client.connect();
 
-    // Insert the post
+    // Insert the post with video_url support
     const insertQuery = `
-      INSERT INTO posts (user_id, content, image_url)
-      VALUES ($1, $2, $3)
-      RETURNING id, user_id, content, image_url, created_at
+      INSERT INTO posts (user_id, content, image_url, video_url)
+      VALUES ($1, $2, $3, $4)
+      RETURNING id, user_id, content, image_url, video_url, created_at
     `;
     
-    const result = await client.query(insertQuery, [userId, content, imageUrl]);
+    const result = await client.query(insertQuery, [userId, content, imageUrl, videoUrl]);
     
     await client.end();
 
@@ -118,7 +171,10 @@ exports.handler = async (event) => {
         'Access-Control-Allow-Headers': 'Content-Type',
         'Access-Control-Allow-Methods': 'POST, OPTIONS'
       },
-      body: JSON.stringify({ message: 'Internal server error' })
+      body: JSON.stringify({
+        message: 'Internal server error',
+        error: error.message
+      })
     };
   }
 }; 

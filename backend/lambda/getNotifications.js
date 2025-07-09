@@ -44,11 +44,13 @@ exports.handler = async (event) => {
     // Query notifications for the user
     const result = await client.query(
       `SELECT n.id, n.type, n.is_following_back, 
-              n.challenge_id, n.submission_id, n.review_result, n.created_at,
+              n.challenge_id, n.submission_id, n.review_result, n.created_at, n.is_read,
               c.title as challenge_title,
-              u.id as from_user_id, u.name as from_user_name, u.profile_picture_url as from_user_profile_picture_url
+              u.id as from_user_id, u.name as from_user_name, u.profile_picture_url as from_user_profile_picture_url, u.role as from_user_role,
+              s.video_url as submission_video_url
          FROM notifications n
          LEFT JOIN challenges c ON n.challenge_id = c.id
+         LEFT JOIN challenge_submissions s ON n.submission_id = s.id
          JOIN users u ON n.from_user_id = u.id
         WHERE n.to_user_id = $1
         ORDER BY n.created_at DESC
@@ -66,13 +68,16 @@ exports.handler = async (event) => {
         id: row.from_user_id,
         name: row.from_user_name,
         profilePictureUrl: row.from_user_profile_picture_url || '',
+        role: row.from_user_role,
       },
       isFollowingBack: row.is_following_back,
       challengeId: row.challenge_id,
       submissionId: row.submission_id,
       reviewResult: row.review_result,
       createdAt: row.created_at,
+      isRead: row.is_read,
       challengeTitle: row.challenge_title,
+      submissionVideoUrl: row.submission_video_url,
     }));
 
     return {

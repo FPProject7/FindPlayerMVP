@@ -1,7 +1,7 @@
 // frontend/src/pages/LeaderboardPage.jsx
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { getLeaderboard } from '../api/userApi';
+import { getLeaderboardWithStreak } from '../api/userApi';
 import { calculateAge, getLevelFromXP, getXPProgress, getXPDetails } from '../utils/levelUtils';
 import ChallengeLoader from '../components/common/ChallengeLoader';
 import { useNavigate } from 'react-router-dom';
@@ -241,6 +241,26 @@ function LeaderboardCheckIcon({ className = '', size = 20 }) {
   );
 }
 
+// Replace FireIcon with FlameIcon using the SVG from assets
+function FlameIcon({ className = '', size = 20 }) {
+  return (
+    <svg
+      className={className}
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        fill="#FF7300"
+        fillRule="evenodd"
+        d="M11.1758045,11.5299649 C11.7222481,10.7630248 11.6612694,9.95529555 11.2823626,8.50234466 C10.5329929,5.62882187 10.8313891,4.05382867 13.4147321,2.18916004 L14.6756139,1.27904986 L14.9805807,2.80388386 C15.3046861,4.42441075 15.8369398,5.42670671 17.2035766,7.35464078 C17.2578735,7.43122022 17.2578735,7.43122022 17.3124108,7.50814226 C19.2809754,10.2854144 20,11.9596204 20,15 C20,18.6883517 16.2713564,22 12,22 C7.72840879,22 4,18.6888043 4,15 C4,14.9310531 4.00007066,14.9331427 3.98838852,14.6284506 C3.89803284,12.2718054 4.33380946,10.4273676 6.09706666,8.43586022 C6.46961415,8.0150872 6.8930834,7.61067534 7.36962714,7.22370749 L8.42161802,6.36945926 L8.9276612,7.62657706 C9.30157948,8.55546878 9.73969716,9.28566491 10.2346078,9.82150804 C10.6537848,10.2753538 10.9647401,10.8460665 11.1758045,11.5299649 Z M7.59448531,9.76165711 C6.23711779,11.2947332 5.91440928,12.6606068 5.98692012,14.5518252 C6.00041903,14.9039019 6,14.8915108 6,15 C6,17.5278878 8.78360021,20 12,20 C15.2161368,20 18,17.527472 18,15 C18,12.4582072 17.4317321,11.1350292 15.6807305,8.66469725 C15.6264803,8.58818014 15.6264803,8.58818014 15.5719336,8.51124844 C14.5085442,7.0111098 13.8746802,5.96758691 13.4553336,4.8005211 C12.7704786,5.62117775 12.8107447,6.43738988 13.2176374,7.99765534 C13.9670071,10.8711781 13.6686109,12.4461713 11.0852679,14.31084 L9.61227259,15.3740546 L9.50184911,13.5607848 C9.43129723,12.4022487 9.16906461,11.6155508 8.76539217,11.178492 C8.36656566,10.7466798 8.00646835,10.2411426 7.68355027,9.66278925 C7.65342985,9.69565638 7.62374254,9.72861259 7.59448531,9.76165711 Z"
+      />
+    </svg>
+  );
+}
+
 // Create a dedicated athleteSortOptions array for the athlete leaderboard, excluding 'Challenges Created' and 'Challenges Approved', and add 'Gender'.
 const athleteSortOptions = [
   { label: 'Experience Points', value: 'xpTotal' },
@@ -341,8 +361,8 @@ const LeaderboardPage = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await getLeaderboard({ ...filters, limit: 3, offset: 0 });
-      setTopThreeUsers(response.data.users || []);
+      const response = await getLeaderboardWithStreak({ ...filters, limit: 3, offset: 0 });
+      setTopThreeUsers(response.data.leaderboard || []);
     } catch (err) {
       setError(err.message || 'Failed to load leaderboard');
     } finally {
@@ -363,8 +383,8 @@ const LeaderboardPage = () => {
         setLoadingMore(false);
         return;
       }
-      const response = await getLeaderboard({ ...filters, limit, offset: offsetToUse });
-      let newUsers = response.data.users || [];
+      const response = await getLeaderboardWithStreak({ ...filters, limit, offset: offsetToUse });
+      let newUsers = response.data.leaderboard || [];
       // Only allow up to 50 users total
       const remaining = 50 - (topThreeUsers.length + restUsers.length);
       if (newUsers.length > remaining) {
@@ -420,10 +440,10 @@ const LeaderboardPage = () => {
 
     // Fetch Grinder of the Week (athletes only)
     if (activeTab === 'athletes') {
-      getLeaderboard({ timeFrame: 'week', sortBy: 'xpTotal', sortOrder: 'DESC', limit: 1, role: 'athlete', gender })
+      getLeaderboardWithStreak({ timeFrame: 'week', sortBy: 'xpTotal', sortOrder: 'DESC', limit: 1, role: 'athlete', gender })
         .then(res => {
-          if (res.data && res.data.users && res.data.users.length > 0) {
-            setGrinderOfWeekId(res.data.users[0].id);
+          if (res.data && res.data.leaderboard && res.data.leaderboard.length > 0) {
+            setGrinderOfWeekId(res.data.leaderboard[0].id);
           } else {
             setGrinderOfWeekId(null);
           }
@@ -623,6 +643,12 @@ const LeaderboardPage = () => {
                         <span className="font-bold">{top3[0]?.coachApprovals || 0}</span>
                         <span className="italic font-semibold text-gray-700 truncate">Approvals</span>
                       </div>
+                      {/* Streak - Show actual value for top 1 */}
+                      <div className="flex items-center gap-1 sm:gap-2 justify-center text-xs sm:text-lg">
+                        <FlameIcon className="text-lg sm:text-3xl text-orange-500" size={24} />
+                        <span className="font-bold">{top3[0]?.current_streak ?? '--'}</span>
+                        <span className="italic font-semibold text-gray-700 truncate">Streak</span>
+                      </div>
                     </>
                   ) : (
                     <>
@@ -643,7 +669,7 @@ const LeaderboardPage = () => {
                 </div>
                 {/* Grinder of the Week (athletes only) */}
                 {activeTab === 'athletes' && (
-                  <div className="flex flex-col gap-1 sm:gap-2 items-center -mt-4 sm:-mt-5">
+                  <div className="flex flex-col gap-1 sm:gap-2 items-center -mt-4 sm:-mt-8">
                     {grinderOfWeekId && top3.some(u => u.id === grinderOfWeekId) && grinderOfWeekId === top3[0]?.id && (
                       <span className="w-full max-w-xs block text-center whitespace-nowrap bg-gradient-to-r from-yellow-400 to-yellow-600 text-white italic font-semibold text-sm sm:text-lg px-3 sm:px-4 py-1 sm:py-2 rounded-2xl mt-1 sm:mt-2 truncate" style={{fontStyle: 'italic', fontWeight: 500, minWidth: '40px', width: '100%'}}>Grinder of the Week</span>
                     )}
@@ -733,6 +759,12 @@ const LeaderboardPage = () => {
                             <UserIcon className="text-xs sm:text-base" size={18} />
                             <span className="font-bold">{top3[1].coachApprovals || 0}</span>
                             <span className="italic font-semibold text-gray-700 truncate">Approvals</span>
+                          </div>
+                          {/* Streak - Show actual value for top 2 */}
+                          <div className="flex items-center gap-0.5 sm:gap-1 justify-center">
+                            <FlameIcon className="text-xs sm:text-base text-orange-500" size={18} />
+                            <span className="font-bold">{top3[1]?.current_streak ?? '--'}</span>
+                            <span className="italic font-semibold text-gray-700 truncate">Streak</span>
                           </div>
                         </>
                       ) : (
@@ -833,6 +865,12 @@ const LeaderboardPage = () => {
                             <UserIcon className="text-xs sm:text-base" size={18} />
                             <span className="font-bold">{top3[2].coachApprovals || 0}</span>
                             <span className="italic font-semibold text-gray-700 truncate">Approvals</span>
+                          </div>
+                          {/* Streak - Show actual value for top 3 */}
+                          <div className="flex items-center gap-0.5 sm:gap-1 justify-center">
+                            <FlameIcon className="text-xs sm:text-base text-orange-500" size={18} />
+                            <span className="font-bold">{top3[2]?.current_streak ?? '--'}</span>
+                            <span className="italic font-semibold text-gray-700 truncate">Streak</span>
                           </div>
                         </>
                       ) : (
@@ -1042,8 +1080,16 @@ const LeaderboardPage = () => {
                   )}
                   {/* Name and info */}
                   <div className="flex flex-col min-w-0">
-                    <div className="font-extrabold text-xs sm:text-base truncate cursor-pointer hover:underline leading-tight" onClick={() => handleViewProfile(user)}>
-                      {getLastName(user.name)}
+                    <div className="flex items-center gap-1">
+                      <div className="font-extrabold text-xs sm:text-base truncate cursor-pointer hover:underline leading-tight" onClick={() => handleViewProfile(user)}>
+                        {getLastName(user.name)}
+                      </div>
+                      {activeTab === 'athletes' && (
+                        <div className="flex items-center gap-0.5">
+                          <FlameIcon className="text-[8px] sm:text-xs text-orange-500" size={12} />
+                          <span className="font-bold text-[8px] sm:text-xs text-gray-900">{user.current_streak ?? '--'}</span>
+                        </div>
+                      )}
                     </div>
                     {/* Info Row: Age, Level, Position or Sport */}
                     <div className="flex flex-row flex-wrap items-center gap-0.5 text-[8px] sm:text-sm text-gray-400 italic font-semibold mb-0.5 sm:mb-1 leading-tight">

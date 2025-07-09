@@ -13,8 +13,8 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   async (config) => {
     try {
-      // Get a valid token (will refresh if needed)
-      const token = await useAuthStore.getState().getValidToken();
+      // Get a valid ID token (will refresh if needed)
+      const token = await useAuthStore.getState().getValidIdToken();
       
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;

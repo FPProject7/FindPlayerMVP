@@ -8,6 +8,7 @@ const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
 const CONVERSATIONS_TABLE = process.env.CONVERSATIONS_TABLE;
+const MESSAGES_TABLE = process.env.MESSAGES_TABLE || 'findplayer-messages';
 
 // Helper to fetch user info from RDS by userId
 async function getUserInfo(userId) {
@@ -116,7 +117,28 @@ export const handler = async (event) => {
 
                     // Always fetch user info, fallback to userId if not found
                     const userInfo = await getUserInfo(otherUserId);
-                    
+
+                    // --- UNREAD COUNT LOGIC ---
+                    let unreadCount = 0;
+                    try {
+                        const messagesScanParams = {
+                            TableName: MESSAGES_TABLE,
+                            FilterExpression: 'conversationId = :conversationId AND receiverId = :receiverId AND isRead = :isRead',
+                            ExpressionAttributeValues: {
+                                ':conversationId': conversation.conversationId,
+                                ':receiverId': cognitoUsername,
+                                ':isRead': false
+                            },
+                        };
+                        const messagesResult = await docClient.send(new ScanCommand(messagesScanParams));
+                        unreadCount = messagesResult.Items ? messagesResult.Items.length : 0;
+                    } catch (err) {
+                        console.error('Error counting unread messages for conversation', conversation.conversationId, err);
+                    }
+                    // --- END UNREAD COUNT LOGIC ---
+
+                    console.log(`[DEBUG] Conversation ${conversation.conversationId} unreadCount for user ${cognitoUsername}:`, unreadCount);
+
                     return {
                         userId: cognitoUsername,
                         conversationId: conversation.conversationId,
@@ -125,7 +147,7 @@ export const handler = async (event) => {
                         otherUserProfilePic: userInfo.profilePictureUrl || null,
                         lastMessageContent: conversation.lastMessage || null,
                         lastMessageTimestamp: conversation.lastMessageTime || null,
-                        unreadCount: 0, // TODO: Implement unread count logic
+                        unreadCount: unreadCount,
                     };
                 } catch (conversationError) {
                     console.error('Error processing conversation:', conversationError, conversation);

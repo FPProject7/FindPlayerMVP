@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FollowButton from '../components/common/FollowButton';
-import { followUser, unfollowUser, getNotifications, checkFollowing } from '../api/followApi';
+import { followUser, unfollowUser, getNotifications, checkFollowing, markNotificationsRead } from '../api/followApi';
 import { useAuthStore } from '../stores/useAuthStore';
 import ChallengeLoader from '../components/common/ChallengeLoader';
 import { createProfileUrl } from '../utils/profileUrlUtils';
@@ -51,6 +51,16 @@ const NotificationsPage = () => {
       try {
         const res = await getNotifications();
         setNotifications(res.data);
+        
+        // Mark all notifications as read when page is opened
+        if (res.data.length > 0) {
+          try {
+            await markNotificationsRead();
+          } catch (markError) {
+            console.error('Failed to mark notifications as read:', markError);
+          }
+        }
+        
         // Get all unique fromUserIds
         const uniqueFromUserIds = Array.from(new Set(res.data.map(n => n.fromUser.id)));
         const statusMap = {};
@@ -199,15 +209,25 @@ const NotificationsPage = () => {
                 </>
               );
             } else if (notif.type === 'challenge_review') {
-              message = notif.reviewResult === 'approve'
-                ? 'Your challenge submission was approved.'
-                : 'Your challenge submission was denied.';
+              const challengeName = notif.challengeTitle || 'this challenge';
+              const action = notif.reviewResult === 'approve' ? 'approved' : 'rejected';
+              message = (
+                <>
+                  <span style={{ color: '#dc2626', fontWeight: 600 }}>{challengeName}</span> has been {action}
+                </>
+              );
             } else if (notif.type === 'like_post') {
               message = 'Liked your post.';
             } else if (notif.type === 'comment_post') {
               message = 'Commented on your post.';
             } else if (notif.type === 'follow') {
               message = 'Started following you.';
+            } else if (notif.type === 'profile_view') {
+              message = (
+                <span style={{ fontWeight: 600 }}>
+                  A scout has viewed your profile!
+                </span>
+              );
             } else {
               message = 'Interacted with your content.';
             }
@@ -229,12 +249,13 @@ const NotificationsPage = () => {
                 </div>
                 <div className="flex-1">
                   <div 
-                    className="font-semibold text-gray-800 cursor-pointer hover:text-red-600 hover:underline"
+                    className={notif.type === 'profile_view' ? 'font-semibold text-gray-800 cursor-pointer hover:text-red-600 hover:underline' : 'font-semibold text-gray-800 cursor-pointer hover:text-red-600 hover:underline'}
+                    style={notif.type === 'profile_view' ? { fontWeight: 700, cursor: 'pointer' } : {}}
                     onClick={() => handleUserClick(notif.fromUser.name, notif.fromUser.role)}
                   >
                     {notif.fromUser.name}
                   </div>
-                  <div className="text-gray-500 text-sm">{message}</div>
+                  <div className={notif.type === 'profile_view' ? 'text-gray-800' : 'text-gray-500 text-sm'} style={notif.type === 'profile_view' ? { fontWeight: 600 } : {}}>{message}</div>
                   {notif.createdAt && (
                     <div className="text-xs text-gray-300">{new Date(notif.createdAt).toLocaleString()}</div>
                   )}
@@ -247,6 +268,23 @@ const NotificationsPage = () => {
                       onFollow={() => handleFollowBack(notif.id, fromUserId)}
                       onUnfollow={() => handleUnfollow(notif.id, fromUserId)}
                     />
+                  </div>
+                )}
+                {notif.type === 'challenge_review' && (
+                  <div className="ml-4" style={{ minWidth: 80 }}>
+                    {notif.submissionVideoUrl ? (
+                      <video
+                        src={notif.submissionVideoUrl}
+                        className="w-16 h-16 object-cover rounded-lg"
+                        style={{ minWidth: 64, minHeight: 64 }}
+                        muted
+                        preload="metadata"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center text-gray-400 text-xs">
+                        No video
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

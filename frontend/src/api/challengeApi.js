@@ -19,9 +19,18 @@ const reviewClient = axios.create({
 // Attach token to all clients
 const attachAuth = async (config) => {
   try {
-    const token = await useAuthStore.getState().getValidToken();
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-  } catch {}
+    const token = await useAuthStore.getState().getValidIdToken();
+    console.log('attachAuth - Token obtained:', token ? 'Yes' : 'No');
+    console.log('attachAuth - Request URL:', config.url);
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+      console.log('attachAuth - Authorization header set');
+    } else {
+      console.log('attachAuth - No token available');
+    }
+  } catch (error) {
+    console.log('attachAuth - Error getting token:', error.message);
+  }
   return config;
 };
 challengeClient.interceptors.request.use(attachAuth, (error) => Promise.reject(error));

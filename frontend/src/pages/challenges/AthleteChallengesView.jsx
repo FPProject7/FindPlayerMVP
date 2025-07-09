@@ -7,6 +7,7 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import { fetchChallenges, completeChallengeSubmission } from '../../api/challengeService';
 import apiClient from '../../api/axiosConfig';
 import useUploadStore from '../../stores/useUploadStore';
+import { updateStreak } from '../../api/userApi';
 
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
 const MAX_VIDEO_SIZE_BYTES = 50 * 1024 * 1024;
@@ -14,7 +15,7 @@ const MAX_VIDEO_SIZE_BYTES = 50 * 1024 * 1024;
 // API endpoint URLs
 const API_ENDPOINTS = {
   submitChallenge: (challengeId) => `https://stpw2c9b5b.execute-api.us-east-1.amazonaws.com/default/challenges/${challengeId}/submit`,
-  checkSubmissionStatus: (challengeId) => `https://bv6tkoez9f.execute-api.us-east-1.amazonaws.com/default/challenges/${challengeId}/checkSubmissionStatus`
+  checkSubmissionStatus: (challengeId) => `https://ltn2ed1bh9.execute-api.us-east-1.amazonaws.com/checkSubmissionStatus?id=${challengeId}`
 };
 
 const AthleteChallengesView = () => {
@@ -231,12 +232,20 @@ const AthleteChallengesView = () => {
     setError(null);
 
     try {
-      
       // Use the complete submission flow (upload tracking is now handled globally)
       await completeChallengeSubmission(
         selectedChallenge.id, 
         videoFile
       );
+
+      // Call updateStreak after successful submission
+      try {
+        if (user && user.id) {
+          await updateStreak(user.id);
+        }
+      } catch (streakErr) {
+        console.error('Failed to update streak:', streakErr);
+      }
 
       setVideoFile(null);
 
@@ -255,14 +264,19 @@ const AthleteChallengesView = () => {
 
   const checkSubmissionStatus = async (challengeId) => {
     try {
-      const response = await apiClient.get(API_ENDPOINTS.checkSubmissionStatus(challengeId));
+      const authState = useAuthStore.getState();
+      const token = authState.isAuthenticated ? await authState.getValidIdToken() : null;
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const response = await apiClient.get(API_ENDPOINTS.checkSubmissionStatus(challengeId), { headers });
       return response.data?.submission || null;
     } catch (error) {
       if (error.response?.status === 404) {
-        return null; // No submission exists
+        // No submission exists for this challenge/user, not an error
+        return null;
       }
+      // Only log and set error for real network/server errors
       console.error(`Error checking submission for challenge ${challengeId}:`, error);
-      return null;
+      throw error; // Let the caller handle network/server errors
     }
   };
 

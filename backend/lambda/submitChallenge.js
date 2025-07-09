@@ -72,11 +72,34 @@ exports.handler = async (event) => {
     if (coachId) {
       // Insert notification for coach
       await client.query(
-        `INSERT INTO notifications (type, from_user_id, to_user_id, challenge_id, submission_id, created_at)
-         VALUES ($1, $2, $3, $4, $5, NOW())`,
-        ['challenge_submission', athleteId, coachId, challengeId, submission.id]
+        `INSERT INTO notifications (type, from_user_id, to_user_id, challenge_id, submission_id, is_read, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+        ['challenge_submission', athleteId, coachId, challengeId, submission.id, false]
       );
     }
+
+    // === Streak update logic (inlined from updateStreak) ===
+    // Get current streak info
+    const streakRes = await client.query(
+      'SELECT current_streak, last_streak_date FROM users WHERE id = $1',
+      [athleteId]
+    );
+    if (streakRes.rowCount > 0) {
+      const { current_streak, last_streak_date } = streakRes.rows[0];
+      const today = new Date().toISOString().slice(0, 10);
+      const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+      let newStreak = 1;
+      if (last_streak_date === today) {
+        newStreak = current_streak;
+      } else if (last_streak_date === yesterday) {
+        newStreak = current_streak + 1;
+      }
+      await client.query(
+        'UPDATE users SET current_streak = $1, last_streak_date = $2 WHERE id = $3',
+        [newStreak, today, athleteId]
+      );
+    }
+    // === End streak update logic ===
 
     await client.end();
 

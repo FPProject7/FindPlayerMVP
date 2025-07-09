@@ -14,6 +14,7 @@ const USER_POOL_ID = process.env.USER_POOL_ID;
 const client = new CognitoIdentityProviderClient({ region: REGION });
 
 export const handler = async (event) => {
+    console.log('*** FUNCTIONS SIGNIN CALLED ***');
     let body;
     try {
         body = JSON.parse(event.body);
@@ -80,6 +81,10 @@ export const handler = async (event) => {
                             profilePictureUrl = attr.Value;
                             userProfile.profilePictureUrl = attr.Value; 
                             break;
+                        case 'custom:is_premium_member':
+                            userProfile.isPremiumMember = attr.Value === 'true';
+                            console.log(`Premium status extracted: ${attr.Value} -> ${userProfile.isPremiumMember}`);
+                            break;
                         default:
                             break;
                     }
@@ -134,6 +139,7 @@ export const handler = async (event) => {
             console.error("Error syncing user to users table:", dbError);
         }
 
+        console.log('Final user profile being returned:', JSON.stringify(userProfile, null, 2));
         return {
             statusCode: 200,
             headers: { 

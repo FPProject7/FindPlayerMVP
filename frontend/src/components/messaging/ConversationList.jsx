@@ -46,6 +46,16 @@ export default function ConversationList({ onSelectConversation }) {
     fetchPolicy: 'cache-and-network',
   });
 
+  // Local state for conversations to allow instant UI updates
+  const [conversations, setConversations] = useState([]);
+
+  // Sync local conversations state with data from backend
+  useEffect(() => {
+    if (data?.listConversations?.items) {
+      setConversations(data.listConversations.items);
+    }
+  }, [data]);
+
   useEffect(() => {
     if (search.trim().length < 2) {
       setUserResults([]);
@@ -119,10 +129,26 @@ export default function ConversationList({ onSelectConversation }) {
     });
   };
 
+  // When a conversation is clicked, set its unreadCount to 0 instantly
+  const handleConversationClick = (conv) => {
+    setConversations(prev =>
+      prev.map(c =>
+        c.conversationId === conv.conversationId
+          ? { ...c, unreadCount: 0 }
+          : c
+      )
+    );
+    onSelectConversation({
+      conversationId: conv.conversationId,
+      name: conv.otherUserName,
+      profilePic: conv.otherUserProfilePic,
+      userId: conv.otherUserId
+    });
+  };
+
   if (loading && !refreshing) return <div className="flex justify-center items-center py-8"><ChallengeLoader /></div>;
   if (error) return <div className="flex justify-center items-center py-8 text-red-500">{error.message || 'Error loading conversations.'}</div>;
 
-  const conversations = data?.listConversations?.items || [];
   const filtered = conversations.filter(
     c =>
       c.otherUserName?.toLowerCase().includes(search.toLowerCase()) ||
@@ -222,12 +248,7 @@ export default function ConversationList({ onSelectConversation }) {
         {filtered.map(conv => (
           <div
             key={conv.conversationId}
-            onClick={() => onSelectConversation({
-              conversationId: conv.conversationId,
-              name: conv.otherUserName,
-              profilePic: conv.otherUserProfilePic,
-              userId: conv.otherUserId
-            })}
+            onClick={() => handleConversationClick(conv)}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -256,13 +277,40 @@ export default function ConversationList({ onSelectConversation }) {
               }}>{getInitials(conv.otherUserName)}</div>
             )}
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600 }}>{conv.otherUserName}</div>
-              <div style={{ color: '#888', fontSize: 13, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {conv.lastMessageContent}
+              <div style={{ 
+                fontWeight: conv.unreadCount > 0 ? 700 : 600,
+                color: conv.unreadCount > 0 ? '#1f2937' : '#374151'
+              }}>
+                {conv.otherUserName}
+              </div>
+              <div style={{ 
+                color: conv.unreadCount > 0 ? '#1f2937' : '#888', 
+                fontSize: 13, 
+                marginTop: 2, 
+                whiteSpace: 'nowrap', 
+                overflow: 'hidden', 
+                textOverflow: 'ellipsis',
+                fontWeight: conv.unreadCount > 0 ? 600 : 400
+              }}>
+                {conv.lastMessageContent && conv.lastMessageContent.length > 50
+                  ? conv.lastMessageContent.slice(0, 50) + '...'
+                  : conv.lastMessageContent}
               </div>
             </div>
-            <div style={{ marginLeft: 12, color: '#aaa', fontSize: 12 }}>
-              {conv.lastMessageTimestamp && new Date(conv.lastMessageTimestamp).toLocaleDateString()}
+            <div style={{ marginLeft: 12, display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+              <div style={{ color: '#aaa', fontSize: 12 }}>
+                {conv.lastMessageTimestamp && new Date(conv.lastMessageTimestamp).toLocaleDateString()}
+              </div>
+              {conv.unreadCount > 0 && (
+                <div style={{
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  borderRadius: '50%',
+                  width: 8,
+                  height: 8,
+                  marginTop: 4
+                }}></div>
+              )}
             </div>
           </div>
         ))}
