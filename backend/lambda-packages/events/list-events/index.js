@@ -3,11 +3,10 @@ const dynamoDb = new AWS.DynamoDB.DocumentClient();
 const EVENTS_TABLE = process.env.EVENTS_TABLE || 'findplayer-events';
 
 exports.handler = async (event) => {
-  // TODO: Validate JWT, parse query params
-  const userId = event.requestContext?.authorizer?.claims?.sub;
-  if (!userId) {
-    return { statusCode: 401, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type,Authorization' }, body: JSON.stringify({ error: 'Unauthorized' }) };
-  }
+  // Public access: do not require authentication for listing events
+  // (If you want to add user-specific filtering for signed-in users, you can check userId below, but do not block public access)
+  // const userId = event.requestContext?.authorizer?.claims?.sub;
+
   // TODO: Add filters, pagination, etc.
   const params = {
     TableName: EVENTS_TABLE,

@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'; // Import useNavigate for redire
 import { useAuthStore } from '../stores/useAuthStore'; // Import your authentication store
 import ShareButton from '../components/common/ShareButton';
 import ChallengeLoader from '../components/common/ChallengeLoader';
+import LoginPromptModal from '../components/common/LoginPromptModal';
 import { FiSearch, FiMapPin } from 'react-icons/fi';
 import { GoogleMap, Marker, useLoadScript } from '@react-google-maps/api';
 import usePlacesAutocomplete, { getGeocode, getLatLng } from 'use-places-autocomplete';
@@ -65,7 +66,9 @@ function LocationIcon({ className = '', size = 20 }) {
 
 const EventCard = ({ event }) => {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuthStore();
   const [hostInfo, setHostInfo] = useState(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   
   // Fetch host info when component mounts
   useEffect(() => {
@@ -122,63 +125,82 @@ const EventCard = ({ event }) => {
     }
   };
 
+  const handleRegisterClick = (e) => {
+    e.stopPropagation();
+    if (!isAuthenticated) {
+      setShowLoginModal(true);
+    } else {
+      navigate(`/events/${event.eventId}`);
+    }
+  };
+
   const fee =
     event.participationFee === undefined || event.participationFee === null || event.participationFee === ''
       ? 'Free'
       : event.participationFee;
   return (
-    <div
-      className="bg-white rounded-xl shadow-md mb-6 overflow-hidden border border-gray-200 max-w-xl mx-auto cursor-pointer hover:shadow-lg transition-shadow"
-      onClick={() => navigate(`/events/${event.eventId}`)}
-    >
-      <div className="w-full h-40 bg-gray-200 relative">
-        {event.imageUrl ? (
-          <img src={event.imageUrl} alt={event.title} className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gray-300">
-            <span className="text-gray-500">No Image</span>
+    <>
+      <div
+        className="bg-white rounded-xl shadow-md mb-6 overflow-hidden border border-gray-200 max-w-xl mx-auto cursor-pointer hover:shadow-lg transition-shadow"
+        onClick={() => navigate(`/events/${event.eventId}`)}
+      >
+        <div className="w-full h-40 bg-gray-200 relative">
+          {event.imageUrl ? (
+            <img src={event.imageUrl} alt={event.title} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gray-300">
+              <span className="text-gray-500">No Image</span>
+            </div>
+          )}
+          {/* Share button in top right */}
+          <div className="absolute top-3 right-3 z-10" onClick={(e) => e.stopPropagation()}>
+            <ShareButton 
+              url={`${window.location.origin}/events/${event.eventId}`}
+              title={`Check out this event: ${event.title}`}
+              iconSize={20}
+            />
           </div>
-        )}
-        {/* Share button in top right */}
-        <div className="absolute top-3 right-3 z-10" onClick={(e) => e.stopPropagation()}>
-          <ShareButton 
-            url={`${window.location.origin}/events/${event.eventId}`}
-            title={`Check out this event: ${event.title}`}
-            iconSize={20}
-          />
+        </div>
+        <div className="p-4">
+          <div className="font-semibold text-lg mb-1">{event.title}</div>
+          <div className="flex flex-col text-gray-500 text-sm mb-2">
+            {/* Host name */}
+            <span className="flex items-center mb-1">
+              <UserIcon className="text-black mr-1" size={18} />
+              <span className="font-semibold text-gray-700">{hostInfo?.name || `User ${event.hostUserId?.slice(0, 6) || 'Unknown'}`}</span>
+            </span>
+            {/* Date and time */}
+            <span className="flex items-center mb-1">
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <rect x="3" y="4" width="18" height="18" rx="4"/>
+                <line x1="16" y1="2" x2="16" y2="6"/>
+                <line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+              {formatDateTime(event.date, event.time)}
+            </span>
+            {/* Show location under date/time */}
+            <span className="flex items-center">
+              <LocationIcon className="text-black mr-1" size={18} />
+              {event.location}
+            </span>
+          </div>
+          <div className="flex items-center justify-between mt-2">
+            {/* Always show fee per player */}
+            <div className="text-xl font-bold text-gray-900">{fee} <span className="text-sm font-normal text-gray-500">/player</span></div>
+            <button 
+              className="bg-red-500 text-white px-4 py-2 rounded-full font-semibold hover:bg-red-600 text-sm"
+              onClick={handleRegisterClick}
+            >
+              Register now
+            </button>
+          </div>
         </div>
       </div>
-      <div className="p-4">
-        <div className="font-semibold text-lg mb-1">{event.title}</div>
-        <div className="flex flex-col text-gray-500 text-sm mb-2">
-          {/* Host name */}
-          <span className="flex items-center mb-1">
-            <UserIcon className="text-black mr-1" size={18} />
-            <span className="font-semibold text-gray-700">{hostInfo?.name || `User ${event.hostUserId?.slice(0, 6) || 'Unknown'}`}</span>
-          </span>
-          {/* Date and time */}
-          <span className="flex items-center mb-1">
-            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <rect x="3" y="4" width="18" height="18" rx="4"/>
-              <line x1="16" y1="2" x2="16" y2="6"/>
-              <line x1="8" y1="2" x2="8" y2="6"/>
-              <line x1="3" y1="10" x2="21" y2="10"/>
-            </svg>
-            {formatDateTime(event.date, event.time)}
-          </span>
-          {/* Show location under date/time */}
-          <span className="flex items-center">
-            <LocationIcon className="text-black mr-1" size={18} />
-            {event.location}
-          </span>
-        </div>
-        <div className="flex items-center justify-between mt-2">
-          {/* Always show fee per player */}
-          <div className="text-xl font-bold text-gray-900">{fee} <span className="text-sm font-normal text-gray-500">/player</span></div>
-          <button className="bg-red-500 text-white px-4 py-2 rounded-full font-semibold hover:bg-red-600 text-sm">Register now</button>
-        </div>
-      </div>
-    </div>
+      {showLoginModal && (
+        <LoginPromptModal onClose={() => setShowLoginModal(false)} />
+      )}
+    </>
   );
 };
 
@@ -313,7 +335,7 @@ const HostedEventCard = ({ event }) => {
         <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="4"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         {formatDateTime(event.date, event.time)} <span className="mx-2">{event.location}</span>
       </div>
-      <div className="text-gray-700 text-sm mb-3">{event.registeredPlayers || 0} / {event.maxParticipants || event.maxPlayers} Registered</div>
+      <div className="text-gray-700 text-sm mb-3">{(event.currentParticipantCount !== undefined ? event.currentParticipantCount : (event.registeredPlayers || 0))} / {event.maxParticipants || event.maxPlayers} Registered</div>
       {/* Removed View Players button */}
     </div>
   );
@@ -406,7 +428,7 @@ const ParticipatingEventCard = ({ event, onDeregister }) => {
         <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="4"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         {formatDateTime(event.date, event.time)} <span className="mx-2">{event.location}</span>
       </div>
-      <div className="text-gray-700 text-sm mb-3">{event.registeredPlayers || 0} / {event.maxParticipants || event.maxPlayers} Registered</div>
+      <div className="text-gray-700 text-sm mb-3">{(event.currentParticipantCount !== undefined ? event.currentParticipantCount : (event.registeredPlayers || 0))} / {event.maxParticipants || event.maxPlayers} Registered</div>
       <div className="flex items-center justify-between">
         <div className="text-lg font-bold text-gray-900">{event.participationFee || 'Free'} <span className="text-sm font-normal text-gray-500">/player</span></div>
         <button
@@ -521,6 +543,7 @@ const EventsPage = () => {
   const { isAuthenticated } = useAuthStore(); // Get the authentication status
   const navigate = useNavigate(); // Initialize navigate hook
   const [activeTab, setActiveTab] = useState('available');
+  const [showLoginModal, setShowLoginModal] = useState(false);
   // Hosted tab modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedParticipants, setSelectedParticipants] = useState([]);
@@ -556,9 +579,36 @@ const EventsPage = () => {
     };
   }, []);
 
+  // Handle tab changes with authentication check
+  const handleTabChange = (tabKey) => {
+    if ((tabKey === 'my' || tabKey === 'participating') && !isAuthenticated) {
+      setShowLoginModal(true);
+      return;
+    }
+    setActiveTab(tabKey);
+  };
+
   // Fetch data based on active tab
   useEffect(() => {
     const fetchData = async () => {
+      // Allow fetching available events for all users (public)
+      if (activeTab === 'available') {
+        setLoading(true);
+        setError('');
+        
+        try {
+          const eventsData = await eventsApi.getEvents();
+          setEvents((eventsData.events || []).map(e => ({ ...e, id: e.eventId, eventId: e.eventId })));
+        } catch (err) {
+          console.error('Error fetching events:', err);
+          setError('Failed to load events. Please try again.');
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
+      
+      // Require authentication for hosted and participating tabs
       if (!isAuthenticated) return;
       
       setLoading(true);
@@ -566,10 +616,6 @@ const EventsPage = () => {
       
       try {
         switch (activeTab) {
-          case 'available':
-            const eventsData = await eventsApi.getEvents();
-            setEvents((eventsData.events || []).map(e => ({ ...e, id: e.eventId, eventId: e.eventId })));
-            break;
           case 'my':
             const hostedData = await eventsApi.getMyHostedEvents();
             setHostedEvents((hostedData.events || []).map(e => ({ ...e, id: e.eventId, eventId: e.eventId })));
@@ -654,16 +700,6 @@ const EventsPage = () => {
 
   return (
     <div className="events-page-container">
-      {/* Sign In Button (conditionally rendered) */}
-      {!isAuthenticated && (
-        <button
-          className="sign-in-button"
-          onClick={handleSignInClick}
-        >
-          Sign In
-        </button>
-      )}
-
       {/* Tab Header */}
       <div className="flex justify-center gap-2 my-6">
         {tabOptions.map(tab => (
@@ -674,7 +710,7 @@ const EventsPage = () => {
                 ? 'bg-red-500 text-white border-red-500 hover:bg-red-600'
                 : 'bg-white text-red-600 border-red-500 hover:bg-red-100'}`}
             style={{ flexGrow: 1 }}
-            onClick={() => setActiveTab(tab.key)}
+            onClick={() => handleTabChange(tab.key)}
           >
             {tab.label}
           </button>
@@ -846,6 +882,11 @@ const EventsPage = () => {
           </div>
         )}
       </div>
+      
+      {/* Login Modal */}
+      {showLoginModal && (
+        <LoginPromptModal onClose={() => setShowLoginModal(false)} />
+      )}
     </div>
   );
 };

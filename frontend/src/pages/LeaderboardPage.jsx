@@ -6,6 +6,7 @@ import { calculateAge, getLevelFromXP, getXPProgress, getXPDetails } from '../ut
 import ChallengeLoader from '../components/common/ChallengeLoader';
 import { useNavigate } from 'react-router-dom';
 import { createProfileUrl } from '../utils/profileUrlUtils';
+import { useAuthStore } from '../stores/useAuthStore';
 
 const medalColors = [
   'from-yellow-400 to-yellow-600 border-yellow-400', // Gold
@@ -250,6 +251,13 @@ const athleteSortOptions = [
 ];
 
 const LeaderboardPage = () => {
+  const { isAuthenticated } = useAuthStore();
+
+  if (!isAuthenticated) {
+    // Don't render or fetch anything if not authenticated
+    return null;
+  }
+
   const [topThreeUsers, setTopThreeUsers] = useState([]);
   const [restUsers, setRestUsers] = useState([]);
   const [loading, setLoading] = useState(true);

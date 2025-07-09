@@ -1,6 +1,6 @@
 // frontend/src/components/layout/BottomNavBar.jsx
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { 
     IoHomeOutline, IoHome, 
@@ -12,6 +12,7 @@ import { LiaClipboardCheckSolid, LiaClipboardSolid } from "react-icons/lia";
 import { FaPlus } from 'react-icons/fa';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useCreatePostStore } from '../../stores/useCreatePostStore';
+import LoginPromptModal from '../common/LoginPromptModal';
 
 import navBackground from '../../assets/nav-bg-responsive.svg';
 import scoutDashboardIcon from '../../assets/scout-dashboard-icon.png';
@@ -21,6 +22,7 @@ const BottomNavBar = () => {
     const { openCreateModal } = useCreatePostStore();
     const userRole = isAuthenticated && user ? user.role : null; 
     const navigate = useNavigate();
+    const [showLoginModal, setShowLoginModal] = useState(false);
 
     const navContainerStyle = {
         backgroundImage: `url(${navBackground})`,
@@ -47,6 +49,7 @@ const BottomNavBar = () => {
     };
 
     return (
+        <>
         <nav className="nav-container" style={navContainerStyle}>
             {navItems.map((item, index) => {
                 if (item.isCenter) {
@@ -54,7 +57,13 @@ const BottomNavBar = () => {
                         return (
                             <button
                                 key={index}
-                                onClick={() => openCreateModal('post')}
+                                onClick={() => {
+                                    if (!isAuthenticated) {
+                                        setShowLoginModal(true);
+                                    } else {
+                                        openCreateModal('post');
+                                    }
+                                }}
                                 className="nav-center-button"
                                 aria-label={item.label}
                             >
@@ -98,6 +107,8 @@ const BottomNavBar = () => {
                 );
             })}
         </nav>
+        {showLoginModal && <LoginPromptModal onClose={() => setShowLoginModal(false)} />}
+        </>
     );
 };
 
