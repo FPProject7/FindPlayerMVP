@@ -20,6 +20,8 @@ import NotificationsPage from './pages/NotificationsPage'; // <--- New page impo
 import MessagesPage from './pages/MessagesPage';         // <--- New page import
 // --- END NEW ---
 import ReviewSubmissionPage from './pages/challenges/ReviewModal';
+import EventDetailPage from './pages/EventDetailPage';
+import HostedEventsPage from './pages/HostedEventsPage';
 
 // ProtectedRoute Component (remains unchanged)
 const ProtectedRoute = ({ children }) => {
@@ -61,7 +63,9 @@ function App() {
     const isAuthRelatedPath = authRelatedPaths.includes(location.pathname);
     // Allow /profile/:role/:profileUserId as public (regex match)
     const isProfileUserPage = /^\/profile\/(athlete|coach|scout)\/[^/]+$/.test(location.pathname);
-    const isTrulyPublicPage = trulyPublicPages.includes(location.pathname) || isProfileUserPage;
+    // Allow /events/:eventId as public (detailed event view)
+    const isEventDetailPage = /^\/events\/[^/]+$/.test(location.pathname);
+    const isTrulyPublicPage = trulyPublicPages.includes(location.pathname) || isProfileUserPage || isEventDetailPage;
     if (!isAuthenticated && !isAuthRelatedPath && !isTrulyPublicPage) {
       setShowModal(true);
     } else {
@@ -82,7 +86,10 @@ function App() {
         <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         {/* Public Content Route - Accessible to all, not blocked by modal */}
-        <Route path="/events" element={<MainLayout><EventsPage /></MainLayout>} />
+        <Route path="/events" element={<MainLayout />}>
+          <Route index element={<EventsPage />} />
+          <Route path=":eventId" element={<EventDetailPage />} />
+        </Route>
         
         {/* Main Application Content Routes (Viewable with modal if unauthenticated) */}
         <Route element={<MainLayout />}>
@@ -103,6 +110,10 @@ function App() {
             <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} /> {/* <--- New Route */}
             <Route path="/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />
             {/* --- END NEW --- */}
+        </Route>
+
+        <Route path="/my-events" element={<MainLayout />}>
+          <Route index element={<HostedEventsPage />} />
         </Route>
 
         {/* Catch-all route */}

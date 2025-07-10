@@ -240,10 +240,13 @@ export const uploadVideoWithMultipart = async (challengeId, videoFile, onProgres
  */
 export const submitChallenge = async (challengeId, videoUrl) => {
   try {
-    const response = await apiClient.post(API_ENDPOINTS.submitChallenge(challengeId), {
+    // Use ID token for custom claims
+    const authState = useAuthStore.getState();
+    const token = authState.isAuthenticated ? await authState.getValidIdToken() : null;
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const response = await axios.post(API_ENDPOINTS.submitChallenge(challengeId), {
       video_url: videoUrl
-    });
-    
+    }, { headers });
     return response.data;
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Failed to submit challenge');
@@ -271,6 +274,7 @@ export const completeChallengeSubmission = async (challengeId, videoFile) => {
     
     // Step 2: Submit challenge with video URL
     uploadStore.updateStatus(challengeId, 'submitting');
+    // Use ID token for submission
     const submission = await submitChallenge(challengeId, fileUrl);
     
     // Mark as completed

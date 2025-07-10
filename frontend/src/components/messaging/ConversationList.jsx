@@ -248,6 +248,7 @@ export default function ConversationList({ onSelectConversation }) {
         {filtered.map(conv => (
           <div
             key={conv.conversationId}
+            className="conversation-row"
             onClick={() => handleConversationClick(conv)}
             style={{
               display: 'flex',
@@ -276,21 +277,23 @@ export default function ConversationList({ onSelectConversation }) {
                 marginRight: 12,
               }}>{getInitials(conv.otherUserName)}</div>
             )}
-            <div style={{ flex: 1 }}>
+            <div className="conversation-main" style={{ flex: 1 }}>
               <div style={{ 
                 fontWeight: conv.unreadCount > 0 ? 700 : 600,
                 color: conv.unreadCount > 0 ? '#1f2937' : '#374151'
               }}>
                 {conv.otherUserName}
               </div>
-              <div style={{ 
+              <div className="conversation-message-text" style={{ 
                 color: conv.unreadCount > 0 ? '#1f2937' : '#888', 
                 fontSize: 13, 
                 marginTop: 2, 
                 whiteSpace: 'nowrap', 
                 overflow: 'hidden', 
                 textOverflow: 'ellipsis',
-                fontWeight: conv.unreadCount > 0 ? 600 : 400
+                fontWeight: conv.unreadCount > 0 ? 600 : 400,
+                width: '100%',
+                maxWidth: 180
               }}>
                 {conv.lastMessageContent && conv.lastMessageContent.length > 50
                   ? conv.lastMessageContent.slice(0, 50) + '...'

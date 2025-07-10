@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { likePost } from '../../api/postApi';
 import { useAuthStore } from '../../stores/useAuthStore';
 import CommentModal from './CommentModal';
+import { useNavigate } from 'react-router-dom';
+import { createProfileUrl } from '../../utils/profileUrlUtils';
 
 const PostCard = ({ post, onLikeUpdate }) => {
   const [isLiking, setIsLiking] = useState(false);
@@ -13,6 +15,7 @@ const PostCard = ({ post, onLikeUpdate }) => {
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
   const user = useAuthStore((state) => state.user);
   const [imageAspect, setImageAspect] = useState(null); // null, 'vertical', or 'horizontal'
+  const navigate = useNavigate();
 
   // Defensive handling for missing user object
   const userObj = post.user || {
@@ -20,6 +23,11 @@ const PostCard = ({ post, onLikeUpdate }) => {
     profilePictureUrl: post.profile_picture_url || post.profilePictureUrl || null
   };
   const userName = userObj.name || post.user_name || post.username || 'Unknown User';
+  const userRole = userObj.role || post.role || 'athlete';
+  const handleProfileClick = (e) => {
+    e.stopPropagation();
+    navigate(createProfileUrl(userName, userRole));
+  };
   
   // Use a more stable approach for profile picture
   const userProfilePicture = imageError || !userObj.profilePictureUrl
@@ -90,11 +98,12 @@ const PostCard = ({ post, onLikeUpdate }) => {
           <img
             src={userProfilePicture}
             alt={userName}
-            className="w-10 h-10 rounded-full object-cover mr-3"
+            className="w-10 h-10 rounded-full object-cover mr-3 cursor-pointer hover:opacity-80 transition"
             onError={() => setImageError(true)}
+            onClick={handleProfileClick}
           />
           <div className="flex-1">
-            <div className="font-semibold text-gray-900">{userName}</div>
+            <div className="font-semibold text-gray-900 cursor-pointer hover:underline" onClick={handleProfileClick}>{userName}</div>
             <div className="text-sm text-gray-500">{formatTimeAgo(createdAt)}</div>
           </div>
         </div>

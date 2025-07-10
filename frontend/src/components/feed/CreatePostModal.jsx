@@ -1,7 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { createPost } from '../../api/postApi';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { useCreatePostStore } from '../../stores/useCreatePostStore';
 import { createPortal } from 'react-dom';
+import CreateEventForm from './CreateEventForm';
 
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
 const MAX_VIDEO_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
@@ -22,6 +24,19 @@ const CreatePostModal = ({ isOpen, onClose, onPostCreated }) => {
   const user = useAuthStore((state) => state.user);
   const fileInputRef = useRef(null);
   const videoInputRef = useRef(null);
+  const { activeTab, setActiveTab } = useCreatePostStore();
+
+  // Prevent background scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
 
   const handleImageChange = (e) => {
     setImageError('');
@@ -207,183 +222,209 @@ const CreatePostModal = ({ isOpen, onClose, onPostCreated }) => {
   if (!isOpen) return null;
 
   const modalContent = (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold">Create Post</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 text-2xl"
-            disabled={isLoading}
-          >
-            ×
-          </button>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-1">
+      <div className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto relative">
+        {/* Close button in top right inside modal */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl z-10"
+          disabled={isLoading}
+        >
+          ×
+        </button>
+        {/* Tab Header - always visible */}
+        <div className="flex flex-col items-center mb-4">
+          <div className="flex w-full justify-center space-x-3 mb-2 mt-2">
+            <button
+              className={`flex-1 max-w-[140px] py-2 rounded-full border-2 font-bold text-sm uppercase transition-colors duration-200
+                ${activeTab === 'post'
+                  ? 'bg-red-500 text-white border-red-500 hover:bg-red-600'
+                  : 'bg-white text-red-600 border-red-500 hover:bg-red-100'}`}
+              onClick={() => setActiveTab('post')}
+              disabled={isLoading}
+            >
+              Create Post
+            </button>
+            <button
+              className={`flex-1 max-w-[140px] py-2 rounded-full border-2 font-bold text-sm uppercase transition-colors duration-200
+                ${activeTab === 'event'
+                  ? 'bg-red-500 text-white border-red-500 hover:bg-red-600'
+                  : 'bg-white text-red-600 border-red-500 hover:bg-red-100'}`}
+              onClick={() => setActiveTab('event')}
+              disabled={isLoading}
+            >
+              Create Event
+            </button>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <textarea
-              value={content}
-              onChange={(e) => {
-                if (e.target.value.length <= 500) setContent(e.target.value);
-              }}
-              placeholder="What's on your mind?"
-              className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-              rows="4"
-              maxLength={500}
-              disabled={isLoading}
-            />
-            <div className="text-right text-xs text-gray-500 mt-1">
-              {content.length}/500 characters
-            </div>
-          </div>
-
-          {/* Image Upload Section */}
-          <div className="mb-4">
-            <label htmlFor="image-upload" className="block text-sm font-medium text-gray-700 mb-2">
-              Add Image (optional)
-            </label>
-            <input
-              ref={fileInputRef}
-              id="image-upload"
-              type="file"
-              accept="image/*"
-              onChange={handleImageChange}
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-[#dc2626] file:hover:bg-[#b91c1c] file:text-white"
-              disabled={isLoading}
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Maximum file size: 2MB. Supported formats: JPG, PNG, GIF
-            </p>
-          </div>
-
-          {/* Video Upload Section */}
-          <div className="mb-4">
-            <label htmlFor="video-upload" className="block text-sm font-medium text-gray-700 mb-2">
-              Add Video (optional)
-            </label>
-            <input
-              ref={videoInputRef}
-              id="video-upload"
-              type="file"
-              accept="video/*"
-              onChange={handleVideoChange}
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-[#dc2626] file:hover:bg-[#b91c1c] file:text-white"
-              disabled={isLoading}
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Maximum file size: 50MB. Supported formats: MP4, WebM, MOV
-            </p>
-          </div>
-
-          {/* Image Preview */}
-          {imagePreview && (
-            <div className="mb-4 relative flex justify-center">
-              <div
-                className="relative w-full max-w-2xl bg-gray-100 border border-gray-300 rounded-lg overflow-hidden"
-                style={{ aspectRatio: '16/9', maxHeight: '350px' }}
-              >
-                <img
-                  src={imagePreview}
-                  alt="Preview"
-                  className="absolute top-0 left-0 w-full h-full object-contain"
-                  style={{ background: '#f3f4f6' }}
-                />
-                <button
-                  type="button"
-                  onClick={removeImage}
-                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600"
-                  disabled={isLoading}
-                >
-                  ×
-                </button>
+        {/* Tab Content */}
+        {activeTab === 'post' ? (
+          <form onSubmit={handleSubmit}>
+            <div className="mb-4">
+              <textarea
+                value={content}
+                onChange={(e) => {
+                  if (e.target.value.length <= 500) setContent(e.target.value);
+                }}
+                placeholder="What's on your mind?"
+                className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows="4"
+                maxLength={500}
+                disabled={isLoading}
+              />
+              <div className="text-right text-xs text-gray-500 mt-1">
+                {content.length}/500 characters
               </div>
             </div>
-          )}
 
-          {/* Video Preview */}
-          {videoPreview && (
-            <div className="mb-4 relative flex justify-center">
-              <div className="relative w-full max-w-2xl bg-gray-100 border border-gray-300 rounded-lg overflow-hidden">
-                <video
-                  src={videoPreview}
-                  controls
-                  className="w-full h-auto max-h-64 object-contain"
-                  style={{ background: '#f3f4f6' }}
-                />
-                <button
-                  type="button"
-                  onClick={removeVideo}
-                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600"
-                  disabled={isLoading}
-                >
-                  ×
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* File Info */}
-          {videoFile && (
-            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
-              <p className="text-sm text-green-800">
-                <strong>Selected Video:</strong> {videoFile.name} ({(videoFile.size / (1024 * 1024)).toFixed(2)} MB)
+            {/* Image Upload Section */}
+            <div className="mb-4">
+              <label htmlFor="image-upload" className="block text-sm font-medium text-gray-700 mb-2">
+                Add Image (optional)
+              </label>
+              <input
+                ref={fileInputRef}
+                id="image-upload"
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-[#dc2626] file:hover:bg-[#b91c1c] file:text-white"
+                disabled={isLoading}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Maximum file size: 2MB. Supported formats: JPG, PNG, GIF
               </p>
             </div>
-          )}
 
-          {/* Upload Progress */}
-          {isUploading && (
+            {/* Video Upload Section */}
             <div className="mb-4">
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
-                  className="bg-red-600 h-2 rounded-full transition-all duration-300 ease-out"
-                  style={{ width: `${uploadProgress}%` }}
-                ></div>
+              <label htmlFor="video-upload" className="block text-sm font-medium text-gray-700 mb-2">
+                Add Video (optional)
+              </label>
+              <input
+                ref={videoInputRef}
+                id="video-upload"
+                type="file"
+                accept="video/*"
+                onChange={handleVideoChange}
+                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-[#dc2626] file:hover:bg-[#b91c1c] file:text-white"
+                disabled={isLoading}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Maximum file size: 50MB. Supported formats: MP4, WebM, MOV
+              </p>
+            </div>
+
+            {/* Image Preview */}
+            {imagePreview && (
+              <div className="mb-4 relative flex justify-center">
+                <div
+                  className="relative w-full max-w-2xl bg-gray-100 border border-gray-300 rounded-lg overflow-hidden"
+                  style={{ aspectRatio: '16/9', maxHeight: '350px' }}
+                >
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="absolute top-0 left-0 w-full h-full object-contain"
+                    style={{ background: '#f3f4f6' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={removeImage}
+                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600"
+                    disabled={isLoading}
+                  >
+                    ×
+                  </button>
+                </div>
               </div>
-              <div className="text-sm text-gray-600 mt-1 text-center">
-                Processing video... {uploadProgress}%
+            )}
+
+            {/* Video Preview */}
+            {videoPreview && (
+              <div className="mb-4 relative flex justify-center">
+                <div className="relative w-full max-w-2xl bg-gray-100 border border-gray-300 rounded-lg overflow-hidden">
+                  <video
+                    src={videoPreview}
+                    controls
+                    className="w-full h-auto max-h-64 object-contain"
+                    style={{ background: '#f3f4f6' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={removeVideo}
+                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600"
+                    disabled={isLoading}
+                  >
+                    ×
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Error Messages */}
-          {imageError && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
-              {imageError}
-            </div>
-          )}
+            {/* File Info */}
+            {videoFile && (
+              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
+                <p className="text-sm text-green-800">
+                  <strong>Selected Video:</strong> {videoFile.name} ({(videoFile.size / (1024 * 1024)).toFixed(2)} MB)
+                </p>
+              </div>
+            )}
 
-          {videoError && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
-              {videoError}
-            </div>
-          )}
+            {/* Upload Progress */}
+            {isUploading && (
+              <div className="mb-4">
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-red-600 h-2 rounded-full transition-all duration-300 ease-out"
+                    style={{ width: `${uploadProgress}%` }}
+                  ></div>
+                </div>
+                <div className="text-sm text-gray-600 mt-1 text-center">
+                  Processing video... {uploadProgress}%
+                </div>
+              </div>
+            )}
 
-          {error && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-              {error}
-            </div>
-          )}
+            {/* Error Messages */}
+            {imageError && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
+                {imageError}
+              </div>
+            )}
+            {videoError && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
+                {videoError}
+              </div>
+            )}
+            {error && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                {error}
+              </div>
+            )}
 
-          <div className="flex justify-end space-x-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="border-2 border-red-500 text-red-600 bg-white rounded-full font-bold px-6 py-2 hover:bg-red-50 transition-colors duration-200"
-              disabled={isLoading}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="bg-[#dc2626] hover:bg-[#b91c1c] text-white rounded-full font-bold px-6 py-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isLoading || !content.trim() || isUploading}
-            >
-              {isLoading ? 'Posting...' : 'Post'}
-            </button>
-          </div>
-        </form>
+            <div className="flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="border-2 border-red-500 text-red-600 bg-white rounded-full font-bold px-6 py-2 hover:bg-red-50 transition-colors duration-200"
+                disabled={isLoading}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="bg-[#dc2626] hover:bg-[#b91c1c] text-white rounded-full font-bold px-6 py-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isLoading || !content.trim() || isUploading}
+              >
+                {isLoading ? 'Posting...' : 'Post'}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <CreateEventForm onClose={onClose} />
+        )}
       </div>
     </div>
   );

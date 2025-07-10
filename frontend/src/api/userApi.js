@@ -119,6 +119,22 @@ export const awardXP = (userId, challengeId, submissionId, points, earnedFor) =>
   });
 };
 
+// Get user info by userId
+export const getUserInfo = async (userId) => {
+  try {
+    const response = await getInfoUser(userId);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching user info:', error);
+    // Return fallback data if user not found
+    return {
+      id: userId,
+      name: `User ${userId.slice(0, 6)}`,
+      profilePictureUrl: null
+    };
+  }
+};
+
 export const SEARCH_USERS = gql`
   query SearchUsers($query: String!) {
     searchUsers(query: $query) {
@@ -233,5 +249,3 @@ export const updateStreak = async (userId) => {
     throw error;
   }
 };
-
-

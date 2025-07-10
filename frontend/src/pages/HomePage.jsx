@@ -54,19 +54,18 @@ const HomePage = () => {
   }, [user?.id]);
 
   const handlePostCreated = (newPost) => {
-    // Attach current user info to the new post for consistency
-    const postWithUser = {
+    setPosts(prev => [{
       ...newPost,
       user: {
+        id: user?.id,
         name: user?.name || user?.firstName || 'Unknown User',
         profilePictureUrl: user?.profilePictureUrl || null,
+        role: user?.role || 'athlete',
       },
       likesCount: 0,
       isLiked: false,
       commentsCount: 0
-    };
-    
-    setPosts(prev => [postWithUser, ...prev]);
+    }, ...prev]);
   };
 
   const handleLikeUpdate = (postId, isLiked, likesCount) => {
@@ -147,8 +146,8 @@ const HomePage = () => {
         <div className="flex justify-center items-center py-4 text-gray-500">
           {pullDistance >= PULL_THRESHOLD ? (
             <div className="flex items-center">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500 mr-2"></div>
-              Release to refresh
+              <ChallengeLoader />
+              <span className="ml-2">Release to refresh</span>
             </div>
           ) : (
             <div className="flex items-center">
@@ -161,8 +160,8 @@ const HomePage = () => {
 
       {refreshing && (
         <div className="flex justify-center items-center py-2 text-gray-500">
-          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500 mr-2"></div>
-          Refreshing feed...
+          <ChallengeLoader />
+          <span className="ml-2">Refreshing feed...</span>
         </div>
       )}
 

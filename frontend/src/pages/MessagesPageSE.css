@@ -1,0 +1,15 @@
+@media (max-width: 375px) {
+  .conversation-message-text {
+    max-width: 70px !important;
+    width: 70px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    display: block !important;
+  }
+  .conversation-main {
+    max-width: 70px !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+} 

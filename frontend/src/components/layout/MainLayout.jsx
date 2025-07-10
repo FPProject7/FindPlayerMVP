@@ -8,8 +8,11 @@ import './Layout.css';
 import { useCreatePostStore } from '../../stores/useCreatePostStore';
 import CreatePostModal from '../feed/CreatePostModal';
 
+const libraries = ['places', 'geometry'];
+
 const MainLayout = () => {
   const { isCreateModalOpen, closeCreateModal } = useCreatePostStore();
+  
   return (
     <div className="main-layout">
       <TopNavBar /> {/* <--- Render the new TopNavBar here */}

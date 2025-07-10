@@ -1,0 +1,14 @@
+{
+  "name": "list-registered-players",
+  "version": "1.0.0",
+  "description": "Lambda function to list players registered for an event.",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "test": "echo \"No tests yet\""
+  },
+  "dependencies": {
+    "aws-sdk": "^2.1485.0",
+    "dotenv": "^16.3.1"
+  }
+} 

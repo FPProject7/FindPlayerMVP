@@ -158,7 +158,10 @@ exports.handler = async (event) => {
       },
       body: JSON.stringify({
         message: 'Post created successfully',
-        post: result.rows[0]
+        post: {
+          ...result.rows[0],
+          video_url: videoUrl || result.rows[0].video_url || null
+        }
       })
     };
 

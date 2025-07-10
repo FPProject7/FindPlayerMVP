@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import ConversationList from '../components/messaging/ConversationList';
 import ChatWindow from '../components/messaging/ChatWindow';
+import './MessagesPageSE.css';
 
 export default function MessagesPage() {
   const [isChatOpen, setIsChatOpen] = useState(false);
