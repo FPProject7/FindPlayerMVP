@@ -171,18 +171,50 @@ exports.handler = async (event) => {
     // Wait for all XP calls to finish (but don't block main logic on error)
     await Promise.all(xpCalls);
 
+    // If approved, update streak if this is the first approved submission for the athlete today
+    if (action === "approve") {
+      // Check if athlete already has an approved submission for today (excluding this one)
+      const today = new Date().toISOString().slice(0, 10);
+      const approvedTodayRes = await client.query(
+        `SELECT 1 FROM challenge_submissions WHERE athlete_id = $1 AND status = 'approved' AND DATE(reviewed_at) = $2 AND id != $3`,
+        [submission.athlete_id, today, submissionId]
+      );
+      if (approvedTodayRes.rowCount === 0) {
+        // Inline streak logic
+        const streakRes = await client.query(
+          'SELECT current_streak, last_streak_date FROM users WHERE id = $1',
+          [submission.athlete_id]
+        );
+        if (streakRes.rowCount > 0) {
+          const { current_streak, last_streak_date } = streakRes.rows[0];
+          const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+          let newStreak = 1;
+          if (last_streak_date === today) {
+            newStreak = current_streak;
+          } else if (last_streak_date === yesterday) {
+            newStreak = current_streak + 1;
+          }
+          await client.query(
+            'UPDATE users SET current_streak = $1, last_streak_date = $2 WHERE id = $3',
+            [newStreak, today, submission.athlete_id]
+          );
+        }
+      }
+    }
+
     // --- Notification for athlete ---
     // Insert notification for athlete about review
     await client.query(
-      `INSERT INTO notifications (type, from_user_id, to_user_id, challenge_id, submission_id, review_result, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+      `INSERT INTO notifications (type, from_user_id, to_user_id, challenge_id, submission_id, review_result, is_read, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
       [
         'challenge_review',
         coachId,
         submission.athlete_id,
         submission.challenge_id,
         submissionId,
-        action // 'approve' or 'deny'
+        action, // 'approve' or 'deny'
+        false
       ]
     );
 

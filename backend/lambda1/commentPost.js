@@ -65,9 +65,9 @@ exports.handler = async (event) => {
     // Add notification if not commenting on own post
     if (userId !== postOwnerId) {
       await client.query(
-        `INSERT INTO notifications (type, from_user_id, to_user_id, created_at)
-         VALUES ($1, $2, $3, NOW())`,
-        ['comment_post', userId, postOwnerId]
+        `INSERT INTO notifications (type, from_user_id, to_user_id, is_read, created_at)
+         VALUES ($1, $2, $3, $4, NOW())`,
+        ['comment_post', userId, postOwnerId, false]
       );
     }
 

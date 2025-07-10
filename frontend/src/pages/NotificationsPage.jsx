@@ -3,10 +3,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FollowButton from '../components/common/FollowButton';
-import { followUser, unfollowUser, getNotifications, checkFollowing } from '../api/followApi';
+import { followUser, unfollowUser, getNotifications, checkFollowing, markNotificationsRead } from '../api/followApi';
 import { useAuthStore } from '../stores/useAuthStore';
 import ChallengeLoader from '../components/common/ChallengeLoader';
 import { createProfileUrl } from '../utils/profileUrlUtils';
+import './NotificationsPageSE.css';
 
 const PULL_THRESHOLD = 80;
 const MAX_PULL_DISTANCE = 120;
@@ -51,6 +52,16 @@ const NotificationsPage = () => {
       try {
         const res = await getNotifications();
         setNotifications(res.data);
+        
+        // Mark all notifications as read when page is opened
+        if (res.data.length > 0) {
+          try {
+            await markNotificationsRead();
+          } catch (markError) {
+            console.error('Failed to mark notifications as read:', markError);
+          }
+        }
+        
         // Get all unique fromUserIds
         const uniqueFromUserIds = Array.from(new Set(res.data.map(n => n.fromUser.id)));
         const statusMap = {};
@@ -161,7 +172,7 @@ const NotificationsPage = () => {
   };
 
   return (
-    <div className="p-4" ref={containerRef} style={{
+    <div className="p-4 notifications-responsive" ref={containerRef} style={{
       transform: `translateY(${pullDistance}px)`,
       transition: pullDistance === 0 ? 'transform 0.3s ease-out' : 'none'
     }}>
@@ -199,58 +210,110 @@ const NotificationsPage = () => {
                 </>
               );
             } else if (notif.type === 'challenge_review') {
-              message = notif.reviewResult === 'approve'
-                ? 'Your challenge submission was approved.'
-                : 'Your challenge submission was denied.';
+              const challengeName = notif.challengeTitle || 'this challenge';
+              const action = notif.reviewResult === 'approve' ? 'approved' : 'rejected';
+              message = (
+                <>
+                  <span style={{ color: '#dc2626', fontWeight: 600 }}>{challengeName}</span> has been {action}
+                </>
+              );
             } else if (notif.type === 'like_post') {
               message = 'Liked your post.';
             } else if (notif.type === 'comment_post') {
               message = 'Commented on your post.';
             } else if (notif.type === 'follow') {
               message = 'Started following you.';
+            } else if (notif.type === 'profile_view') {
+              message = (
+                <span style={{ fontWeight: 600 }}>
+                  A scout has viewed your profile!
+                </span>
+              );
             } else {
               message = 'Interacted with your content.';
             }
-            return (
-              <div key={notif.id} className="flex items-center bg-white rounded-lg shadow p-4">
-                <div 
-                  className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 font-bold text-xl mr-4 cursor-pointer hover:opacity-80"
-                  onClick={() => handleUserClick(notif.fromUser.name, notif.fromUser.role)}
-                >
-                  {notif.fromUser.profilePictureUrl ? (
-                    <img
-                      src={notif.fromUser.profilePictureUrl}
-                      alt={notif.fromUser.name}
-                      className="w-12 h-12 rounded-full object-cover"
-                    />
-                  ) : (
-                    <span>{notif.fromUser.name.charAt(0)}</span>
-                  )}
-                </div>
-                <div className="flex-1">
-                  <div 
-                    className="font-semibold text-gray-800 cursor-pointer hover:text-red-600 hover:underline"
-                    onClick={() => handleUserClick(notif.fromUser.name, notif.fromUser.role)}
-                  >
-                    {notif.fromUser.name}
+            if (notif.type === 'follow') {
+              return (
+                <div key={notif.id} className="notification-row-modern">
+                  <div className="notification-avatar">
+                    {notif.fromUser.profilePictureUrl ? (
+                      <img
+                        src={notif.fromUser.profilePictureUrl}
+                        alt={notif.fromUser.name}
+                        className="notification-avatar-img"
+                      />
+                    ) : (
+                      <span className="notification-avatar-initial">{notif.fromUser.name.charAt(0)}</span>
+                    )}
                   </div>
-                  <div className="text-gray-500 text-sm">{message}</div>
-                  {notif.createdAt && (
-                    <div className="text-xs text-gray-300">{new Date(notif.createdAt).toLocaleString()}</div>
-                  )}
-                </div>
-                {notif.type === 'follow' && (
-                  <div className="ml-4" style={{ minWidth: 120 }}>
+                  <div className="notification-content">
+                    <div className="notification-username">{notif.fromUser.name}</div>
+                    <div className="notification-message">{message}</div>
+                    {notif.createdAt && (
+                      <div className="notification-date">{new Date(notif.createdAt).toLocaleString()}</div>
+                    )}
+                  </div>
+                  <div className="notification-action">
                     <FollowButton
                       isFollowing={isFollowing}
                       loading={!!loadingMap[notif.id]}
                       onFollow={() => handleFollowBack(notif.id, fromUserId)}
                       onUnfollow={() => handleUnfollow(notif.id, fromUserId)}
+                      className="notification-follow-btn"
                     />
                   </div>
-                )}
-              </div>
-            );
+                </div>
+              );
+            } else {
+              return (
+                <div key={notif.id} className="flex items-center bg-white rounded-lg shadow p-4">
+                  <div 
+                    className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 font-bold text-xl mr-4 cursor-pointer hover:opacity-80"
+                    onClick={() => handleUserClick(notif.fromUser.name, notif.fromUser.role)}
+                  >
+                    {notif.fromUser.profilePictureUrl ? (
+                      <img
+                        src={notif.fromUser.profilePictureUrl}
+                        alt={notif.fromUser.name}
+                        className="w-12 h-12 rounded-full object-cover"
+                      />
+                    ) : (
+                      <span>{notif.fromUser.name.charAt(0)}</span>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div 
+                      className={notif.type === 'profile_view' ? 'font-semibold text-gray-800 cursor-pointer hover:text-red-600 hover:underline' : 'font-semibold text-gray-800 cursor-pointer hover:text-red-600 hover:underline'}
+                      style={notif.type === 'profile_view' ? { fontWeight: 700, cursor: 'pointer' } : {}}
+                      onClick={() => handleUserClick(notif.fromUser.name, notif.fromUser.role)}
+                    >
+                      {notif.fromUser.name}
+                    </div>
+                    <div className={notif.type === 'profile_view' ? 'text-gray-800' : 'text-gray-500 text-sm'} style={notif.type === 'profile_view' ? { fontWeight: 600 } : {}}>{message}</div>
+                    {notif.createdAt && (
+                      <div className="text-xs text-gray-300">{new Date(notif.createdAt).toLocaleString()}</div>
+                    )}
+                  </div>
+                  {notif.type === 'challenge_review' && (
+                    <div className="ml-4" style={{ minWidth: 80 }}>
+                      {notif.submissionVideoUrl ? (
+                        <video
+                          src={notif.submissionVideoUrl}
+                          className="w-16 h-16 object-cover rounded-lg"
+                          style={{ minWidth: 64, minHeight: 64 }}
+                          muted
+                          preload="metadata"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center text-gray-400 text-xs">
+                          No video
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            }
           })}
         </div>
       )}

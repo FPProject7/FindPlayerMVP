@@ -74,30 +74,73 @@ export const useAuthStore = create(
         return isExpired;
       },
 
-      // Get valid token (refresh if needed)
+      // Get valid access token (refresh if needed)
       getValidToken: async () => {
         const state = get();
-        
+        if (!state.isAuthenticated || !state.accessToken) {
+          throw new Error('User not authenticated');
+        }
+        if (!state.isTokenExpired()) {
+          return state.accessToken;
+        }
+        // Token is expired, try to refresh
+        return await get().refreshTokenAsync('access');
+      },
+
+      // Get valid ID token (for UI use only)
+      getValidIdToken: async () => {
+        const state = get();
         if (!state.isAuthenticated || !state.token) {
           throw new Error('User not authenticated');
         }
-
         if (!state.isTokenExpired()) {
           return state.token;
         }
-
         // Token is expired, try to refresh
-        return await get().refreshTokenAsync();
+        return await get().refreshTokenAsync('id');
+      },
+
+      // Refresh user profile from Cognito
+      refreshUserProfile: async () => {
+        const state = get();
+        if (!state.isAuthenticated || !state.token) {
+          throw new Error('User not authenticated');
+        }
+        
+        try {
+          // Decode the ID token to get user info (handle URL-safe base64)
+          const base64 = state.token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+          const payload = JSON.parse(atob(base64));
+          const userProfile = {
+            id: payload.sub,
+            name: payload.name,
+            email: payload.email,
+            role: payload['custom:role'],
+            sport: payload['custom:sport'],
+            position: payload['custom:position'],
+            height: payload['custom:height'],
+            country: payload['custom:country'],
+            profilePictureUrl: payload['custom:profilePictureUrl'],
+            isPremiumMember: payload['custom:is_premium_member'] === 'true'
+          };
+          
+          set({
+            user: userProfile
+          });
+          
+          return userProfile;
+        } catch (error) {
+          console.error('Error refreshing user profile:', error);
+          throw error;
+        }
       },
 
       // Refresh token function - RENAMED to avoid conflict
-      refreshTokenAsync: async () => {
+      refreshTokenAsync: async (tokenType = 'access') => {
         const state = get();
-        
         if (!state.refreshToken) {
           throw new Error('No refresh token available');
         }
-
         try {
           const response = await fetch('https://x0pskxuai7.execute-api.us-east-1.amazonaws.com/default/refreshToken', {
             method: 'POST',
@@ -108,23 +151,20 @@ export const useAuthStore = create(
               refreshToken: state.refreshToken
             })
           });
-
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             throw new Error(errorData.message || `Token refresh failed with status: ${response.status}`);
           }
-
           const data = await response.json();
-          
-          // Update tokens with 1 hour expiry
           set({
             token: data.idToken,
             accessToken: data.accessToken,
             refreshToken: data.refreshToken || state.refreshToken,
+            user: state.user, // Preserve user profile information
+            isAuthenticated: state.isAuthenticated, // Preserve authentication state
             tokenExpiry: new Date(Date.now() + 3600000), // 1 hour
           });
-
-          return data.idToken;
+          return tokenType === 'id' ? data.idToken : data.accessToken;
         } catch (error) {
           set({
             token: null,

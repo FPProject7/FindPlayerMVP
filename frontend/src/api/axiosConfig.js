@@ -17,23 +17,9 @@ const eventsApiClient = axios.create({
 apiClient.interceptors.request.use(
   async (config) => {
     try {
+      // Get a valid token (will refresh if needed)
       const token = await useAuthStore.getState().getValidToken();
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-    } catch (error) {
-      // Let the request fail naturally
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
-
-// Request interceptor for events API client
-eventsApiClient.interceptors.request.use(
-  async (config) => {
-    try {
-      const token = await useAuthStore.getState().getValidToken();
+      
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }

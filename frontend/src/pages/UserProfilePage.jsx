@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getInfoUser, getFollowerCount } from '../api/userApi';
+import { getInfoUser, getFollowerCount, trackProfileView } from '../api/userApi';
 import { followUser, unfollowUser, checkFollowing } from '../api/followApi';
 import ChallengeLoader from '../components/common/ChallengeLoader';
 import FollowButton from '../components/common/FollowButton';
@@ -75,22 +75,46 @@ const UserProfilePage = () => {
         }
         
         setProfile(userProfile);
-        // 4. Fetch follower count for the profile user
+        
+        // 4. Track profile view if authenticated and not viewing own profile
+        if (isAuthenticated && currentUserRes && currentUserRes.data.id !== userProfile.id) {
+          console.log('Attempting to track profile view:', {
+            viewerId: currentUserRes.data.id,
+            viewedUserId: userProfile.id,
+            viewerRole: currentUserRes.data.role,
+            viewedUserRole: userProfile.role
+          });
+          try {
+            const result = await trackProfileView(userProfile.id);
+            console.log('Profile view tracked successfully:', result);
+          } catch (error) {
+            console.error('Failed to track profile view:', error);
+            // Don't fail the entire profile load if tracking fails
+          }
+        } else {
+          console.log('Skipping profile view tracking:', {
+            isAuthenticated,
+            hasCurrentUser: !!currentUserRes,
+            isOwnProfile: currentUserRes?.data.id === userProfile.id
+          });
+        }
+        
+        // 5. Fetch follower count for the profile user
         const followerCountRes = await getFollowerCount(userProfile.id);
         setFollowerCount(followerCountRes);
-        // 5. Fetch completed challenges for athletes
+        // 6. Fetch completed challenges for athletes
         if (actualUserRole === 'athlete') {
           const challenges = await fetchChallengesForAthlete(userProfile.id);
           const submitted = Array.isArray(challenges) ? challenges.length : 0;
           setChallengesCompleted(submitted);
         }
-        // 6. Fetch challenges posted by coaches
+        // 7. Fetch challenges posted by coaches
         if (actualUserRole === 'coach') {
           const challenges = await fetchCoachChallenges(userProfile.id);
           const posted = Array.isArray(challenges) ? challenges.length : 0;
           setChallengesCompleted(posted);
         }
-        // 7. Optionally preload follow status (only if authenticated and not viewing own profile)
+        // 8. Optionally preload follow status (only if authenticated and not viewing own profile)
         if (isAuthenticated && currentUserRes && currentUserRes.data.id !== (userProfile.id || decodedProfileId)) {
           const followRes = await checkFollowing(currentUserRes.data.id, userProfile.id);
           setIsFollowing(followRes.data.isFollowing);

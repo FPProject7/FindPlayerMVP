@@ -58,6 +58,35 @@ export const getInfoUser = (userId, username) => {
   return userApiClient.get('/user-info', { params });
 };
 
+// Track profile view and create notifications
+export const trackProfileView = async (viewedUserId) => {
+  console.log('trackProfileView called with:', viewedUserId);
+  const token = await useAuthStore.getState().getValidToken();
+  console.log('Token obtained:', token ? 'Yes' : 'No');
+  
+  try {
+    const response = await axios.post('https://3emgvv0wwc.execute-api.us-east-1.amazonaws.com/trackProfileView', { 
+      viewedUserId 
+    }, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    console.log('trackProfileView response:', response.data);
+    return response;
+  } catch (error) {
+    console.error('trackProfileView error details:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      url: error.config?.url
+    });
+    throw error;
+  }
+};
+
 export { connectionsApiClient };
 
 const PUBLIC_CONNECTIONS_URL = 'https://6gsow5ouw8.execute-api.us-east-1.amazonaws.com/default/getConnections';
@@ -153,10 +182,10 @@ export async function createConversation(otherUserId) {
   return data?.createConversation;
 }
 
-// Function to get leaderboard data
-export const getLeaderboard = (filters = {}) => {
+// Function to get leaderboard data (without streaks)
+export const getLeaderboard = async (filters = {}) => {
+  const token = await useAuthStore.getState().getValidToken();
   const params = new URLSearchParams();
-  
   if (filters.heightMin !== undefined) params.append('heightMin', filters.heightMin);
   if (filters.heightMax !== undefined) params.append('heightMax', filters.heightMax);
   if (filters.country) params.append('country', filters.country);
@@ -171,6 +200,52 @@ export const getLeaderboard = (filters = {}) => {
   if (filters.offset) params.append('offset', filters.offset);
   if (filters.role) params.append('role', filters.role);
   if (filters.gender) params.append('gender', filters.gender);
-  
-  return userApiClient.get(`/leaderboard?${params.toString()}`);
+  return axios.get(`https://bnqn7px198.execute-api.us-east-1.amazonaws.com/prod/leaderboard?${params.toString()}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+};
+
+// Function to get leaderboard data WITH streaks
+export const getLeaderboardWithStreak = async (filters = {}) => {
+  const token = await useAuthStore.getState().getValidToken();
+  const params = new URLSearchParams();
+  if (filters.heightMin !== undefined) params.append('heightMin', filters.heightMin);
+  if (filters.heightMax !== undefined) params.append('heightMax', filters.heightMax);
+  if (filters.country) params.append('country', filters.country);
+  if (filters.sport) params.append('sport', filters.sport);
+  if (filters.position) params.append('position', filters.position);
+  if (filters.ageMin) params.append('ageMin', filters.ageMin);
+  if (filters.ageMax) params.append('ageMax', filters.ageMax);
+  if (filters.timeFrame) params.append('timeFrame', filters.timeFrame);
+  if (filters.sortBy) params.append('sortBy', filters.sortBy);
+  if (filters.sortOrder) params.append('sortOrder', filters.sortOrder);
+  if (filters.limit) params.append('limit', filters.limit);
+  if (filters.offset) params.append('offset', filters.offset);
+  if (filters.role) params.append('role', filters.role);
+  if (filters.gender) params.append('gender', filters.gender);
+  return axios.get(`https://bnout0gpv5.execute-api.us-east-1.amazonaws.com/getLeaderboardWithStreaks?${params.toString()}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+};
+
+// Update updateStreak to use the correct endpoint
+export const updateStreak = async (userId) => {
+  const token = await useAuthStore.getState().getValidToken();
+  try {
+    const response = await axios.post(
+      'https://bnout0gpv5.execute-api.us-east-1.amazonaws.com/updateStreak',
+      { userId },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('updateStreak error:', error);
+    throw error;
+  }
 };

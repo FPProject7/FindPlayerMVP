@@ -1,7 +1,9 @@
 // frontend/src/api/challengeService.js
 
+import axios from 'axios';
 import apiClient from './axiosConfig';
 import useUploadStore from '../stores/useUploadStore';
+import { useAuthStore } from '../stores/useAuthStore';
 
 // API endpoint URLs
 const API_ENDPOINTS = {
@@ -23,9 +25,25 @@ const MAX_CONCURRENT_PARTS = 3; // Upload 3 parts simultaneously
  */
 export const fetchChallenges = async () => {
   try {
-    const response = await apiClient.get(API_ENDPOINTS.getChallenges);
+    // Debug: Check authentication status
+    const authState = useAuthStore.getState();
+    console.log('Auth state:', {
+      isAuthenticated: authState.isAuthenticated,
+      user: authState.user,
+      hasToken: !!authState.token
+    });
+
+    // Always fetch all available challenges for the main list
+    const token = authState.isAuthenticated ? await useAuthStore.getState().getValidIdToken() : null;
+    const headers = token ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } : {};
+    const response = await axios.get('https://stpw2c9b5b.execute-api.us-east-1.amazonaws.com/default/challenges', { headers });
     return response.data;
   } catch (error) {
+    console.error('fetchChallenges error:', {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message
+    });
     throw new Error(error.response?.data?.message || 'Failed to fetch challenges');
   }
 };
@@ -222,10 +240,13 @@ export const uploadVideoWithMultipart = async (challengeId, videoFile, onProgres
  */
 export const submitChallenge = async (challengeId, videoUrl) => {
   try {
-    const response = await apiClient.post(API_ENDPOINTS.submitChallenge(challengeId), {
+    // Use ID token for custom claims
+    const authState = useAuthStore.getState();
+    const token = authState.isAuthenticated ? await authState.getValidIdToken() : null;
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const response = await axios.post(API_ENDPOINTS.submitChallenge(challengeId), {
       video_url: videoUrl
-    });
-    
+    }, { headers });
     return response.data;
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Failed to submit challenge');
@@ -253,6 +274,7 @@ export const completeChallengeSubmission = async (challengeId, videoFile) => {
     
     // Step 2: Submit challenge with video URL
     uploadStore.updateStatus(challengeId, 'submitting');
+    // Use ID token for submission
     const submission = await submitChallenge(challengeId, fileUrl);
     
     // Mark as completed

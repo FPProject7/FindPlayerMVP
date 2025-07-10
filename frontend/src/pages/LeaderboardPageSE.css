@@ -1,0 +1,16 @@
+@media (max-width: 375px) {
+  .se-upsize {
+    font-size: 13px !important;
+  }
+  .se-upsize svg {
+    font-size: 20px !important;
+    height: 20px !important;
+    width: 20px !important;
+  }
+  .se-upsize .font-bold {
+    font-size: 1.1em !important;
+  }
+  .se-upsize .italic {
+    font-size: 1em !important;
+  }
+} 

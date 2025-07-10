@@ -50,6 +50,7 @@ exports.handler = async (event) => {
           p.user_id,
           p.content,
           p.image_url,
+          p.video_url,
           p.created_at,
           u.name as user_name,
           u.profile_picture_url as user_profile_picture,
@@ -61,7 +62,7 @@ exports.handler = async (event) => {
         LEFT JOIN post_likes pl ON p.id = pl.post_id
         LEFT JOIN post_comments pc ON p.id = pc.post_id
         WHERE p.user_id = $1
-        GROUP BY p.id, p.user_id, p.content, p.image_url, p.created_at, u.name, u.profile_picture_url
+        GROUP BY p.id, p.user_id, p.content, p.image_url, p.video_url, p.created_at, u.name, u.profile_picture_url
         ORDER BY p.created_at DESC
         LIMIT $2 OFFSET $3
       `
@@ -71,6 +72,7 @@ exports.handler = async (event) => {
           p.user_id,
           p.content,
           p.image_url,
+          p.video_url,
           p.created_at,
           u.name as user_name,
           u.profile_picture_url as user_profile_picture,
@@ -84,7 +86,7 @@ exports.handler = async (event) => {
         WHERE p.user_id = $1 OR p.user_id IN (
           SELECT following_id FROM followers WHERE follower_id = $1
         )
-        GROUP BY p.id, p.user_id, p.content, p.image_url, p.created_at, u.name, u.profile_picture_url
+        GROUP BY p.id, p.user_id, p.content, p.image_url, p.video_url, p.created_at, u.name, u.profile_picture_url
         ORDER BY p.created_at DESC
         LIMIT $2 OFFSET $3
       `;

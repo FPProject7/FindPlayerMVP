@@ -30,6 +30,8 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
   const showBookSession = !isCoach && !isOwnProfile;
 
   const handleBookSession = () => {
+    // Set booking flow flag for persistence across refresh
+    localStorage.setItem('bookingFlow', 'true');
     // Navigate to messaging and open chat modal for this coach
     navigate('/messages', {
       state: {

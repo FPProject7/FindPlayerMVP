@@ -21,12 +21,14 @@ postApiClient.interceptors.request.use(
 );
 
 // Create a new post
-export const createPost = (userId, content, imageBase64 = null, imageContentType = null) => {
+export const createPost = (userId, content, imageBase64 = null, imageContentType = null, videoBase64 = null, videoContentType = null) => {
   return postApiClient.post('/create-post', { 
     userId, 
     content, 
     imageBase64, 
-    imageContentType 
+    imageContentType,
+    videoBase64,
+    videoContentType
   });
 };
 
