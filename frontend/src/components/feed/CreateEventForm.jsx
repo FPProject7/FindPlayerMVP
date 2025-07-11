@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { eventsApi } from '../../api/eventsApi';
+import { useLoadScript } from '@react-google-maps/api';
 
 // Toast for share/copy feedback - exact same as profile page
 const ShareToast = ({ message }) => (
@@ -60,6 +61,8 @@ const DRESS_CODE_LIMIT = 40;
 const PARTICIPATION_FEE_LIMIT = 30;
 const DESCRIPTION_LIMIT = 300;
 
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
+
 const CreateEventForm = ({ onClose }) => {
   const [form, setForm] = useState(initialState);
   const [errors, setErrors] = useState({});
@@ -75,47 +78,20 @@ const CreateEventForm = ({ onClose }) => {
   const [suggestions, setSuggestions] = useState([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [isGoogleMapsReady, setIsGoogleMapsReady] = useState(false);
+  // Use useLoadScript from @react-google-maps/api
+  const { isLoaded, loadError } = useLoadScript({
+    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+    libraries: ['places'],
+  });
 
   // Additional state for event confirmation modal
   const [showShareToast, setShowShareToast] = useState(false);
   const [shareToastMsg, setShareToastMsg] = useState('');
 
-  // Initialize Google Maps services
-  useEffect(() => {
-    const checkGoogleMaps = () => {
-      if (window.google && window.google.maps && window.google.maps.places) {
-        setIsGoogleMapsReady(true);
-        return true;
-      }
-      return false;
-    };
-
-    // Check immediately
-    if (!checkGoogleMaps()) {
-      // If not ready, poll every 100ms
-      const interval = setInterval(() => {
-        if (checkGoogleMaps()) {
-          clearInterval(interval);
-        }
-      }, 100);
-
-      // Cleanup after 10 seconds
-      setTimeout(() => {
-        clearInterval(interval);
-      }, 10000);
-    }
-
-    // Cleanup function
-    return () => {
-      // Cleanup if component unmounts
-    };
-  }, []); // Remove isGoogleMapsReady from dependencies to prevent re-renders
-
   // Debounced search function
   const debouncedSearch = useCallback(
     debounce(async (input) => {
-      if (!input.trim() || !isGoogleMapsReady || input.trim().length < 2) {
+      if (!input.trim() || !isLoaded || input.trim().length < 2) {
         setSuggestions([]);
         setIsLoadingSuggestions(false);
         return;
@@ -162,7 +138,7 @@ const CreateEventForm = ({ onClose }) => {
         setIsLoadingSuggestions(false);
       }
     }, 300),
-    [isGoogleMapsReady]
+    [isLoaded]
   );
 
   // Handle input changes
@@ -171,7 +147,7 @@ const CreateEventForm = ({ onClose }) => {
     setAutocompleteValue(value);
     setForm(prev => ({ ...prev, cityVenue: value }));
     
-    if (isGoogleMapsReady) {
+    if (isLoaded) {
       setShowSuggestions(true);
       
       if (value.trim()) {
@@ -526,12 +502,11 @@ const CreateEventForm = ({ onClose }) => {
                   onChange={handleAutocompleteChange}
                   onFocus={() => setShowSuggestions(true)}
                   onBlur={() => {
-                    // Delay hiding suggestions to allow clicking on them
                     setTimeout(() => setShowSuggestions(false), 200);
                   }}
                   className="w-full border border-gray-300 rounded p-2 focus:outline-none focus:ring-2 focus:ring-red-400"
-                  placeholder={isGoogleMapsReady ? "Search for city and venue" : "Loading Google Maps..."}
-                  disabled={isSubmitting}
+                  placeholder={isLoaded ? "Search for city and venue" : "Loading Google Maps..."}
+                  disabled={isSubmitting || !isLoaded}
                   autoComplete="off"
                 />
                 {isLoadingSuggestions && (

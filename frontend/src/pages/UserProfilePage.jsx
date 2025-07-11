@@ -21,6 +21,7 @@ const UserProfilePage = () => {
   const navigate = useNavigate();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const user = useAuthStore((state) => state.user);
+  const setUser = useAuthStore((state) => state.setUser); // <-- add this line
   const [currentUserId, setCurrentUserId] = useState(null);
   const [isFollowing, setIsFollowing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -75,28 +76,19 @@ const UserProfilePage = () => {
         }
         
         setProfile(userProfile);
+        // If this is the current user's profile, update the global user in the store
+        if (isAuthenticated && currentUserRes && currentUserRes.data.id === userProfile.id) {
+          setUser(userProfile);
+        }
         
         // 4. Track profile view if authenticated and not viewing own profile
         if (isAuthenticated && currentUserRes && currentUserRes.data.id !== userProfile.id) {
-          console.log('Attempting to track profile view:', {
-            viewerId: currentUserRes.data.id,
-            viewedUserId: userProfile.id,
-            viewerRole: currentUserRes.data.role,
-            viewedUserRole: userProfile.role
-          });
           try {
-            const result = await trackProfileView(userProfile.id);
-            console.log('Profile view tracked successfully:', result);
+            await trackProfileView(userProfile.id);
           } catch (error) {
             console.error('Failed to track profile view:', error);
             // Don't fail the entire profile load if tracking fails
           }
-        } else {
-          console.log('Skipping profile view tracking:', {
-            isAuthenticated,
-            hasCurrentUser: !!currentUserRes,
-            isOwnProfile: currentUserRes?.data.id === userProfile.id
-          });
         }
         
         // 5. Fetch follower count for the profile user

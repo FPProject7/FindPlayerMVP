@@ -25,15 +25,8 @@ const MAX_CONCURRENT_PARTS = 3; // Upload 3 parts simultaneously
  */
 export const fetchChallenges = async () => {
   try {
-    // Debug: Check authentication status
-    const authState = useAuthStore.getState();
-    console.log('Auth state:', {
-      isAuthenticated: authState.isAuthenticated,
-      user: authState.user,
-      hasToken: !!authState.token
-    });
-
     // Always fetch all available challenges for the main list
+    const authState = useAuthStore.getState();
     const token = authState.isAuthenticated ? await useAuthStore.getState().getValidIdToken() : null;
     const headers = token ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } : {};
     const response = await axios.get('https://stpw2c9b5b.execute-api.us-east-1.amazonaws.com/default/challenges', { headers });

@@ -145,6 +145,61 @@ exports.handler = async (event) => {
     await client.connect();
     console.log('Lambda - Database connected successfully');
 
+    // Check coach's premium status and quota
+    const userResult = await client.query(
+      'SELECT is_premium_member FROM users WHERE id = $1',
+      [coachId]
+    );
+    
+    if (userResult.rows.length === 0) {
+      await client.end();
+      return {
+        statusCode: 404,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ message: 'Coach not found' })
+      };
+    }
+
+    const isPremium = userResult.rows[0].is_premium_member;
+    const maxChallenges = isPremium ? 5 : 3; // Premium: 5/period, Free: 3/period
+    // Change quota window from 7 days to 5 minutes for testing
+    const minutesBack = 5;
+
+    // Count challenges created in the last 5 minutes
+    const quotaResult = await client.query(
+      `SELECT COUNT(*) as challenge_count 
+       FROM challenges 
+       WHERE coach_id = $1 
+       AND created_at >= NOW() - INTERVAL '${minutesBack} minutes'`,
+      [coachId]
+    );
+
+    const currentCount = parseInt(quotaResult.rows[0].challenge_count);
+    console.log(`Lambda - Coach ${coachId} has created ${currentCount}/${maxChallenges} challenges in the last ${minutesBack} minutes (Premium: ${isPremium})`);
+
+    if (currentCount >= maxChallenges) {
+      await client.end();
+      return {
+        statusCode: 429,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ 
+          message: `Challenge creation quota exceeded. You can create ${maxChallenges} challenges per ${minutesBack}-minute period. Current usage: ${currentCount}/${maxChallenges}`,
+          quota: {
+            current: currentCount,
+            max: maxChallenges,
+            period: `${minutesBack} minutes`,
+            isPremium: isPremium
+          }
+        })
+      };
+    }
+
     const result = await client.query(
       'INSERT INTO challenges (title, description, xp_value, coach_id, image_url) VALUES ($1, $2, $3, $4, $5) RETURNING *',
       [title, description, xp_value, coachId, imageUrl]

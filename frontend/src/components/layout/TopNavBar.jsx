@@ -32,21 +32,12 @@ const TopNavBar = () => {
         return;
       }
       try {
-        console.log('Fetching unread counts...');
         const res = await getUnreadCounts();
-        console.log('Unread counts response:', res.data);
         const { unreadNotificationCount, unreadMessageCount } = res.data;
-        console.log('Setting unread counts:', { unreadNotificationCount, unreadMessageCount });
         setUnreadNotificationCount(unreadNotificationCount || 0);
         setUnreadMessageCount(unreadMessageCount || 0);
         setHasNotifications(unreadNotificationCount > 0);
         setHasUnreadMessages(unreadMessageCount > 0);
-        console.log('Has unread messages:', unreadMessageCount > 0);
-        console.log('State after setting:', { 
-          hasNotifications: unreadNotificationCount > 0, 
-          hasUnreadMessages: unreadMessageCount > 0,
-          unreadMessageCount: unreadMessageCount || 0
-        });
       } catch (error) {
         console.error('Error fetching unread counts:', error);
         setHasNotifications(false);
@@ -62,7 +53,6 @@ const TopNavBar = () => {
     
     // Listen for custom events to refresh unread counts
     const handleMessagesRead = () => {
-      console.log('Messages read event received, refreshing unread counts...');
       fetchUnreadCounts();
     };
     

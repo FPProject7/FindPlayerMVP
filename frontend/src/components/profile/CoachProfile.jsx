@@ -3,9 +3,10 @@ import ProfileHeader from './ProfileHeader';
 import ProfileTabs from './ProfileTabs';
 import { useNavigate } from 'react-router-dom';
 import FollowersModal from './FollowersModal';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '../../stores/useAuthStore';
 import UpgradePremiumButton from './UpgradePremiumButton';
+import { getFollowerCount } from '../../api/userApi';
 
 const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFollow, onUnfollow, connections, challengesUploaded }) => {
   const {
@@ -17,6 +18,7 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
   } = profile;
 
   const [showFollowers, setShowFollowers] = useState(false);
+  const [connectionsCount, setConnectionsCount] = useState(connections);
   const navigate = useNavigate();
   const logout = useAuthStore((state) => state.logout);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -28,6 +30,20 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
   const isCoach = (role || '').toLowerCase() === 'coach';
   // Placeholder: Assume current user is athlete if not coach
   const showBookSession = !isCoach && !isOwnProfile;
+
+  useEffect(() => {
+    if (profile?.id) {
+      getFollowerCount(profile.id).then(setConnectionsCount).catch(() => setConnectionsCount(0));
+    }
+  }, [profile.id]);
+
+  // When modal closes, refresh count
+  const handleCloseFollowers = () => {
+    setShowFollowers(false);
+    if (profile?.id) {
+      getFollowerCount(profile.id).then(setConnectionsCount).catch(() => {});
+    }
+  };
 
   const handleBookSession = () => {
     // Set booking flow flag for persistence across refresh
@@ -69,10 +85,10 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
               style={{ background: 'none' }}
               onClick={() => setShowFollowers(true)}
             >
-              {connections}
+              {connectionsCount}
             </button>
           ) : (
-            <span className="font-bold text-lg text-gray-600">{connections}</span>
+            <span className="font-bold text-lg text-gray-600">{connectionsCount}</span>
           )}
           <span className="text-xs text-gray-500">Connections</span>
         </div>
@@ -86,10 +102,10 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
         </div>
       </div>
       {isAuthenticated && (
-        <FollowersModal userId={userId} open={showFollowers} onClose={() => setShowFollowers(false)} />
+        <FollowersModal userId={userId} open={showFollowers} onClose={handleCloseFollowers} />
       )}
-      {/* Show Book a Session for athletes viewing a coach profile */}
-      {currentUserRole === 'athlete' && !isOwnProfile && (
+      {/* Show Book a Session for athletes viewing a premium coach profile */}
+      {currentUserRole === 'athlete' && !isOwnProfile && (profile.is_premium_member || profile.isPremiumMember) && (
         <div className="flex justify-center my-4">
           <button
             className="w-full max-w-xl bg-[#dc2626] hover:bg-[#b91c1c] text-white rounded-full px-12 py-3 font-semibold shadow-md transition-colors duration-150 text-lg"

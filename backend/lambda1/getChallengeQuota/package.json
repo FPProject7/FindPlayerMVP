@@ -1,0 +1,21 @@
+{
+  "name": "get-challenge-quota",
+  "version": "1.0.0",
+  "description": "Lambda function to get challenge creation quota for coaches",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "pg": "^8.11.5"
+  },
+  "keywords": [
+    "lambda",
+    "aws",
+    "challenge",
+    "quota",
+    "coach"
+  ],
+  "author": "",
+  "license": "ISC"
+} 

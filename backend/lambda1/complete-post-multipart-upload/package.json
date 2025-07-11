@@ -1,0 +1,21 @@
+{
+  "name": "complete-multipart-upload",
+  "version": "1.0.0",
+  "description": "Lambda function to complete multipart uploads to S3",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.1531.0"
+  },
+  "keywords": [
+    "aws",
+    "lambda",
+    "s3",
+    "multipart",
+    "upload"
+  ],
+  "author": "",
+  "license": "ISC"
+} 

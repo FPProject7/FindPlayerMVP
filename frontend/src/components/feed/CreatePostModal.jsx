@@ -4,26 +4,25 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import { useCreatePostStore } from '../../stores/useCreatePostStore';
 import { createPortal } from 'react-dom';
 import CreateEventForm from './CreateEventForm';
+import { uploadPostVideoWithMultipart } from '../../api/postUploadService';
 
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif'];
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
+const ALLOWED_FILE_TYPES = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_VIDEO_TYPES];
 const MAX_VIDEO_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
 const MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
 
 const CreatePostModal = ({ isOpen, onClose, onPostCreated }) => {
   const [content, setContent] = useState('');
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
-  const [videoFile, setVideoFile] = useState(null);
-  const [videoPreview, setVideoPreview] = useState(null);
+  const [file, setFile] = useState(null);
+  const [filePreview, setFilePreview] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [imageError, setImageError] = useState('');
-  const [videoError, setVideoError] = useState('');
+  const [fileError, setFileError] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const user = useAuthStore((state) => state.user);
   const fileInputRef = useRef(null);
-  const videoInputRef = useRef(null);
   const { activeTab, setActiveTab } = useCreatePostStore();
 
   // Prevent background scroll when modal is open
@@ -38,98 +37,66 @@ const CreatePostModal = ({ isOpen, onClose, onPostCreated }) => {
     };
   }, [isOpen]);
 
-  const handleImageChange = (e) => {
-    setImageError('');
-    const file = e.target.files[0];
+  const handleFileChange = (e) => {
+    setFileError('');
+    const selectedFile = e.target.files[0];
     
-    if (!file) {
-      setImageFile(null);
-      setImagePreview(null);
+    if (!selectedFile) {
+      setFile(null);
+      setFilePreview(null);
       return;
     }
 
     // Validate file type
-    if (!file.type.startsWith('image/')) {
-      setImageError('Only image files are allowed.');
+    if (!ALLOWED_FILE_TYPES.includes(selectedFile.type)) {
+      setFileError('Unsupported file format.');
       return;
     }
 
-    // Validate file size (2MB)
-    if (file.size > MAX_IMAGE_SIZE_BYTES) {
-      setImageError('Image must be less than 2MB.');
+    // Validate file size
+    if (ALLOWED_IMAGE_TYPES.includes(selectedFile.type) && selectedFile.size > MAX_IMAGE_SIZE_BYTES) {
+      setFileError('Image must be less than 2MB.');
+      return;
+    }
+    if (ALLOWED_VIDEO_TYPES.includes(selectedFile.type) && selectedFile.size > MAX_VIDEO_SIZE_BYTES) {
+      setFileError('Video must be less than 50MB.');
       return;
     }
 
-    setImageFile(file);
+    setFile(selectedFile);
     
     // Create preview
     const reader = new FileReader();
-    reader.onloadend = () => setImagePreview(reader.result);
-    reader.readAsDataURL(file);
+    reader.onloadend = () => setFilePreview(reader.result);
+    reader.readAsDataURL(selectedFile);
   };
 
-  const handleVideoChange = (e) => {
-    setVideoError('');
-    const file = e.target.files[0];
-    
-    if (!file) {
-      setVideoFile(null);
-      setVideoPreview(null);
-      return;
-    }
-
-    // Validate file type
-    if (!ALLOWED_VIDEO_TYPES.includes(file.type)) {
-      setVideoError('Unsupported video format. Please use MP4, WebM, or MOV.');
-      e.target.value = null;
-      return;
-    }
-
-    // Validate file size (50MB)
-    if (file.size > MAX_VIDEO_SIZE_BYTES) {
-      setVideoError(`Video file size exceeds ${MAX_VIDEO_SIZE_BYTES / (1024 * 1024)}MB.`);
-      e.target.value = null;
-      return;
-    }
-
-    setVideoFile(file);
-    
-    // Create preview
-    const reader = new FileReader();
-    reader.onloadend = () => setVideoPreview(reader.result);
-    reader.readAsDataURL(file);
-  };
-
-  const removeImage = () => {
-    setImageFile(null);
-    setImagePreview(null);
-    setImageError('');
+  const removeFile = () => {
+    setFile(null);
+    setFilePreview(null);
+    setFileError('');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
-  const removeVideo = () => {
-    setVideoFile(null);
-    setVideoPreview(null);
-    setVideoError('');
-    if (videoInputRef.current) {
-      videoInputRef.current.value = '';
-    }
-  };
-
   const uploadVideoToS3 = async (videoFile) => {
-    // For now, we'll use a simple approach similar to images
-    // In a production environment, you'd want to implement multipart upload for videos
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64 = reader.result.split(',')[1];
-        resolve({ base64, contentType: videoFile.type });
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(videoFile);
-    });
+    // Use multipart upload for videos
+    const postKey = `posts/${user.id}/${Date.now()}-${videoFile.name}`;
+    
+    try {
+      const videoUrl = await uploadPostVideoWithMultipart(
+        'post',
+        videoFile,
+        (progress) => setUploadProgress(progress),
+        postKey
+      );
+      
+      return { videoUrl, contentType: videoFile.type };
+    } catch (error) {
+      console.error('Video upload failed:', error);
+      throw error;
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -155,33 +122,32 @@ const CreatePostModal = ({ isOpen, onClose, onPostCreated }) => {
       let videoContentType = null;
 
       // Convert image to base64 if provided
-      if (imageFile) {
-        imageBase64 = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result.split(',')[1]);
-          reader.onerror = reject;
-          reader.readAsDataURL(imageFile);
-        });
-        imageContentType = imageFile.type;
-      }
-
-      // Convert video to base64 if provided
-      if (videoFile) {
-        setIsUploading(true);
-        setUploadProgress(0);
-        
-        try {
-          const videoData = await uploadVideoToS3(videoFile);
-          videoBase64 = videoData.base64;
-          videoContentType = videoData.contentType;
-          setUploadProgress(100);
-        } catch (videoError) {
-          setError('Failed to process video file. Please try again.');
-          setIsLoading(false);
-          setIsUploading(false);
-          return;
-        } finally {
-          setIsUploading(false);
+      if (file) {
+        if (ALLOWED_IMAGE_TYPES.includes(file.type)) {
+          imageBase64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result.split(',')[1]);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+          imageContentType = file.type;
+        } else if (ALLOWED_VIDEO_TYPES.includes(file.type)) {
+          setIsUploading(true);
+          setUploadProgress(0);
+          
+          try {
+            const videoData = await uploadVideoToS3(file);
+            videoBase64 = videoData.videoUrl; // This is now the S3 URL, not base64
+            videoContentType = videoData.contentType;
+            setUploadProgress(100);
+          } catch (videoError) {
+            setError('Failed to upload video file. Please try again.');
+            setIsLoading(false);
+            setIsUploading(false);
+            return;
+          } finally {
+            setIsUploading(false);
+          }
         }
       }
 
@@ -196,19 +162,8 @@ const CreatePostModal = ({ isOpen, onClose, onPostCreated }) => {
       
       if (response.status === 201) {
         setContent('');
-        setImageFile(null);
-        setImagePreview(null);
-        setVideoFile(null);
-        setVideoPreview(null);
-        setImageError('');
-        setVideoError('');
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-        if (videoInputRef.current) {
-          videoInputRef.current.value = '';
-        }
-        onPostCreated(response.data.post);
+        removeFile();
+        if (onPostCreated) onPostCreated(response.data.post);
         onClose();
       }
     } catch (err) {
@@ -278,82 +233,50 @@ const CreatePostModal = ({ isOpen, onClose, onPostCreated }) => {
               </div>
             </div>
 
-            {/* Image Upload Section */}
+            {/* File Upload Section */}
             <div className="mb-4">
-              <label htmlFor="image-upload" className="block text-sm font-medium text-gray-700 mb-2">
-                Add Image (optional)
+              <label htmlFor="file-upload" className="block text-sm font-medium text-gray-700 mb-2">
+                Add Image or Video (optional)
               </label>
               <input
                 ref={fileInputRef}
-                id="image-upload"
+                id="file-upload"
                 type="file"
-                accept="image/*"
-                onChange={handleImageChange}
+                accept="image/jpeg,image/png,image/gif,video/mp4,video/webm,video/quicktime"
+                onChange={handleFileChange}
                 className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-[#dc2626] file:hover:bg-[#b91c1c] file:text-white"
                 disabled={isLoading}
               />
               <p className="text-xs text-gray-500 mt-1">
-                Maximum file size: 2MB. Supported formats: JPG, PNG, GIF
+                Maximum file size: 2MB for images, 50MB for videos. Supported formats: JPG, PNG, GIF, MP4, WebM, MOV
               </p>
             </div>
 
-            {/* Video Upload Section */}
-            <div className="mb-4">
-              <label htmlFor="video-upload" className="block text-sm font-medium text-gray-700 mb-2">
-                Add Video (optional)
-              </label>
-              <input
-                ref={videoInputRef}
-                id="video-upload"
-                type="file"
-                accept="video/*"
-                onChange={handleVideoChange}
-                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-[#dc2626] file:hover:bg-[#b91c1c] file:text-white"
-                disabled={isLoading}
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Maximum file size: 50MB. Supported formats: MP4, WebM, MOV
-              </p>
-            </div>
-
-            {/* Image Preview */}
-            {imagePreview && (
+            {/* File Preview */}
+            {filePreview && (
               <div className="mb-4 relative flex justify-center">
                 <div
                   className="relative w-full max-w-2xl bg-gray-100 border border-gray-300 rounded-lg overflow-hidden"
                   style={{ aspectRatio: '16/9', maxHeight: '350px' }}
                 >
-                  <img
-                    src={imagePreview}
-                    alt="Preview"
-                    className="absolute top-0 left-0 w-full h-full object-contain"
-                    style={{ background: '#f3f4f6' }}
-                  />
+                  {ALLOWED_IMAGE_TYPES.includes(file?.type) ? (
+                    <img
+                      src={filePreview}
+                      alt="Preview"
+                      className="absolute top-0 left-0 w-full h-full object-contain"
+                      style={{ background: '#f3f4f6' }}
+                    />
+                  ) : (
+                    <video
+                      src={filePreview}
+                      controls
+                      className="w-full h-auto max-h-64 object-contain"
+                      style={{ background: '#f3f4f6' }}
+                    />
+                  )}
                   <button
                     type="button"
-                    onClick={removeImage}
-                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600"
-                    disabled={isLoading}
-                  >
-                    ×
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Video Preview */}
-            {videoPreview && (
-              <div className="mb-4 relative flex justify-center">
-                <div className="relative w-full max-w-2xl bg-gray-100 border border-gray-300 rounded-lg overflow-hidden">
-                  <video
-                    src={videoPreview}
-                    controls
-                    className="w-full h-auto max-h-64 object-contain"
-                    style={{ background: '#f3f4f6' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={removeVideo}
+                    onClick={removeFile}
                     className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600"
                     disabled={isLoading}
                   >
@@ -364,10 +287,10 @@ const CreatePostModal = ({ isOpen, onClose, onPostCreated }) => {
             )}
 
             {/* File Info */}
-            {videoFile && (
+            {file && (
               <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
                 <p className="text-sm text-green-800">
-                  <strong>Selected Video:</strong> {videoFile.name} ({(videoFile.size / (1024 * 1024)).toFixed(2)} MB)
+                  <strong>Selected File:</strong> {file.name} ({(file.size / (1024 * 1024)).toFixed(2)} MB)
                 </p>
               </div>
             )}
@@ -382,20 +305,15 @@ const CreatePostModal = ({ isOpen, onClose, onPostCreated }) => {
                   ></div>
                 </div>
                 <div className="text-sm text-gray-600 mt-1 text-center">
-                  Processing video... {uploadProgress}%
+                  Processing file... {uploadProgress}%
                 </div>
               </div>
             )}
 
             {/* Error Messages */}
-            {imageError && (
+            {fileError && (
               <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
-                {imageError}
-              </div>
-            )}
-            {videoError && (
-              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
-                {videoError}
+                {fileError}
               </div>
             )}
             {error && (

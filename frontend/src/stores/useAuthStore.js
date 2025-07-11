@@ -60,6 +60,9 @@ export const useAuthStore = create(
         });
       },
 
+      // Add setUser action to update the user in the store
+      setUser: (userProfile) => set({ user: userProfile }),
+
       // Check if token is expired or about to expire (within 5 minutes)
       isTokenExpired: () => {
         const state = get();

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { FiShare2 } from 'react-icons/fi';
 import { getXPDetails } from '../../utils/levelUtils';
 import { createProfileUrl } from '../../utils/profileUrlUtils';
+import UserStatusBadge from '../common/UserStatusBadge';
 
 // Toast for share/copy feedback
 const ShareToast = ({ message }) => (
@@ -30,7 +31,7 @@ const ProfileHeader = ({ profile, currentUserId, isFollowing, buttonLoading, onF
         setTimeout(() => setShowToast(false), 1500);
         return;
       } catch (e) {
-        console.log('Web Share API failed:', e);
+        // Web Share API failed, continue to fallback
       }
     }
 
@@ -104,22 +105,15 @@ const ProfileHeader = ({ profile, currentUserId, isFollowing, buttonLoading, onF
       </div>
       {/* Info and XP Bar */}
       <div className="flex-1 flex flex-col justify-center h-full relative">
-        {/* Share button in top right */}
-        {showShareButton && (
-          <button
-            className="absolute top-0 right-0 p-1 bg-transparent border-none shadow-none hover:bg-gray-100 focus:outline-none"
-            onClick={handleShare}
-            title="Share profile"
-            style={{ boxShadow: 'none' }}
-          >
-            <FiShare2 size={22} color="#dc2626" />
-          </button>
-        )}
-        {/* Toast */}
-        {showToast && <ShareToast message={toastMsg} />}
         {/* Centered name and level above XP bar */}
         <div className="flex flex-col items-center w-full mb-2">
-          <span className="text-2xl font-bold text-gray-900 text-center block w-full">{profile.name}</span>
+          <span className="text-2xl font-bold text-gray-900 text-center block w-full flex items-center justify-center">
+            {profile.name}
+            {/* User status badge next to name */}
+            <span className="ml-2">
+              <UserStatusBadge user={profile} />
+            </span>
+          </span>
           <div className="font-bold text-gray-700 text-lg text-center w-full mt-1">LEVEL {xpDetails.level}</div>
         </div>
         {/* XP Bar: horizontal, fills space to right of image */}
@@ -134,6 +128,19 @@ const ProfileHeader = ({ profile, currentUserId, isFollowing, buttonLoading, onF
           {profile.sport && profile.position && <span> | </span>}
           {profile.position && <span>{profile.position}</span>}
         </div>
+        {/* Move Share button below sport/position */}
+        {showShareButton && (
+          <div className="flex justify-center mt-2">
+            <button
+              className="p-1 bg-transparent border-none shadow-none hover:bg-gray-100 focus:outline-none"
+              onClick={handleShare}
+              title="Share profile"
+              style={{ boxShadow: 'none' }}
+            >
+              <FiShare2 size={22} color="#dc2626" />
+            </button>
+          </div>
+        )}
         {quote && (
           <div className="italic text-gray-400 text-sm mt-1 text-left w-full">"{quote}"</div>
         )}

@@ -95,13 +95,27 @@ const PostCard = ({ post, onLikeUpdate }) => {
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
         {/* User Info */}
         <div className="flex items-center mb-3">
-          <img
-            src={userProfilePicture}
-            alt={userName}
-            className="w-10 h-10 rounded-full object-cover mr-3 cursor-pointer hover:opacity-80 transition"
-            onError={() => setImageError(true)}
-            onClick={handleProfileClick}
-          />
+          {userObj.profilePictureUrl && !imageError ? (
+            <img
+              src={userObj.profilePictureUrl}
+              alt={userName}
+              className="w-10 h-10 rounded-full object-cover mr-3 cursor-pointer hover:opacity-80 transition"
+              onError={() => setImageError(true)}
+              onClick={handleProfileClick}
+            />
+          ) : (
+            <div
+              className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold text-lg mr-3 cursor-pointer select-none"
+              onClick={handleProfileClick}
+            >
+              {userName
+                .split(' ')
+                .map((n) => n[0])
+                .join('')
+                .toUpperCase()
+                .slice(0, 2)}
+            </div>
+          )}
           <div className="flex-1">
             <div className="font-semibold text-gray-900 cursor-pointer hover:underline" onClick={handleProfileClick}>{userName}</div>
             <div className="text-sm text-gray-500">{formatTimeAgo(createdAt)}</div>
