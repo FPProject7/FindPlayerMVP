@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { eventsApi } from '../../api/eventsApi';
+import { useLoadScript } from '@react-google-maps/api';
 
 // Toast for share/copy feedback - exact same as profile page
 const ShareToast = ({ message }) => (
@@ -60,39 +61,6 @@ const DRESS_CODE_LIMIT = 40;
 const PARTICIPATION_FEE_LIMIT = 30;
 const DESCRIPTION_LIMIT = 300;
 
-// Utility to load Google Maps Places API if not already loaded
-function loadGoogleMapsScript(apiKey) {
-  return new Promise((resolve, reject) => {
-    if (window.google && window.google.maps && window.google.maps.places) {
-      resolve();
-      return;
-    }
-    // Check if script is already being loaded
-    if (document.getElementById('google-maps-script')) {
-      const interval = setInterval(() => {
-        if (window.google && window.google.maps && window.google.maps.places) {
-          clearInterval(interval);
-          resolve();
-        }
-      }, 100);
-      // Timeout after 10s
-      setTimeout(() => {
-        clearInterval(interval);
-        reject(new Error('Google Maps script load timeout'));
-      }, 10000);
-      return;
-    }
-    // Otherwise, inject script
-    const script = document.createElement('script');
-    script.id = 'google-maps-script';
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
-    script.async = true;
-    script.onload = resolve;
-    script.onerror = reject;
-    document.body.appendChild(script);
-  });
-}
-
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
 
 const CreateEventForm = ({ onClose }) => {
@@ -110,28 +78,20 @@ const CreateEventForm = ({ onClose }) => {
   const [suggestions, setSuggestions] = useState([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [isGoogleMapsReady, setIsGoogleMapsReady] = useState(false);
+  // Use useLoadScript from @react-google-maps/api
+  const { isLoaded, loadError } = useLoadScript({
+    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+    libraries: ['places'],
+  });
 
   // Additional state for event confirmation modal
   const [showShareToast, setShowShareToast] = useState(false);
   const [shareToastMsg, setShareToastMsg] = useState('');
 
-  // Ensure Google Maps Places API is loaded
-  useEffect(() => {
-    if (!window.google || !window.google.maps || !window.google.maps.places) {
-      loadGoogleMapsScript(GOOGLE_MAPS_API_KEY)
-        .then(() => setIsGoogleMapsReady(true))
-        .catch((err) => {
-          console.error('Failed to load Google Maps script:', err);
-          setIsGoogleMapsReady(false);
-        });
-    }
-  }, []);
-
   // Debounced search function
   const debouncedSearch = useCallback(
     debounce(async (input) => {
-      if (!input.trim() || !isGoogleMapsReady || input.trim().length < 2) {
+      if (!input.trim() || !isLoaded || input.trim().length < 2) {
         setSuggestions([]);
         setIsLoadingSuggestions(false);
         return;
@@ -178,7 +138,7 @@ const CreateEventForm = ({ onClose }) => {
         setIsLoadingSuggestions(false);
       }
     }, 300),
-    [isGoogleMapsReady]
+    [isLoaded]
   );
 
   // Handle input changes
@@ -187,7 +147,7 @@ const CreateEventForm = ({ onClose }) => {
     setAutocompleteValue(value);
     setForm(prev => ({ ...prev, cityVenue: value }));
     
-    if (isGoogleMapsReady) {
+    if (isLoaded) {
       setShowSuggestions(true);
       
       if (value.trim()) {
@@ -542,12 +502,11 @@ const CreateEventForm = ({ onClose }) => {
                   onChange={handleAutocompleteChange}
                   onFocus={() => setShowSuggestions(true)}
                   onBlur={() => {
-                    // Delay hiding suggestions to allow clicking on them
                     setTimeout(() => setShowSuggestions(false), 200);
                   }}
                   className="w-full border border-gray-300 rounded p-2 focus:outline-none focus:ring-2 focus:ring-red-400"
-                  placeholder={isGoogleMapsReady ? "Search for city and venue" : "Loading Google Maps..."}
-                  disabled={isSubmitting}
+                  placeholder={isLoaded ? "Search for city and venue" : "Loading Google Maps..."}
+                  disabled={isSubmitting || !isLoaded}
                   autoComplete="off"
                 />
                 {isLoadingSuggestions && (

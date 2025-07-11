@@ -145,12 +145,11 @@ const HomePage = () => {
       {pullDistance > 0 && (
         <div className="flex justify-center items-center py-4 text-gray-500">
           {pullDistance >= PULL_THRESHOLD ? (
-            <div className="flex items-center">
+            <div className="flex items-center justify-center w-full">
               <ChallengeLoader />
-              <span className="ml-2">Release to refresh</span>
             </div>
           ) : (
-            <div className="flex items-center">
+            <div className="flex items-center justify-center w-full">
               <div className="mr-2">↓</div>
               Pull down to refresh
             </div>
@@ -161,7 +160,6 @@ const HomePage = () => {
       {refreshing && (
         <div className="flex justify-center items-center py-2 text-gray-500">
           <ChallengeLoader />
-          <span className="ml-2">Refreshing feed...</span>
         </div>
       )}
 
