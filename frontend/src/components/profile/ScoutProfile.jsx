@@ -3,9 +3,11 @@ import ProfileHeader from './ProfileHeader';
 import ProfileTabs from './ProfileTabs';
 import UpgradePremiumButton from './UpgradePremiumButton';
 import FollowersModal from './FollowersModal';
-import { useState } from 'react';
+import VerifyButton from './VerifyButton';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useNavigate } from 'react-router-dom';
+import { getFollowerCount } from '../../api/userApi';
 
 const ScoutProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFollow, onUnfollow }) => {
   const {
@@ -18,9 +20,24 @@ const ScoutProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
   } = profile;
 
   const [showFollowers, setShowFollowers] = useState(false);
+  const [connectionsCount, setConnectionsCount] = useState(profile.connections || 0);
   const logout = useAuthStore((state) => state.logout);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (profile?.id) {
+      getFollowerCount(profile.id).then(setConnectionsCount).catch(() => setConnectionsCount(0));
+    }
+  }, [profile.id]);
+
+  // When modal closes, refresh count
+  const handleCloseFollowers = () => {
+    setShowFollowers(false);
+    if (profile?.id) {
+      getFollowerCount(profile.id).then(setConnectionsCount).catch(() => {});
+    }
+  };
 
   return (
     <div>
@@ -47,10 +64,10 @@ const ScoutProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
               style={{ background: 'none' }}
               onClick={() => setShowFollowers(true)}
             >
-              {connections}
+              {connectionsCount}
             </button>
           ) : (
-            <span className="font-bold text-lg text-gray-600">{connections}</span>
+            <span className="font-bold text-lg text-gray-600">{connectionsCount}</span>
           )}
           <span className="text-xs text-gray-500">Connections</span>
         </div>
@@ -64,22 +81,26 @@ const ScoutProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
         </div>
       </div>
       {isAuthenticated && (
-        <FollowersModal userId={userId} open={showFollowers} onClose={() => setShowFollowers(false)} />
+        <FollowersModal userId={userId} open={showFollowers} onClose={handleCloseFollowers} />
       )}
-      <UpgradePremiumButton />
+      <UpgradePremiumButton profile={profile} />
       <div className="text-xs text-center text-gray-400 mb-4">
         Get exclusive scouting insights & priority access to top athletes.
       </div>
       <ProfileTabs profile={profile} isOwnProfile={currentUserId === profile.id} />
       {currentUserId === profile.id && (
-        <div className="flex justify-center mt-8 mb-24">
-          <button
-            className="w-full max-w-xs bg-[#dc2626] hover:bg-[#b91c1c] text-white rounded-full px-8 py-3 font-semibold shadow-md transition-colors duration-200 text-base"
-            onClick={() => { logout(); navigate('/login'); }}
-          >
-            Sign Out
-          </button>
-        </div>
+        <>
+          {/* Show Verify button above sign out for scouts */}
+          <VerifyButton isVerified={profile.is_verified} onStatusUpdate={() => window.location.reload()} />
+          <div className="flex justify-center mt-8 mb-24">
+            <button
+              className="w-full max-w-xs bg-[#dc2626] hover:bg-[#b91c1c] text-white rounded-full px-8 py-3 font-semibold shadow-md transition-colors duration-200 text-base"
+              onClick={() => { logout(); navigate('/login'); }}
+            >
+              Sign Out
+            </button>
+          </div>
+        </>
       )}
     </div>
   );

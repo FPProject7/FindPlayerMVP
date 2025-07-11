@@ -3,9 +3,11 @@ import ProfileTabs from './ProfileTabs';
 import UpgradePremiumButton from './UpgradePremiumButton';
 import FollowersModal from './FollowersModal';
 import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useNavigate } from 'react-router-dom';
 import { formatHeight, formatWeight } from '../../utils/levelUtils';
+import { getFollowerCount } from '../../api/userApi';
 import { starPlayer, unstarPlayer, getStarredPlayers } from '../../api/starredApi';
 
 const AthleteProfile = ({
@@ -29,10 +31,25 @@ const AthleteProfile = ({
     id: userId,
   } = profile;
   const [showFollowers, setShowFollowers] = useState(false);
+  const [connectionsCount, setConnectionsCount] = useState(connections);
   const logout = useAuthStore((state) => state.logout);
   const authUser = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (profile?.id) {
+      getFollowerCount(profile.id).then(setConnectionsCount).catch(() => setConnectionsCount(0));
+    }
+  }, [profile.id]);
+
+  // When modal closes, refresh count
+  const handleCloseFollowers = () => {
+    setShowFollowers(false);
+    if (profile?.id) {
+      getFollowerCount(profile.id).then(setConnectionsCount).catch(() => {});
+    }
+  };
   const [starred, setStarred] = useState(false);
   const [starLoading, setStarLoading] = useState(false);
 
@@ -120,10 +137,10 @@ const AthleteProfile = ({
               style={{ background: 'none' }}
               onClick={() => setShowFollowers(true)}
             >
-              {connections}
+              {connectionsCount}
             </button>
           ) : (
-            <span className="font-bold text-lg text-gray-600">{connections}</span>
+            <span className="font-bold text-lg text-gray-600">{connectionsCount}</span>
           )}
           <span className="text-xs text-gray-500">Connections</span>
         </div>
@@ -139,7 +156,7 @@ const AthleteProfile = ({
         </div>
       </div>
       {isAuthenticated && (
-        <FollowersModal userId={userId} open={showFollowers} onClose={() => setShowFollowers(false)} />
+        <FollowersModal userId={userId} open={showFollowers} onClose={handleCloseFollowers} />
       )}
       {currentUserId === profile.id && <UpgradePremiumButton />}
       {currentUserId === profile.id && (

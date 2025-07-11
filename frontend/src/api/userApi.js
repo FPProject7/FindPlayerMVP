@@ -60,9 +60,7 @@ export const getInfoUser = (userId, username) => {
 
 // Track profile view and create notifications
 export const trackProfileView = async (viewedUserId) => {
-  console.log('trackProfileView called with:', viewedUserId);
   const token = await useAuthStore.getState().getValidToken();
-  console.log('Token obtained:', token ? 'Yes' : 'No');
   
   try {
     const response = await axios.post('https://3emgvv0wwc.execute-api.us-east-1.amazonaws.com/trackProfileView', { 
@@ -74,7 +72,6 @@ export const trackProfileView = async (viewedUserId) => {
       }
     });
     
-    console.log('trackProfileView response:', response.data);
     return response;
   } catch (error) {
     console.error('trackProfileView error details:', {
@@ -246,6 +243,26 @@ export const updateStreak = async (userId) => {
     return response.data;
   } catch (error) {
     console.error('updateStreak error:', error);
+    throw error;
+  }
+};
+
+// Update user status (verification and premium)
+export const updateUserStatus = async (statusData) => {
+  try {
+    const response = await axios.post(
+      'https://y219q4oqh5.execute-api.us-east-1.amazonaws.com/default/update-user-status',
+      statusData,
+      {
+        headers: {
+          'Authorization': `Bearer ${await useAuthStore.getState().getValidToken()}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error updating user status:', error);
     throw error;
   }
 };

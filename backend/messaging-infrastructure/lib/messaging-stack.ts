@@ -84,17 +84,40 @@ export class MessagingStack extends cdk.Stack {
       },
     });
 
+    // Add CORS configuration after API creation
+    const cfnApi = api.node.defaultChild as appsync.CfnGraphQLApi;
+    cfnApi.addPropertyOverride('Cors', {
+      allowedOrigins: [
+        'http://localhost:5173',  // Vite dev server
+        'http://localhost:3000',  // Alternative dev server
+        'https://yourdomain.com'  // Production domain (replace with your actual domain)
+      ],
+      allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'X-Amz-Date',
+        'X-Api-Key',
+        'X-Amz-Security-Token'
+      ],
+      allowedMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+    });
+
     // Lambda Functions
     const sendMessageLambda = new lambda.Function(this, 'SendMessageFunction', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'index.handler',
-      code: lambda.Code.fromAsset('lambda/send-message'),
+      code: lambda.Code.fromAsset('../lambda2/send-message'),
       environment: {
         CONVERSATIONS_TABLE: 'findplayer-conversations',
         MESSAGES_TABLE: 'findplayer-messages',
         USER_CONVERSATIONS_TABLE: 'findplayer-user-conversations',
         USER_POOL_ID: userPool.userPoolId,
         API_ID: api.apiId,
+        // Add database environment variables
+        DB_HOST: process.env.DB_HOST || '',
+        DB_USER: process.env.DB_USER || '',
+        DB_PASSWORD: process.env.DB_PASSWORD || '',
+        DB_NAME: process.env.DB_NAME || '',
       },
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,
@@ -156,9 +179,14 @@ export class MessagingStack extends cdk.Stack {
     const createConversationLambda = new lambda.Function(this, 'CreateConversationFunction', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'createConversation.handler',
-      code: lambda.Code.fromAsset('lambda/createConversation.zip'),
+      code: lambda.Code.fromAsset('../lambda1/createConversation'),
       environment: {
         CONVERSATIONS_TABLE: 'findplayer-conversations',
+        // Add database environment variables
+        DB_HOST: process.env.DB_HOST || '',
+        DB_USER: process.env.DB_USER || '',
+        DB_PASSWORD: process.env.DB_PASSWORD || '',
+        DB_NAME: process.env.DB_NAME || '',
       },
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,

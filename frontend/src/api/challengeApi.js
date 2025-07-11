@@ -20,16 +20,11 @@ const reviewClient = axios.create({
 const attachAuth = async (config) => {
   try {
     const token = await useAuthStore.getState().getValidIdToken();
-    console.log('attachAuth - Token obtained:', token ? 'Yes' : 'No');
-    console.log('attachAuth - Request URL:', config.url);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log('attachAuth - Authorization header set');
-    } else {
-      console.log('attachAuth - No token available');
     }
   } catch (error) {
-    console.log('attachAuth - Error getting token:', error.message);
+    // Silent fail - token not available
   }
   return config;
 };

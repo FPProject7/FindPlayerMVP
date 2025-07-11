@@ -67,7 +67,7 @@ const ON_NEW_MESSAGE = gql`
 const PULL_THRESHOLD = 80;
 const MAX_PULL_DISTANCE = 120;
 
-export default function ChatWindow({ isOpen, onClose, conversationId, otherUserName, otherUserProfilePic, otherUserId }) {
+export default function ChatWindow({ isOpen, onClose, conversationId, otherUserName, otherUserProfilePic, otherUserId, dbUser }) {
   const location = useLocation();
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
@@ -96,15 +96,6 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
 
   // Check if this is a new conversation opened from "Book a Session" button
   useEffect(() => {
-    console.log('Automated message debug:', {
-      isNewConversation,
-      locationState: location.state,
-      openChatWith: location.state?.openChatWith,
-      userRole: user?.role,
-      otherUserName,
-      showAutomatedMessage
-    });
-    
     // Only show automated message if coming from booking flow (location.state.openChatWith)
     if (isNewConversation && location.state?.openChatWith && user?.role?.toLowerCase() === 'athlete') {
       setShowAutomatedMessage(true);
@@ -208,7 +199,6 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
   // Update messages when query data changes
   useEffect(() => {
     if (data?.getConversationMessages?.items) {
-      console.log('GraphQL response data:', data.getConversationMessages.items);
       setMessages(data.getConversationMessages.items);
       
       // Mark messages as read when conversation is opened
@@ -272,6 +262,13 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
     };
   }, [loading, pullDistance]);
 
+  // Remove useAuthStore premium checks
+  // Use dbUser for all premium/verified checks
+  const isPremium = dbUser?.is_premium_member;
+  const isScout = dbUser?.role === 'scout';
+  const isVerified = dbUser?.is_verified;
+  const canSendMessages = isPremium && (!isScout || isVerified);
+
   const handleSendAutomatedMessage = async () => {
     if (!automatedMessageText.trim()) return;
     const receiverId = otherUserId;
@@ -280,9 +277,8 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
       setTimeout(() => setErrorMessage(''), 2000);
       return;
     }
-    
-    // Check if user is premium before attempting to send
-    if (!user?.isPremiumMember) {
+    // Use dbUser for premium check
+    if (!canSendMessages) {
       setErrorMessage('Premium Feature - Upgrade to send messages');
       setTimeout(() => setErrorMessage(''), 3000);
       return;
@@ -332,13 +328,8 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
       setTimeout(() => setErrorMessage(''), 2000);
       return;
     }
-    
-    // Debug: Log user premium status
-    console.log('User premium status:', user?.isPremiumMember);
-    console.log('User object:', user);
-    
-    // Check if user is premium before attempting to send
-    if (!user?.isPremiumMember) {
+    // Use dbUser for premium check
+    if (!canSendMessages) {
       setErrorMessage('Premium Feature - Upgrade to send messages');
       setTimeout(() => setErrorMessage(''), 3000);
       return;
@@ -487,9 +478,7 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
               ) : (
                 messages.map(msg => {
                   const isMe = msg.senderId === myId;
-                  console.log('Message:', msg.messageId, 'readStatus:', msg.readStatus, 'isMe:', isMe);
                   const isUnread = !isMe && msg.readStatus === 'SENT'; // Only show unread for messages from others that are SENT
-                  console.log('Is unread:', isUnread);
                   return (
                     <div
                       key={msg.messageId}

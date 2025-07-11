@@ -30,7 +30,7 @@ const ShareButton = ({
         setTimeout(() => setShowToast(false), 1500);
         return;
       } catch (e) {
-        console.log('Web Share API failed:', e);
+        // Web Share API failed, continue to fallback
       }
     }
 

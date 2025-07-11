@@ -65,7 +65,6 @@ const wsLink = new GraphQLWsLink(createClient({
     try {
       const { getValidIdToken } = useAuthStore.getState();
       const token = await getValidIdToken();
-      console.log('WebSocket: Attempting to connect with ID token');
       return {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -79,9 +78,9 @@ const wsLink = new GraphQLWsLink(createClient({
   retryAttempts: 3,
   retryWait: (retryCount) => Math.min(1000 * 2 ** retryCount, 10000),
   on: {
-    connected: () => console.log('WebSocket: Connected successfully'),
-    connecting: () => console.log('WebSocket: Connecting...'),
-    closed: (event) => console.log('WebSocket: Connection closed', event),
+    connected: () => {},
+    connecting: () => {},
+    closed: (event) => {},
     error: (error) => console.error('WebSocket: Connection error', error),
   },
 }));

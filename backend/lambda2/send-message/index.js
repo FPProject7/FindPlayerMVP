@@ -1,5 +1,6 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand, ScanCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+const { Client } = require('pg');
 
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
@@ -7,39 +8,38 @@ const docClient = DynamoDBDocumentClient.from(dynamoClient);
 const MESSAGES_TABLE = process.env.MESSAGES_TABLE;
 const CONVERSATIONS_TABLE = process.env.CONVERSATIONS_TABLE;
 
+// Utility: resolveUserId (returns UUID if already UUID, else looks up by email)
+async function resolveUserId(identifier) {
+  if (/^[0-9a-fA-F-]{36}$/.test(identifier)) return identifier;
+  const client = new Client({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    ssl: { rejectUnauthorized: false }
+  });
+  await client.connect();
+  const res = await client.query('SELECT id FROM users WHERE email = $1 LIMIT 1', [identifier]);
+  await client.end();
+  if (res.rows.length === 0) throw new Error(`User not found for identifier: ${identifier}`);
+  return res.rows[0].id;
+}
+
 export const handler = async (event) => {
     const now = new Date().toISOString();
     try {
         // Extract user info from JWT claims
         const claims = event.identity.claims;
-        const cognitoUsername = claims['cognito:username'];
+        let senderId = claims['cognito:username'] || claims['sub'];
+        let { receiverId, content, messageType = 'text' } = event.arguments.input;
 
-        // UUID validation helper
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-        // Check if user is premium
-        const isPremium = claims['custom:is_premium_member'] === 'true';
-        if (!isPremium) {
-            throw new Error('Only premium members can use messaging.');
-        }
-
-        // Extract input parameters
-        const { receiverId, content, messageType = 'text' } = event.arguments.input;
-        console.log('[sendMessage] senderId:', cognitoUsername, 'receiverId:', receiverId);
-        if (!receiverId || !content) {
-            throw new Error('receiverId and content are required');
-        }
-        if (receiverId === 'new' || receiverId === cognitoUsername) {
-            console.error('[sendMessage] Invalid receiverId:', receiverId, 'sender:', cognitoUsername);
-            throw new Error('Invalid receiverId: cannot be "new" or the same as sender.');
-        }
+        // Always resolve to UUID
+        senderId = await resolveUserId(senderId);
+        receiverId = await resolveUserId(receiverId);
 
         // Deterministic conversationId for user pair (trim and lowercase for safety)
-        const senderIdClean = cognitoUsername.trim().toLowerCase();
-        const receiverIdClean = receiverId.trim().toLowerCase();
-        const participants = [senderIdClean, receiverIdClean].sort();
+        const participants = [senderId, receiverId].sort();
         const conversationId = participants.join('_');
-        console.log('[sendMessage] Final conversationId:', conversationId, 'Participants:', participants);
         let conversationTimestamp = now;
         let isNewConversation = false;
 
@@ -61,7 +61,7 @@ export const handler = async (event) => {
                 createdAt: now,
                 lastMessage: content,
                 lastMessageTime: now,
-                lastMessageSender: cognitoUsername
+                lastMessageSender: senderId
             };
             await docClient.send(new PutCommand({
                 TableName: CONVERSATIONS_TABLE,
@@ -78,7 +78,7 @@ export const handler = async (event) => {
         const message = {
             conversationId: conversationId,
             messageId: messageId,
-            senderId: cognitoUsername,
+            senderId: senderId,
             receiverId: receiverId,
             content: content,
             messageType: messageType,
@@ -98,7 +98,7 @@ export const handler = async (event) => {
             ExpressionAttributeValues: {
                 ':lastMessage': content,
                 ':lastMessageTime': timestamp,
-                ':lastMessageSender': cognitoUsername
+                ':lastMessageSender': senderId
             }
         };
         await docClient.send(new UpdateCommand(updateConversationParams));
@@ -107,14 +107,14 @@ export const handler = async (event) => {
             message: {
                 messageId: messageId,
                 conversationId: conversationId,
-                senderId: cognitoUsername,
+                senderId: senderId,
                 receiverId: receiverId,
                 content: content,
                 timestamp: timestamp,
                 readStatus: 'SENT' // New messages start as SENT (unread)
             },
             userConversation: {
-                userId: cognitoUsername,
+                userId: senderId,
                 conversationId: conversationId,
                 otherUserId: receiverId,
                 lastMessageContent: content,

@@ -4,7 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import ConversationList from '../components/messaging/ConversationList';
 import ChatWindow from '../components/messaging/ChatWindow';
+import { useAuthStore } from '../stores/useAuthStore';
+import { getUserInfo } from '../api/userApi';
 import './MessagesPageSE.css';
+import ChallengeLoader from '../components/common/ChallengeLoader';
 
 export default function MessagesPage() {
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -12,6 +15,9 @@ export default function MessagesPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const [initialized, setInitialized] = useState(false);
+  const { user, isAuthenticated } = useAuthStore();
+  const [dbUser, setDbUser] = useState(null);
+  const [dbUserLoading, setDbUserLoading] = useState(true);
 
   // Restore selected conversation from localStorage on mount (if not coming from location.state)
   useEffect(() => {
@@ -65,6 +71,18 @@ export default function MessagesPage() {
     }
   }, [location]);
 
+  useEffect(() => {
+    if (isAuthenticated && user?.id) {
+      setDbUserLoading(true);
+      getUserInfo(user.id)
+        .then((data) => setDbUser(data))
+        .finally(() => setDbUserLoading(false));
+    } else {
+      setDbUser(null);
+      setDbUserLoading(false);
+    }
+  }, [isAuthenticated, user?.id]);
+
   const handleConversationSelect = (convObj) => {
     setSelectedConversation(convObj);
     setIsChatOpen(true);
@@ -77,6 +95,72 @@ export default function MessagesPage() {
     setSelectedConversation(null);
     localStorage.removeItem('selectedConversation');
   };
+
+  // Use dbUser for all checks
+  const isPremium = dbUser?.is_premium_member;
+  const isScout = dbUser?.role === 'scout';
+  const isVerified = dbUser?.is_verified;
+  // Scouts need BOTH premium and verified; others just need premium
+  const hasMessagingAccess = isScout ? (isPremium && isVerified) : isPremium;
+
+  // Determine what message/button to show for scouts
+  let scoutMessage = '';
+  let scoutButton = '';
+  if (isScout) {
+    if (!isVerified) {
+      scoutMessage = 'Scouts need to be verified to access messaging.';
+      scoutButton = 'Get Verified';
+    } else if (!isPremium) {
+      scoutMessage = 'Scouts need premium membership to access messaging.';
+      scoutButton = 'Upgrade to Premium';
+    }
+  }
+
+  if (!hasMessagingAccess) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 overflow-hidden">
+        <div className="text-center p-8 bg-white rounded-lg shadow-md max-w-md">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">
+            {isScout ? (!isVerified ? 'Verification Required' : 'Premium Feature') : 'Premium Feature'}
+          </h2>
+          <p className="text-gray-600 mb-6">
+            {isScout ? scoutMessage : 'Upgrade to Premium to access messaging features.'}
+          </p>
+          <button
+            onClick={() => navigate('/profile')}
+            className="bg-red-600 text-white px-6 py-2 rounded-full hover:bg-red-700 transition-colors"
+          >
+            {isScout ? scoutButton : 'Upgrade to Premium'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-gray-50">
+        <div className="text-center p-8 bg-white rounded-lg shadow-md max-w-md">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">Authentication Required</h2>
+          <p className="text-gray-600 mb-6">Please log in to access messaging.</p>
+          <button
+            onClick={() => navigate('/login')}
+            className="bg-red-600 text-white px-6 py-2 rounded-full hover:bg-red-700 transition-colors"
+          >
+            Go to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (dbUserLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-gray-50">
+        <ChallengeLoader />
+      </div>
+    );
+  }
 
   return (
     <div className="messages-page-container" style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -93,6 +177,7 @@ export default function MessagesPage() {
         otherUserName={selectedConversation?.name}
         otherUserProfilePic={selectedConversation?.profilePic}
         otherUserId={selectedConversation?.userId}
+        dbUser={dbUser}
       />
     </div>
   );

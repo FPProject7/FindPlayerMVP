@@ -34,12 +34,44 @@ const AthleteChallengesView = () => {
   const { user, isAuthenticated, token } = useAuthStore();
   const [submissionStatuses, setSubmissionStatuses] = useState({});
   const { activeUploads, getUploadStatus } = useUploadStore();
+  const [quotaInfo, setQuotaInfo] = useState(null);
+  const [quotaLoading, setQuotaLoading] = useState(false);
+  // Add state for error popup
+  const [quotaErrorMessage, setQuotaErrorMessage] = useState("");
 
   const prevLocationKey = React.useRef(location.key);
   const containerRef = useRef(null);
 
   const PULL_THRESHOLD = 80;
   const MAX_PULL_DISTANCE = 120;
+
+  // Fetch quota information
+  const fetchQuotaInfo = async () => {
+    setQuotaLoading(true);
+    try {
+      const authState = useAuthStore.getState();
+      const token = authState.token;
+      const response = await fetch("https://ay6fctbr9c.execute-api.us-east-1.amazonaws.com/getSubmissionQuota", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {})
+        }
+      });
+      const data = await response.json();
+      setQuotaInfo(data);
+    } catch (error) {
+      console.error('Error fetching quota info:', error);
+      // Don't show error for quota fetch, just use default values
+    } finally {
+      setQuotaLoading(false);
+    }
+  };
+
+  // Fetch quota info when component mounts
+  useEffect(() => {
+    fetchQuotaInfo();
+  }, []);
 
   // --- Fetch Challenges Function (now using real API) ---
   const fetchChallengesData = async (isRefresh = false) => {
@@ -221,6 +253,12 @@ const AthleteChallengesView = () => {
   };
 
   const handleVideoSubmit = async () => {
+    // Check quota before allowing submission
+    if (quotaInfo && quotaInfo.current >= quotaInfo.max) {
+      setQuotaErrorMessage(`Challenge submission quota exceeded. You can submit ${quotaInfo.max} challenge${quotaInfo.max > 1 ? 's' : ''} per ${quotaInfo.period}.`);
+      setTimeout(() => { setQuotaErrorMessage(""); }, 2000);
+      return;
+    }
     if (!videoFile || !selectedChallenge) {
       setVideoError('Please select a video file to submit.');
       return;
@@ -255,6 +293,9 @@ const AthleteChallengesView = () => {
         ...prev,
         [selectedChallenge.id]: newSubmission
       }));
+
+      // Update quota info immediately after successful submission
+      fetchQuotaInfo();
 
     } catch (err) {
       console.error('Video submission failed:', err);
@@ -371,6 +412,39 @@ const AthleteChallengesView = () => {
 
             <div className="video-upload-section bg-gray-50 border border-gray-200 p-5 rounded-lg">
               <h3 className="text-lg font-bold mb-3 text-gray-800">Upload Your Video</h3>
+
+              {/* Quota Information */}
+              <div className="bg-white p-4 rounded-lg border border-gray-200 mb-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <svg className="w-5 h-5 text-gray-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span className="text-sm font-medium text-gray-700">Daily Submission Quota</span>
+                  </div>
+                  {quotaLoading ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500"></div>
+                  ) : (
+                    <span className={`text-sm font-semibold ${quotaInfo?.current >= quotaInfo?.max ? 'text-red-600' : 'text-green-600'}`}>
+                      {quotaInfo ? `${quotaInfo.current}/${quotaInfo.max}` : 'Loading...'}
+                    </span>
+                  )}
+                </div>
+                <div className="mt-2 text-xs text-gray-500">
+                  {quotaInfo ? (
+                    <>
+                      {quotaInfo.isPremium ? 'Premium: 3 submissions per day' : 'Free: 1 submission per day'}
+                      {quotaInfo.current >= quotaInfo.max && (
+                        <div className="text-red-600 mt-1 font-medium">
+                          Quota exceeded. Upgrade to Premium for more submissions.
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    'Loading quota information...'
+                  )}
+                </div>
+              </div>
 
               {videoError && <div className="text-red-600 mb-3">{videoError}</div>}
 
@@ -500,9 +574,9 @@ const AthleteChallengesView = () => {
                         )}
 
                         <button
+                          type="button"
+                          className="w-full bg-white text-red-600 border-2 border-red-500 hover:bg-red-100 font-bold py-3 rounded-full text-base uppercase transition-colors duration-200"
                           onClick={handleVideoSubmit}
-                          disabled={!videoFile || submissionStatus === 'uploading'}
-                          className="w-full bg-red-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors duration-200"
                         >
                           Submit Challenge
                         </button>
@@ -619,6 +693,14 @@ const AthleteChallengesView = () => {
               );
             })
           )}
+        </div>
+      )}
+      {/* Quota Error Popup */}
+      {quotaErrorMessage && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none">
+          <div className="bg-red-500 text-white px-8 py-4 rounded-2xl shadow-2xl text-lg font-semibold opacity-95 animate-fade-in-out">
+            {quotaErrorMessage}
+          </div>
         </div>
       )}
     </div>

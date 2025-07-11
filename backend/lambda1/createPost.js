@@ -55,20 +55,17 @@ exports.handler = async (event) => {
           };
         }
 
-        // Generate unique file name
+        // Generate unique file name in the new posts/ structure
         const fileExtension = imageContentType.split('/')[1] || 'jpeg';
-        const s3Key = `post-images/${userId}-${Date.now()}.${fileExtension}`;
-        
+        const s3Key = `posts/${userId}/${Date.now()}-image.${fileExtension}`;
         const s3UploadParams = {
           Bucket: S3_BUCKET_NAME,
           Key: s3Key,
           Body: imageBuffer,
           ContentType: imageContentType
         };
-        
         await s3.upload(s3UploadParams).promise();
         imageUrl = `https://${S3_BUCKET_NAME}.s3.${REGION}.amazonaws.com/${s3Key}`;
-        
         console.log(`Post image uploaded to S3: ${imageUrl}`);
       } catch (err) {
         console.error("Error uploading post image to S3:", err);
@@ -77,53 +74,52 @@ exports.handler = async (event) => {
     }
 
     // Handle video upload if provided
-    if (videoBase64 && videoContentType && S3_BUCKET_NAME) {
+    if (videoBase64 && videoContentType) {
       try {
-        // Validate video size (max 50MB)
-        const videoBuffer = Buffer.from(videoBase64, 'base64');
-        if (videoBuffer.length > 50 * 1024 * 1024) {
-          return {
-            statusCode: 400,
-            headers: { 
-              'Access-Control-Allow-Origin': '*',
-              'Access-Control-Allow-Headers': 'Content-Type',
-              'Access-Control-Allow-Methods': 'POST, OPTIONS'
-            },
-            body: JSON.stringify({ message: "Video file size exceeds 50MB." })
+        // If videoBase64 is a URL (from multipart upload), use as-is
+        if (videoBase64.startsWith('http')) {
+          videoUrl = videoBase64;
+          console.log(`Post video URL from multipart upload: ${videoUrl}`);
+        } else if (S3_BUCKET_NAME) {
+          // It's base64, upload it to S3 using the new posts/ structure
+          const videoBuffer = Buffer.from(videoBase64, 'base64');
+          if (videoBuffer.length > 50 * 1024 * 1024) {
+            return {
+              statusCode: 400,
+              headers: { 
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Headers': 'Content-Type',
+                'Access-Control-Allow-Methods': 'POST, OPTIONS'
+              },
+              body: JSON.stringify({ message: "Video file size exceeds 50MB." })
+            };
+          }
+          const allowedVideoTypes = ['video/mp4', 'video/webm', 'video/quicktime'];
+          if (!allowedVideoTypes.includes(videoContentType)) {
+            return {
+              statusCode: 400,
+              headers: { 
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Headers': 'Content-Type',
+                'Access-Control-Allow-Methods': 'POST, OPTIONS'
+              },
+              body: JSON.stringify({ message: "Unsupported video format. Please use MP4, WebM, or MOV." })
+            };
+          }
+          const fileExtension = videoContentType.split('/')[1] || 'mp4';
+          const s3Key = `posts/${userId}/${Date.now()}-video.${fileExtension}`;
+          const s3UploadParams = {
+            Bucket: S3_BUCKET_NAME,
+            Key: s3Key,
+            Body: videoBuffer,
+            ContentType: videoContentType
           };
+          await s3.upload(s3UploadParams).promise();
+          videoUrl = `https://${S3_BUCKET_NAME}.s3.${REGION}.amazonaws.com/${s3Key}`;
+          console.log(`Post video uploaded to S3: ${videoUrl}`);
         }
-
-        // Validate video content type
-        const allowedVideoTypes = ['video/mp4', 'video/webm', 'video/quicktime'];
-        if (!allowedVideoTypes.includes(videoContentType)) {
-          return {
-            statusCode: 400,
-            headers: { 
-              'Access-Control-Allow-Origin': '*',
-              'Access-Control-Allow-Headers': 'Content-Type',
-              'Access-Control-Allow-Methods': 'POST, OPTIONS'
-            },
-            body: JSON.stringify({ message: "Unsupported video format. Please use MP4, WebM, or MOV." })
-          };
-        }
-
-        // Generate unique file name
-        const fileExtension = videoContentType.split('/')[1] || 'mp4';
-        const s3Key = `post-videos/${userId}-${Date.now()}.${fileExtension}`;
-        
-        const s3UploadParams = {
-          Bucket: S3_BUCKET_NAME,
-          Key: s3Key,
-          Body: videoBuffer,
-          ContentType: videoContentType
-        };
-        
-        await s3.upload(s3UploadParams).promise();
-        videoUrl = `https://${S3_BUCKET_NAME}.s3.${REGION}.amazonaws.com/${s3Key}`;
-        
-        console.log(`Post video uploaded to S3: ${videoUrl}`);
       } catch (err) {
-        console.error("Error uploading post video to S3:", err);
+        console.error("Error handling post video:", err);
         videoUrl = null;
       }
     }

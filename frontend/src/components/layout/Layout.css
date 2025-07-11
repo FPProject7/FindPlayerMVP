@@ -57,11 +57,12 @@
   align-items: center;
   justify-content: center;
 
-  position: absolute;
+  position: fixed;
+  bottom: 32px;
   left: 50%;
   transform: translateX(-50%);
   cursor: pointer;
-  top: -50px;
+  z-index: 9999;
 }
 
 .main-content-with-top-bar {
