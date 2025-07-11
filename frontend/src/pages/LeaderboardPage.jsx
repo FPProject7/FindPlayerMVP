@@ -686,7 +686,7 @@ const LeaderboardPage = () => {
                 )}
               </div>
               {/* Cards 2 & 3 stacked vertically */}
-              <div className="grid grid-rows-2 w-[140px] sm:w-[260px] gap-2 sm:gap-4 h-full">
+              <div className="grid grid-rows-2 w-[140px] sm:w-[260px] gap-2 sm:gap-4 h-full" style={{ gridTemplateRows: '1fr 1fr' }}>
                 {/* Card 2 (top) */}
                 {top3[1] && (
                   <div className="bg-white rounded-3xl shadow-lg w-full flex flex-col h-full p-2 sm:p-4 flex-shrink min-w-0 relative">
