@@ -1,0 +1,17 @@
+{
+  "name": "create-conversation",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "createConversation.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "aws-sdk": "^2.1000.0",
+    "pg": "^8.11.5"
+  }
+} 

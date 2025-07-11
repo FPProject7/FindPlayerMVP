@@ -60,6 +60,41 @@ const DRESS_CODE_LIMIT = 40;
 const PARTICIPATION_FEE_LIMIT = 30;
 const DESCRIPTION_LIMIT = 300;
 
+// Utility to load Google Maps Places API if not already loaded
+function loadGoogleMapsScript(apiKey) {
+  return new Promise((resolve, reject) => {
+    if (window.google && window.google.maps && window.google.maps.places) {
+      resolve();
+      return;
+    }
+    // Check if script is already being loaded
+    if (document.getElementById('google-maps-script')) {
+      const interval = setInterval(() => {
+        if (window.google && window.google.maps && window.google.maps.places) {
+          clearInterval(interval);
+          resolve();
+        }
+      }, 100);
+      // Timeout after 10s
+      setTimeout(() => {
+        clearInterval(interval);
+        reject(new Error('Google Maps script load timeout'));
+      }, 10000);
+      return;
+    }
+    // Otherwise, inject script
+    const script = document.createElement('script');
+    script.id = 'google-maps-script';
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+    script.async = true;
+    script.onload = resolve;
+    script.onerror = reject;
+    document.body.appendChild(script);
+  });
+}
+
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
+
 const CreateEventForm = ({ onClose }) => {
   const [form, setForm] = useState(initialState);
   const [errors, setErrors] = useState({});
@@ -81,36 +116,17 @@ const CreateEventForm = ({ onClose }) => {
   const [showShareToast, setShowShareToast] = useState(false);
   const [shareToastMsg, setShareToastMsg] = useState('');
 
-  // Initialize Google Maps services
+  // Ensure Google Maps Places API is loaded
   useEffect(() => {
-    const checkGoogleMaps = () => {
-      if (window.google && window.google.maps && window.google.maps.places) {
-        setIsGoogleMapsReady(true);
-        return true;
-      }
-      return false;
-    };
-
-    // Check immediately
-    if (!checkGoogleMaps()) {
-      // If not ready, poll every 100ms
-      const interval = setInterval(() => {
-        if (checkGoogleMaps()) {
-          clearInterval(interval);
-        }
-      }, 100);
-
-      // Cleanup after 10 seconds
-      setTimeout(() => {
-        clearInterval(interval);
-      }, 10000);
+    if (!window.google || !window.google.maps || !window.google.maps.places) {
+      loadGoogleMapsScript(GOOGLE_MAPS_API_KEY)
+        .then(() => setIsGoogleMapsReady(true))
+        .catch((err) => {
+          console.error('Failed to load Google Maps script:', err);
+          setIsGoogleMapsReady(false);
+        });
     }
-
-    // Cleanup function
-    return () => {
-      // Cleanup if component unmounts
-    };
-  }, []); // Remove isGoogleMapsReady from dependencies to prevent re-renders
+  }, []);
 
   // Debounced search function
   const debouncedSearch = useCallback(

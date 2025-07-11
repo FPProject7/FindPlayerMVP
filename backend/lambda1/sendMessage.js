@@ -13,45 +13,7 @@ export const handler = async (event) => {
         // Extract user info from JWT claims
         const claims = event.identity.claims;
         console.log('JWT claims:', JSON.stringify(claims, null, 2));
-        console.log('Premium claim value:', claims['custom:is_premium_member']);
-        const cognitoUsername = claims['cognito:username'];
-
-        // Check if user is premium (support both access and id tokens)
-        let isPremium = false;
-        if (claims && claims['custom:is_premium_member'] !== undefined) {
-            isPremium = claims['custom:is_premium_member'] === 'true';
-            console.log('Premium status determined from access token:', isPremium);
-        } else {
-            console.log('No premium claim found in access token, checking ID token...');
-            // Fallback to ID token if access token doesn't have the claim
-            if (event.headers && event.headers['authorization']) {
-                try {
-                    const authHeader = event.headers['authorization'];
-                    // Extract token from "Bearer <token>" format
-                    const tokenParts = authHeader.split(' ');
-                    const token = tokenParts.length > 1 ? tokenParts[1] : authHeader;
-                    
-                    if (token && token.includes('.')) {
-                        // Handle URL-safe base64
-                        const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-                        const payload = JSON.parse(Buffer.from(base64, 'base64').toString());
-                        console.log('ID token payload:', JSON.stringify(payload, null, 2));
-                        
-                        if (payload['custom:is_premium_member'] !== undefined) {
-                            isPremium = payload['custom:is_premium_member'] === 'true';
-                            console.log('Premium status determined from ID token:', isPremium);
-                        } else {
-                            console.log('No premium claim found in ID token either');
-                        }
-                    }
-                } catch (tokenError) {
-                    console.error('Error decoding ID token:', tokenError);
-                }
-            }
-        }
-        if (!isPremium) {
-            throw new Error('Only premium members can use messaging.');
-        }
+        const cognitoUsername = claims['cognito:username'] || claims['sub'];
 
         // Extract input parameters
         const { receiverId, content, conversationId, messageType = 'text' } = event.arguments.input;

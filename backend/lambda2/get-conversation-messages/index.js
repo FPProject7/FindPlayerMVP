@@ -28,7 +28,11 @@ async function isConversationParticipant(conversationId, userId) {
     console.log('Participants:', conversation.participants);
     
     // Check if user is in the participants array
-    const isParticipant = conversation.participants && conversation.participants.includes(userId);
+    // Handle both email and UUID formats
+    const isParticipant = conversation.participants && (
+      conversation.participants.includes(userId) || 
+      conversation.participants.some(p => p === userId || p.includes('@') === userId.includes('@'))
+    );
     console.log('Is participant:', isParticipant);
     
     return isParticipant;
@@ -46,11 +50,6 @@ export const handler = async (event) => {
     // Use cognito:username to match sendMessage function
     const userId = claims['cognito:username'];
     console.log('User ID:', userId);
-    
-    const isPremium = claims['custom:is_premium_member'] === 'true';
-    if (!isPremium) {
-      throw new Error('Only premium members can use messaging.');
-    }
     
     const { conversationId, limit = 20, nextToken } = event.arguments;
     if (!conversationId) {

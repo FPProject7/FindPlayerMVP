@@ -27,11 +27,43 @@ export default function CoachChallengesView() {
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [imageError, setImageError] = useState("");
+  const [quotaInfo, setQuotaInfo] = useState(null);
+  const [quotaLoading, setQuotaLoading] = useState(false);
 
   // Character limits
   const TITLE_CHAR_LIMIT = 50;
   const DESC_CHAR_LIMIT = 500;
   const COMMENT_CHAR_LIMIT = 500;
+
+  // Fetch quota information
+  const fetchQuotaInfo = async () => {
+    setQuotaLoading(true);
+    try {
+      const authState = useAuthStore.getState();
+      const token = authState.token;
+      const response = await fetch("https://ay6fctbr9c.execute-api.us-east-1.amazonaws.com/getChallengeQuota", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {})
+        }
+      });
+      const data = await response.json();
+      setQuotaInfo(data);
+    } catch (error) {
+      console.error('Error fetching quota info:', error);
+      // Don't show error for quota fetch, just use default values
+    } finally {
+      setQuotaLoading(false);
+    }
+  };
+
+  // Fetch quota info when component mounts and when tab changes to post
+  useEffect(() => {
+    if (activeTab === "post") {
+      fetchQuotaInfo();
+    }
+  }, [activeTab]);
 
   // Fetch coach's challenges
   const fetchChallenges = async () => {
@@ -138,34 +170,6 @@ export default function CoachChallengesView() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Debug: Check user role and authentication
-    const authState = useAuthStore.getState();
-    console.log('User authentication state:', {
-      isAuthenticated: authState.isAuthenticated,
-      user: authState.user,
-      role: authState.user?.role,
-      token: authState.token ? 'Present' : 'Missing'
-    });
-    
-    // Debug: Decode JWT token to see claims
-    if (authState.token) {
-      try {
-        const base64 = authState.token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-        const payload = JSON.parse(atob(base64));
-        console.log('JWT Token Claims:', {
-          sub: payload.sub,
-          'custom:role': payload['custom:role'],
-          'cognito:groups': payload['cognito:groups'],
-          'cognito:username': payload['cognito:username'],
-          email: payload.email,
-          name: payload.name,
-          allClaims: payload
-        });
-      } catch (error) {
-        console.log('Error decoding JWT token:', error.message);
-      }
-    }
-    
     if (formData.title.length > TITLE_CHAR_LIMIT) {
       setErrorMessage(`Title cannot exceed ${TITLE_CHAR_LIMIT} characters.`);
       setTimeout(() => setErrorMessage(""), 2000);
@@ -207,16 +211,9 @@ export default function CoachChallengesView() {
       if (activeTab === "view") fetchChallenges();
       setSuccessMessage("Challenge created!");
       setTimeout(() => setSuccessMessage(""), 1200);
+      // Update quota info immediately after successful challenge creation
+      fetchQuotaInfo();
     } catch (error) {
-      console.log('Challenge creation error:', {
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        message: error.message,
-        url: error.config?.url,
-        headers: error.config?.headers
-      });
-      console.log('Full error response data:', JSON.stringify(error.response?.data, null, 2));
       setErrorMessage(error.response?.data?.message || error.message);
       setTimeout(() => setErrorMessage(""), 2000);
     }
@@ -311,6 +308,38 @@ export default function CoachChallengesView() {
       {/* Post Challenge Form */}
       {activeTab === "post" && (
         <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-lg shadow-md max-w-lg mx-auto">
+          {/* Quota Information */}
+          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <svg className="w-5 h-5 text-gray-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span className="text-sm font-medium text-gray-700">Challenge Creation Quota</span>
+              </div>
+              {quotaLoading ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500"></div>
+              ) : (
+                <span className={`text-sm font-semibold ${quotaInfo?.current >= quotaInfo?.max ? 'text-red-600' : 'text-green-600'}`}>
+                  {quotaInfo ? `${quotaInfo.current}/${quotaInfo.max}` : 'Loading...'}
+                </span>
+              )}
+            </div>
+            <div className="mt-2 text-xs text-gray-500">
+              {quotaInfo ? (
+                <>
+                  {quotaInfo.isPremium ? 'Premium: 5 challenges per 7-day period' : 'Free: 3 challenges per 7-day period'}
+                  {quotaInfo.current >= quotaInfo.max && (
+                    <div className="text-red-600 mt-1 font-medium">
+                      Quota exceeded. Upgrade to Premium for more challenges.
+                    </div>
+                  )}
+                </>
+              ) : (
+                'Loading quota information...'
+              )}
+            </div>
+          </div>
           <div>
             <label htmlFor="title" className="block text-sm font-semibold text-gray-700 mb-1">Challenge Title</label>
           <input

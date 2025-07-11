@@ -52,6 +52,23 @@ apiClient.interceptors.response.use(
   }
 );
 
+// Request interceptor for events API client
+// Use ID token for event endpoints
+eventsApiClient.interceptors.request.use(
+  async (config) => {
+    try {
+      const token = await useAuthStore.getState().getValidIdToken();
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    } catch (error) {
+      // Let the request fail naturally
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
 // Response interceptor for events API client
 eventsApiClient.interceptors.response.use(
   (response) => response,
@@ -60,7 +77,7 @@ eventsApiClient.interceptors.response.use(
       try {
         await useAuthStore.getState().refreshToken();
         const originalRequest = error.config;
-        const token = await useAuthStore.getState().getValidToken();
+        const token = await useAuthStore.getState().getValidIdToken();
         if (token) {
           originalRequest.headers.Authorization = `Bearer ${token}`;
         }

@@ -1,0 +1,22 @@
+{
+  "name": "get-submission-quota",
+  "version": "1.0.0",
+  "description": "Lambda function to get challenge submission quota for athletes",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "pg": "^8.11.5"
+  },
+  "keywords": [
+    "lambda",
+    "aws",
+    "challenge",
+    "submission",
+    "quota",
+    "athlete"
+  ],
+  "author": "",
+  "license": "ISC"
+} 

@@ -37,6 +37,53 @@ exports.handler = async (event) => {
   try {
     await client.connect();
 
+    // Check athlete's premium status and quota
+    const userResult = await client.query(
+      'SELECT is_premium_member FROM users WHERE id = $1',
+      [athleteId]
+    );
+    
+    if (userResult.rows.length === 0) {
+      await client.end();
+      return {
+        statusCode: 404,
+        body: JSON.stringify({ message: 'Athlete not found' })
+      };
+    }
+
+    const isPremium = userResult.rows[0].is_premium_member;
+    const maxSubmissions = isPremium ? 3 : 1; // Premium: 3/period, Free: 1/period
+    // Change quota window from 1 day to 5 minutes for testing
+    const minutesBack = 5;
+
+    // Count submissions made in the last 5 minutes
+    const quotaResult = await client.query(
+      `SELECT COUNT(*) as submission_count 
+       FROM challenge_submissions 
+       WHERE athlete_id = $1 
+       AND submitted_at >= NOW() - INTERVAL '${minutesBack} minutes'`,
+      [athleteId]
+    );
+
+    const currentCount = parseInt(quotaResult.rows[0].submission_count);
+    console.log(`Athlete ${athleteId} has submitted ${currentCount}/${maxSubmissions} challenges in the last ${minutesBack} minutes (Premium: ${isPremium})`);
+
+    if (currentCount >= maxSubmissions) {
+      await client.end();
+      return {
+        statusCode: 429,
+        body: JSON.stringify({ 
+          message: `Challenge submission quota exceeded. You can submit ${maxSubmissions} challenge${maxSubmissions > 1 ? 's' : ''} per ${minutesBack}-minute period. Current usage: ${currentCount}/${maxSubmissions}`,
+          quota: {
+            current: currentCount,
+            max: maxSubmissions,
+            period: `${minutesBack} minutes`,
+            isPremium: isPremium
+          }
+        })
+      };
+    }
+
     const existingSubmission = await client.query(
       `SELECT * FROM challenge_submissions 
        WHERE challenge_id = $1 AND athlete_id = $2`,
