@@ -54,7 +54,7 @@ const ProfilePostsTab = ({ profile }) => {
         <div className="flex justify-center my-6">
           <button
             onClick={() => loadPosts(false)}
-            className="bg-[#dc2626] hover:bg-[#b91c1c] text-white rounded-full font-bold px-8 py-2 transition-colors duration-200"
+            className="bg-[#FF0505] hover:bg-[#CC0000] text-white rounded-full font-bold px-8 py-2 transition-colors duration-200"
           >
             Load More
           </button>

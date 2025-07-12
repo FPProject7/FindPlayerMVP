@@ -11,6 +11,9 @@
   },
   "dependencies": {
     "@apollo/client": "^3.13.8",
+    "@capacitor/android": "^7.4.2",
+    "@capacitor/cli": "^7.4.2",
+    "@capacitor/core": "^7.4.2",
     "@hookform/resolvers": "^5.1.1",
     "@react-google-maps/api": "^2.20.7",
     "axios": "^1.10.0",

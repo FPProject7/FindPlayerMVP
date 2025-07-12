@@ -380,7 +380,7 @@ export default function CoachChallengesView() {
             value={formData.xp_value}
             onChange={handleFormChange}
               className="w-full focus:outline-none focus:ring-2 focus:ring-red-400 accent-red-500"
-              style={{ accentColor: '#ef4444' }}
+              style={{ accentColor: '#FF0505' }}
             />
           </div>
           <div>

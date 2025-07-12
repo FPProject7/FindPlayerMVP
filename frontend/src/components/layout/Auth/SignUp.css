@@ -54,17 +54,17 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  color: #dc2626;
+  color: #FF0505;
   font-size: 1rem;
   font-weight: 600;
-  border: 2px dashed #dc2626;
+  border: 2px dashed #FF0505;
   text-align: center;
   box-shadow: 0 2px 8px rgba(220,38,38,0.05);
   transition: border-color 0.2s;
 }
 
 .profile-pic-placeholder:hover {
-  border-color: #b91c1c;
+  border-color: #CC0000;
   background: #ffeaea;
 }
 
@@ -111,12 +111,12 @@
 }
 
 .login-highlight {
-  color: #dc2626;
+  color: #FF0505;
   font-weight: 600;
   cursor: pointer;
 }
 .login-highlight {
-  color: #dc2626;  /* or whatever color you want */
+  color: #FF0505;  /* or whatever color you want */
   text-decoration: none;
   font-weight: 600;
 }
@@ -188,7 +188,7 @@ input[type=range].login-input {
   -webkit-appearance: none;
   width: 100%;
   height: 6px;
-  background: #dc2626;
+  background: #FF0505;
   border-radius: 5px;
   outline: none;
   margin: 8px 0 16px 0;
@@ -200,7 +200,7 @@ input[type=range].login-input::-webkit-slider-thumb {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: #dc2626;
+  background: #FF0505;
   cursor: pointer;
   border: 2px solid #fff;
   box-shadow: 0 0 2px rgba(0,0,0,0.2);
@@ -208,52 +208,52 @@ input[type=range].login-input::-webkit-slider-thumb {
   margin-top: -8px;
 }
 input[type=range].login-input::-webkit-slider-thumb:hover {
-  background: #b91c1c;
+  background: #CC0000;
 }
 input[type=range].login-input:focus::-webkit-slider-thumb {
-  outline: 2px solid #b91c1c;
+  outline: 2px solid #CC0000;
 }
 input[type=range].login-input::-moz-range-thumb {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: #dc2626;
+  background: #FF0505;
   cursor: pointer;
   border: 2px solid #fff;
   box-shadow: 0 0 2px rgba(0,0,0,0.2);
   transition: background 0.2s;
 }
 input[type=range].login-input::-moz-range-thumb:hover {
-  background: #b91c1c;
+  background: #CC0000;
 }
 input[type=range].login-input::-ms-thumb {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: #dc2626;
+  background: #FF0505;
   cursor: pointer;
   border: 2px solid #fff;
   box-shadow: 0 0 2px rgba(0,0,0,0.2);
   transition: background 0.2s;
 }
 input[type=range].login-input::-ms-thumb:hover {
-  background: #b91c1c;
+  background: #CC0000;
 }
 input[type=range].login-input:focus {
   outline: none;
 }
 input[type=range].login-input::-moz-range-track {
-  background: #dc2626;
+  background: #FF0505;
   height: 6px;
   border-radius: 5px;
   border: none;
 }
 input[type=range].login-input::-ms-fill-lower {
-  background: #dc2626;
+  background: #FF0505;
   border-radius: 5px;
 }
 input[type=range].login-input::-ms-fill-upper {
-  background: #dc2626;
+  background: #FF0505;
   border-radius: 5px;
 }
 input[type=range].login-input::-ms-track {

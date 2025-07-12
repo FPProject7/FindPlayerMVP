@@ -29,7 +29,7 @@ const UpgradePremiumButton = ({ profile }) => {
     <div className="flex justify-center my-4">
       <button
         className={`w-full max-w-xl rounded-full px-12 py-3 font-semibold shadow-md transition-colors duration-150 text-lg
-          ${isPremium ? 'bg-gray-100 text-gray-400 border border-gray-300 cursor-not-allowed' : 'bg-[#dc2626] hover:bg-[#b91c1c] text-white'}
+          ${isPremium ? 'bg-gray-100 text-gray-400 border border-gray-300 cursor-not-allowed' : 'bg-[#FF0505] hover:bg-[#CC0000] text-white'}
         `}
         onClick={handleUpgrade}
         disabled={isPremium || isLoading}

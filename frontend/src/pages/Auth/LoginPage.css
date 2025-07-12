@@ -40,7 +40,7 @@
 
 .login-button {
     width: 100%;
-  background-color: #dc2626;
+  background-color: #FF0505;
   color: white;
   padding: 0.75rem;
   border: none;
@@ -53,7 +53,7 @@
 }
 
 .login-button:hover {
-  background-color: #b91c1c;
+  background-color: #CC0000;
 }
 
 .social-button {
@@ -87,6 +87,6 @@
 }
 
 .login-links .signup {
-  color: #dc2626;
+  color: #FF0505;
   font-weight: 600;
 }

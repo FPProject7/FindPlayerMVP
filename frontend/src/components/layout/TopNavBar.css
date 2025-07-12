@@ -42,7 +42,7 @@
     height: 36px;
     border-radius: 50%; /* Make the image circular */
     object-fit: cover; /* Ensure image covers the area */
-    border: 2px solid #dc2626; /* Red border matching previous request */
+    border: 2px solid #FF0505; /* Red border matching previous request */
   }
   
   /* Search Bar Styling */

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">FindPlayer</string>
+    <string name="title_activity_main">FindPlayer</string>
+    <string name="package_name">co.findplayer.app</string>
+    <string name="custom_url_scheme">co.findplayer.app</string>
+</resources>

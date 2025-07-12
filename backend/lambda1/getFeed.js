@@ -54,6 +54,7 @@ exports.handler = async (event) => {
           p.created_at,
           u.name as user_name,
           u.profile_picture_url as user_profile_picture,
+          u.role as user_role,
           COUNT(DISTINCT pl.id) as likes_count,
           COUNT(DISTINCT pc.id) as comments_count,
           EXISTS(SELECT 1 FROM post_likes WHERE post_id = p.id AND user_id = $1) as is_liked
@@ -62,7 +63,7 @@ exports.handler = async (event) => {
         LEFT JOIN post_likes pl ON p.id = pl.post_id
         LEFT JOIN post_comments pc ON p.id = pc.post_id
         WHERE p.user_id = $1
-        GROUP BY p.id, p.user_id, p.content, p.image_url, p.video_url, p.created_at, u.name, u.profile_picture_url
+        GROUP BY p.id, p.user_id, p.content, p.image_url, p.video_url, p.created_at, u.name, u.profile_picture_url, u.role
         ORDER BY p.created_at DESC
         LIMIT $2 OFFSET $3
       `
@@ -76,6 +77,7 @@ exports.handler = async (event) => {
           p.created_at,
           u.name as user_name,
           u.profile_picture_url as user_profile_picture,
+          u.role as user_role,
           COUNT(DISTINCT pl.id) as likes_count,
           COUNT(DISTINCT pc.id) as comments_count,
           EXISTS(SELECT 1 FROM post_likes WHERE post_id = p.id AND user_id = $1) as is_liked
@@ -86,7 +88,7 @@ exports.handler = async (event) => {
         WHERE p.user_id = $1 OR p.user_id IN (
           SELECT following_id FROM followers WHERE follower_id = $1
         )
-        GROUP BY p.id, p.user_id, p.content, p.image_url, p.video_url, p.created_at, u.name, u.profile_picture_url
+        GROUP BY p.id, p.user_id, p.content, p.image_url, p.video_url, p.created_at, u.name, u.profile_picture_url, u.role
         ORDER BY p.created_at DESC
         LIMIT $2 OFFSET $3
       `;
@@ -104,12 +106,13 @@ exports.handler = async (event) => {
       },
       body: JSON.stringify({
         posts: result.rows.map(row => {
-          const { user_name, user_profile_picture, ...rest } = row;
+          const { user_name, user_profile_picture, user_role, ...rest } = row;
           return {
             ...rest,
             user: {
               name: user_name,
-              profilePictureUrl: user_profile_picture
+              profilePictureUrl: user_profile_picture,
+              role: user_role
             }
           };
         }),

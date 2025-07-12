@@ -44,7 +44,7 @@ const BottomNavBar = () => {
 
     const navLinkStyle = ({ isActive }) => {
         return {
-            color: isActive ? '#dc2626' : '#6b7280', // Red for active, gray for inactive
+            color: isActive ? '#FF0505' : '#6b7280', // Red for active, gray for inactive
         };
     };
 
