@@ -485,7 +485,7 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
                       className={`flex mb-2 ${isMe ? 'justify-end' : 'justify-start'}`}
                     >
                       <div
-                        className={`rounded-2xl px-4 py-2 max-w-[75%] text-[15px] break-words shadow-sm ${isMe ? 'bg-[#ff3b30] text-white rounded-br-md' : 'bg-gray-100 text-gray-900 rounded-bl-md'} ${isUnread ? 'font-bold bg-blue-50 border-2 border-blue-200' : ''}`}
+                        className={`rounded-2xl px-4 py-2 max-w-[75%] text-[15px] break-words shadow-sm ${isMe ? 'bg-[#FF0505] text-white rounded-br-md' : 'bg-gray-100 text-gray-900 rounded-bl-md'} ${isUnread ? 'font-bold bg-blue-50 border-2 border-blue-200' : ''}`}
                       >
                         {msg.content}
                         <div className="text-xs mt-1 text-right" style={{ color: isMe ? '#ffe' : '#888' }}>
@@ -513,7 +513,7 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
           <button
             type="submit"
             disabled={sending || !input.trim()}
-            className="ml-2 px-6 py-2 rounded-full font-bold text-white bg-[#ff3b30] hover:bg-[#e22c1a] transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="ml-2 px-6 py-2 rounded-full font-bold text-white bg-[#FF0505] hover:bg-[#CC0000] transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {sending ? 'Sending...' : 'Send'}
           </button>

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { eventsApi } from '../../api/eventsApi';
 import { useLoadScript } from '@react-google-maps/api';
+import { PUBLIC_BASE_URL } from '../../config';
 
 // Toast for share/copy feedback - exact same as profile page
 const ShareToast = ({ message }) => (
@@ -357,7 +358,7 @@ const CreateEventForm = ({ onClose }) => {
   const handleShare = async () => {
     if (createdEventData?.id || createdEventData?.eventId) {
       const eventId = createdEventData.eventId || createdEventData.id;
-      const shareUrl = `${window.location.origin}/events/${eventId}`;
+      const shareUrl = `${PUBLIC_BASE_URL}/events/${eventId}`;
       // Try Web Share API first (mobile)
       if (navigator.share) {
         try {
@@ -614,7 +615,7 @@ const CreateEventForm = ({ onClose }) => {
                 type="file"
                 accept="image/*"
                 onChange={handleImageChange}
-                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-[#dc2626] file:hover:bg-[#b91c1c] file:text-white"
+                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-[#FF0505] file:hover:bg-[#CC0000] file:text-white"
                 disabled={isSubmitting}
               />
               <p className="text-xs text-gray-500 mt-1">Maximum file size: 2MB. Supported formats: JPG, PNG, GIF</p>

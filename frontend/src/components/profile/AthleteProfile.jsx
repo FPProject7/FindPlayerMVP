@@ -113,7 +113,7 @@ const AthleteProfile = ({
       {currentUserId === profile.id && (
         <div className="flex justify-center mt-8 mb-24">
           <button
-            className="w-full max-w-xs bg-[#dc2626] hover:bg-[#b91c1c] text-white rounded-full px-8 py-3 font-semibold shadow-md transition-colors duration-200 text-base"
+            className="w-full max-w-xs bg-[#FF0505] hover:bg-[#CC0000] text-white rounded-full px-8 py-3 font-semibold shadow-md transition-colors duration-200 text-base"
             onClick={() => { logout(); navigate('/login'); }}
           >
             Sign Out

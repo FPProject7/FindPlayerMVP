@@ -28,7 +28,7 @@
   left: 0;
   height: 100%;
   width: 40%; /* Width of the "runner" bar */
-  background-color: #dc2626; /* Red color, matching your app's primary action color */
+  background-color: #FF0505; /* Red color, matching your app's primary action color */
   border-radius: 3px;
   animation: runTrack 1.5s infinite ease-in-out; /* Animation */
 }
