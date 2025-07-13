@@ -446,7 +446,14 @@ const EventDetailPage = () => {
             </div>
             <div className="flex items-center text-gray-800">
               <DollarIcon className="text-black mr-2" size={18} />
-              <span>{event.participationFee ? event.participationFee : 'Free'} per player</span>
+              <span>{
+                event.participationFee !== undefined &&
+                event.participationFee !== null &&
+                event.participationFee !== '' &&
+                !isNaN(Number(event.participationFee))
+                  ? `$${Number(event.participationFee)}`
+                  : 'Free'
+              } per player</span>
             </div>
             {event.dressCode && (
               <div className="flex items-center text-gray-800">

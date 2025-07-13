@@ -9,6 +9,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import api from '../../../api/axiosConfig';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import LoadingDots from '../../common/LoadingDots';
+import TermsModal from '../../common/TermsModal';
 
 // Validation schema
 const schema = yup.object().shape({
@@ -20,6 +21,7 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [apiError, setApiError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
   const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
 
@@ -68,7 +70,8 @@ function LoginForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
+    <>
+      <form onSubmit={handleSubmit(onSubmit)}>
       <div className="login-header">
         <img src={loginLogo} alt="FindPlayer Logo" className="login-logo" />
         <h1 className="login-title">FindPlayer</h1>
@@ -139,9 +142,15 @@ function LoginForm() {
       <SocialLoginButtons />
 
       <p className="login-terms">
-        By clicking continue, you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
+        By clicking continue, you agree to our <button type="button" className="terms-link" onClick={() => setShowTermsModal(true)}>Terms of Service</button> and <button type="button" className="terms-link" onClick={() => setShowTermsModal(true)}>Privacy Policy</button>.
       </p>
     </form>
+    
+    <TermsModal 
+      isOpen={showTermsModal} 
+      onClose={() => setShowTermsModal(false)} 
+    />
+    </>
   );
 }
 

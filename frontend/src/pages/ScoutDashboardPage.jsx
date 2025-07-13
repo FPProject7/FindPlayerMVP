@@ -1,7 +1,7 @@
 // frontend/src/pages/ScoutDashboardPage.jsx
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { getLeaderboardWithStreak } from '../api/userApi';
+import { getLeaderboardWithStreak, getMostViewedAthletes } from '../api/userApi';
 import { calculateAge, getLevelFromXP, getXPProgress, getXPDetails } from '../utils/levelUtils';
 import ChallengeLoader from '../components/common/ChallengeLoader';
 import { useNavigate } from 'react-router-dom';
@@ -9,6 +9,7 @@ import { createProfileUrl } from '../utils/profileUrlUtils';
 import { useAuthStore } from '../stores/useAuthStore';
 import './LeaderboardPageSE.css';
 import { starPlayer, unstarPlayer, getStarredPlayers } from '../api/starredApi';
+
 
 const medalColors = [
   'from-yellow-400 to-yellow-600 border-yellow-400', // Gold
@@ -302,6 +303,16 @@ const ScoutDashboardPage = () => {
   // 1. Add state for starred users at the top of the component:
   const [starredPlayers, setStarredPlayers] = useState([]); // Array of starred player objects
   const [starredUserIds, setStarredUserIds] = useState([]); // Array of UUIDs
+  const [currentStarredPage, setCurrentStarredPage] = useState(0);
+  const [starredTouchStart, setStarredTouchStart] = useState(0);
+  const [starredTouchEnd, setStarredTouchEnd] = useState(0);
+  const [starredSlideOffset, setStarredSlideOffset] = useState(0);
+  const [isStarredHovered, setIsStarredHovered] = useState(false);
+  const [mostViewedAthlete, setMostViewedAthlete] = useState(null);
+  const [grinderViewCount, setGrinderViewCount] = useState(0);
+
+
+
 
   // Fetch starred players on mount
   useEffect(() => {
@@ -499,6 +510,24 @@ const ScoutDashboardPage = () => {
         }
       })
       .catch(() => setGrinderOfWeekId(null));
+
+    // Fetch Most Viewed Athlete of the Week
+    getMostViewedAthletes()
+      .then(res => {
+        if (res.data && res.data.data && res.data.data.mostViewedAthletes && res.data.data.mostViewedAthletes.length > 0) {
+          const athlete = res.data.data.mostViewedAthletes[0];
+          setMostViewedAthlete(athlete);
+        } else {
+          setMostViewedAthlete(null);
+        }
+        
+        // Set grinder view count
+        const grinderCount = res.data?.data?.grinderViewCount || 0;
+        setGrinderViewCount(grinderCount);
+      })
+      .catch((error) => {
+        setMostViewedAthlete(null);
+      });
   }, [timeRange, sport, sortBy, sortOrder]);
 
   // Fetch leaderboard for coaches when country changes
@@ -529,6 +558,61 @@ const ScoutDashboardPage = () => {
       navigate(createProfileUrl(user.name));
     }
   };
+
+  // Starred players pagination functions
+  const handleStarredTouchStart = (e) => {
+    setStarredTouchStart(e.targetTouches[0].clientX);
+    setStarredSlideOffset(0);
+  };
+
+  const handleStarredTouchMove = (e) => {
+    const currentX = e.targetTouches[0].clientX;
+    const distance = starredTouchStart - currentX;
+    const containerWidth = 300; // Approximate container width
+    
+    // Calculate slide offset based on touch distance with smooth animation
+    // Content slides behind the container edges
+    const offset = Math.max(-containerWidth * 0.2, Math.min(containerWidth * 0.2, distance * 0.6));
+    setStarredSlideOffset(offset);
+    setStarredTouchEnd(currentX);
+  };
+
+  const handleStarredTouchEnd = () => {
+    if (!starredTouchStart || !starredTouchEnd) return;
+    
+    const distance = starredTouchStart - starredTouchEnd;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+    
+    const totalPages = Math.ceil(starredPlayers.length / 2);
+    
+    if (isLeftSwipe && currentStarredPage < totalPages - 1) {
+      setCurrentStarredPage(prev => prev + 1);
+    } else if (isRightSwipe && currentStarredPage > 0) {
+      setCurrentStarredPage(prev => prev - 1);
+    }
+    
+    // Reset slide offset with smooth animation
+    setStarredSlideOffset(0);
+  };
+
+  const handleStarredPageChange = (direction) => {
+    const totalPages = Math.ceil(starredPlayers.length / 2);
+    
+    if (direction === 'next' && currentStarredPage < totalPages - 1) {
+      setCurrentStarredPage(prev => prev + 1);
+    } else if (direction === 'prev' && currentStarredPage > 0) {
+      setCurrentStarredPage(prev => prev - 1);
+    }
+  };
+
+  // Get current page of starred players (2 per page)
+  const getCurrentStarredPlayers = () => {
+    const startIndex = currentStarredPage * 2;
+    return starredPlayers.slice(startIndex, startIndex + 2);
+  };
+
+  const totalStarredPages = Math.ceil(starredPlayers.length / 2);
 
   if (loading) {
     return (
@@ -561,11 +645,11 @@ const ScoutDashboardPage = () => {
     <div className="w-full px-0 sm:px-0">
       {/* Centered dashboard heading above the Starred Players box */}
       <div className="flex w-full sm:max-w-5xl mx-auto sm:-ml-7">
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-center text-gray-900 mb-6 mt-4 w-[380px] sm:w-[664px] mx-auto">Coach Carter's Dashboard</h1>
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-center text-gray-900 mb-6 mt-4 w-[380px] sm:w-[664px] mx-auto">{user?.name || 'Scout'}'s Dashboard</h1>
       </div>
       {/* New top box spanning the width of both below boxes, left-aligned above the two boxes */}
       <div className="flex w-full mb-6 sm:max-w-5xl mx-auto sm:-ml-7">
-        <div className="bg-white border border-gray-200 rounded-3xl h-[190px] sm:h-[210px] w-[380px] sm:w-[664px] flex flex-col p-4 relative">
+        <div className="bg-white border border-gray-200 rounded-3xl h-[190px] sm:h-[210px] w-[360px] sm:w-[664px] flex flex-col p-4 relative">
           <div className="flex flex-row justify-between items-start w-full mb-2">
             {/* Left: Starred Players + star icon */}
             <div className="flex items-center gap-2">
@@ -573,28 +657,110 @@ const ScoutDashboardPage = () => {
               {/* Star icon */}
               <svg className="w-6 h-6 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.967a1 1 0 00.95.69h4.175c.969 0 1.371 1.24.588 1.81l-3.38 2.455a1 1 0 00-.364 1.118l1.287 3.966c.3.922-.755 1.688-1.54 1.118l-3.38-2.454a1 1 0 00-1.175 0l-3.38 2.454c-.784.57-1.838-.196-1.54-1.118l1.287-3.966a1 1 0 00-.364-1.118L2.05 9.394c-.783-.57-.38-1.81.588-1.81h4.175a1 1 0 00.95-.69l1.286-3.967z"/></svg>
             </div>
-            {/* Right: Filter by + filter icon */}
-            <div className="flex items-center gap-2 cursor-pointer">
-              <span className="text-sm sm:text-base font-semibold text-gray-600">Filter by</span>
-              {/* Filter icon */}
-              <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707l-6.414 6.414A1 1 0 0014 13.414V19a1 1 0 01-1.447.894l-4-2A1 1 0 018 17V13.414a1 1 0 00-.293-.707L1.293 6.707A1 1 0 011 6V4z"/></svg>
-            </div>
+            {/* Removed Filter by button */}
           </div>
-          {/* Scrollable starred players list */}
-          <div className="flex-1 overflow-y-auto pr-1">
+          {/* Paginated starred players list */}
+          <div 
+            className="flex-1 overflow-hidden relative group"
+            onTouchStart={handleStarredTouchStart}
+            onTouchMove={handleStarredTouchMove}
+            onTouchEnd={handleStarredTouchEnd}
+            onMouseEnter={() => setIsStarredHovered(true)}
+            onMouseLeave={() => setIsStarredHovered(false)}
+          >
             {starredPlayers.length === 0 ? (
               <div className="text-gray-400 text-sm text-center mt-4">No starred players yet.</div>
             ) : (
-              starredPlayers.map(user => (
-                <div key={user.athleteId} className="flex items-center py-2 border-b border-gray-100 last:border-b-0">
-                  <img src={user.img} alt={user.name} className="w-10 h-10 rounded-full object-cover mr-3" />
-                  <div className="flex flex-col flex-1 min-w-0">
-                    <span className="font-semibold text-gray-800 truncate">{user.name}</span>
-                    <span className="text-xs text-gray-500 truncate">{user.email}</span>
+              <div 
+                className="h-full transition-transform duration-200 ease-out"
+                style={{ 
+                  transform: `translateX(${starredSlideOffset}px)`
+                }}
+              >
+                {getCurrentStarredPlayers().map(user => (
+                  <div key={user.athleteId} className="flex items-center py-2 border-b border-gray-100 last:border-b-0 cursor-pointer" onClick={() => navigate(`/profile/${user.athleteId}`)}>
+                    {/* Profile picture with fallback to initials */}
+                    <div className="w-10 h-10 rounded-full mr-3 overflow-hidden flex items-center justify-center">
+                      {user.img ? (
+                        <img 
+                          src={user.img} 
+                          alt={user.name} 
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'flex';
+                          }}
+                        />
+                      ) : null}
+                      <div 
+                        className={`w-full h-full flex items-center justify-center text-gray-500 font-semibold text-sm ${
+                          user.img ? 'hidden' : 'flex'
+                        }`}
+                        style={{ backgroundColor: '#E5E7EB' }}
+                      >
+                        {user.name ? user.name.charAt(0).toUpperCase() : 'A'}
+                      </div>
+                    </div>
+                    <div className="flex flex-col flex-1 min-w-0">
+                      <span className="font-semibold text-gray-800 truncate">{user.name}</span>
+                      <span className="text-xs text-gray-500 truncate">{user.email}</span>
+                    </div>
+                    <button
+                      className="ml-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded-full whitespace-nowrap"
+                      onClick={e => { e.stopPropagation(); navigate(`/messages?conversation=${user.athleteId}`); }}
+                    >
+                      Message the Talent
+                    </button>
                   </div>
-                  <button className="ml-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded-full whitespace-nowrap">Message the Talent</button>
-                </div>
-              ))
+                ))}
+                
+                {/* Pagination dots */}
+                {totalStarredPages > 1 && (
+                  <div className="flex justify-center items-center mt-2 space-x-1">
+                    {Array.from({ length: totalStarredPages }, (_, i) => (
+                      <div
+                        key={i}
+                        className={`w-2 h-2 rounded-full transition-colors ${
+                          i === currentStarredPage ? 'bg-red-600' : 'bg-gray-300'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Arrow buttons - visible on both desktop and mobile */}
+            {totalStarredPages > 1 && (
+              <>
+                {/* Left arrow */}
+                {currentStarredPage > 0 && (
+                  <button
+                    className={`absolute left-2 top-1/2 transform -translate-y-1/2 w-8 h-8 bg-white border border-gray-300 rounded-full shadow-md flex items-center justify-center transition-all duration-200 ${
+                      isStarredHovered ? 'opacity-100' : 'opacity-60'
+                    } hover:bg-gray-50 hover:shadow-lg z-10`}
+                    onClick={() => handleStarredPageChange('prev')}
+                  >
+                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                )}
+
+                {/* Right arrow */}
+                {currentStarredPage < totalStarredPages - 1 && (
+                  <button
+                    className={`absolute right-2 top-1/2 transform -translate-y-1/2 w-8 h-8 bg-white border border-gray-300 rounded-full shadow-md flex items-center justify-center transition-all duration-200 ${
+                      isStarredHovered ? 'opacity-100' : 'opacity-60'
+                    } hover:bg-gray-50 hover:shadow-lg z-10`}
+                    onClick={() => handleStarredPageChange('next')}
+                  >
+                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -602,84 +768,182 @@ const ScoutDashboardPage = () => {
       {/* Two empty boxes side by side, same size as card 1, aligned above card 1 */}
       <div className="flex flex-row justify-center items-stretch gap-2 sm:gap-8 sm:max-w-5xl mx-auto w-full sm:-ml-7 mb-6">
         {/* Left box: Most Viewed Athlete this Week */}
-        <div className="bg-white border border-gray-200 rounded-3xl w-[180px] sm:w-[320px] h-[340px] sm:h-[340px] flex flex-col items-center pt-4 px-2">
-          <div className="w-full text-center text-sm sm:text-base font-bold text-gray-700 mb-4">Most Viewed Athlete this Week</div>
-          <div className="flex flex-row items-center w-full justify-start gap-3 px-2">
-            <div className="w-14 h-14 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-              {/* Static profile image placeholder */}
-              <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Most Viewed Athlete" className="w-full h-full object-cover rounded-full" />
+        <div className="bg-white border border-gray-200 rounded-3xl w-[180px] sm:w-[320px] h-[300px] sm:h-[340px] flex flex-col items-center pt-4 px-2">
+          <div className="w-full text-center text-xs sm:text-base font-bold text-gray-700 mb-3 sm:mb-4">Most Viewed this Week</div>
+          {mostViewedAthlete ? (
+            <>
+              <div className="flex flex-row items-center w-full justify-start gap-3 px-2">
+                <div className="w-14 h-14 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                  {mostViewedAthlete.profilePictureUrl ? (
+                    <img 
+                      src={mostViewedAthlete.profilePictureUrl} 
+                      alt={mostViewedAthlete.name} 
+                      className="w-full h-full object-cover rounded-full"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
+                    />
+                  ) : null}
+                  <div 
+                    className={`w-full h-full flex items-center justify-center text-gray-500 font-semibold text-lg ${
+                      mostViewedAthlete.profilePictureUrl ? 'hidden' : 'flex'
+                    }`}
+                    style={{ backgroundColor: '#E5E7EB' }}
+                  >
+                    {mostViewedAthlete.name ? mostViewedAthlete.name.charAt(0).toUpperCase() : 'A'}
+                  </div>
+                </div>
+                <div className="font-semibold text-base sm:text-lg text-gray-900 ml-2 sm:ml-4 truncate">{getShortName(mostViewedAthlete.name)}</div>
+              </div>
+              {/* Info Row: Age, Level, Position */}
+              <div className="flex justify-center items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-400 italic font-semibold mt-2 mb-1 w-full">
+                <span>Age: {calculateAge(mostViewedAthlete.dateOfBirth)}</span>
+                <span>•</span>
+                <span>Level {getLevelFromXP(mostViewedAthlete.xpTotal || 0)}</span>
+                <span>•</span>
+                <span>{getPositionAbbreviation(mostViewedAthlete.position) || 'N/A'}</span>
+              </div>
+              {/* XP bar */}
+              <div className="w-full mb-1">
+                <div className="relative w-full h-1.5 sm:h-2.5 rounded-full bg-gray-200 overflow-hidden">
+                  <div 
+                    className="absolute left-0 top-0 h-1.5 sm:h-2.5 rounded-full bg-red-500" 
+                    style={{ width: `${getXPProgress(mostViewedAthlete.xpTotal || 0)}%` }}
+                  ></div>
+                </div>
+              </div>
+              {/* Height/Weight Row */}
+              <div className="flex justify-between w-full text-gray-500 text-[9px] sm:text-xs font-medium mt-0 px-2">
+                <span>Height: {mostViewedAthlete.height ? formatHeight(mostViewedAthlete.height) : '--'}</span>
+                <span>Weight: {mostViewedAthlete.weight ? formatWeight(mostViewedAthlete.weight) : '--'}</span>
+              </div>
+              {/* Scouts interest row */}
+              <div className="flex items-center text-gray-500 text-xs mt-4 w-full justify-center">
+                <span className="mr-2" role="img" aria-label="eye">👁️</span>
+                <span>{mostViewedAthlete.viewCount || 0} Scouts showed interest in this athlete.</span>
+              </div>
+              {/* Action buttons */}
+              <div className="flex flex-col w-full px-2 mt-4">
+                <button 
+                  className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-1.5 sm:py-2 rounded-full mb-1.5 sm:mb-2 transition-colors text-xs sm:text-sm"
+                  onClick={() => navigate(`/messages?conversation=${mostViewedAthlete.id}`)}
+                >
+                  Message this Talent
+                </button>
+                <button 
+                  className="w-full border border-gray-300 text-gray-700 font-bold py-1.5 sm:py-2 rounded-full transition-colors text-xs sm:text-sm"
+                  onClick={() => handleViewProfile(mostViewedAthlete)}
+                >
+                  View Full Profile
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-gray-400">
+              <div className="text-center">
+                <div className="w-14 h-14 rounded-full bg-gray-200 flex items-center justify-center mb-4">
+                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                </div>
+                <p className="text-sm font-semibold">No Most Viewed Athlete</p>
+                <p className="text-xs mt-1">Check back next week!</p>
+              </div>
             </div>
-            <div className="font-semibold text-base sm:text-lg text-gray-900 ml-2 sm:ml-4">Stephan Ziadieh</div>
-          </div>
-          {/* Info Row: Age, Level, Position */}
-          <div className="flex justify-center items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-400 italic font-semibold mt-2 mb-1 w-full">
-            <span>Age: 18</span>
-            <span>•</span>
-            <span>Level 5</span>
-            <span>•</span>
-            <span>SG</span>
-          </div>
-          {/* XP bar */}
-          <div className="w-full mb-1">
-            <div className="relative w-full h-1.5 sm:h-2.5 rounded-full bg-gray-200 overflow-hidden">
-              <div className="absolute left-0 top-0 h-1.5 sm:h-2.5 rounded-full bg-red-500" style={{ width: '60%' }}></div>
-            </div>
-          </div>
-          {/* Height/Weight Row */}
-          <div className="flex justify-between w-full text-gray-500 text-[9px] sm:text-xs font-medium mt-0 px-2">
-            <span>Height: 6'2"</span>
-            <span>Weight: 180 lbs</span>
-          </div>
-          {/* Scouts interest row */}
-          <div className="flex items-center text-gray-500 text-xs mt-4 w-full justify-center">
-            <span className="mr-2" role="img" aria-label="eye">👁️</span>
-            <span>12 Scouts showed interest in this athlete.</span>
-          </div>
-          {/* Action buttons */}
-          <div className="flex flex-col w-full px-2 mt-4">
-            <button className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-full mb-2 transition-colors">Message this Talent</button>
-            <button className="w-full border border-gray-300 text-gray-700 font-bold py-2 rounded-full transition-colors">View Full Profile</button>
-          </div>
+          )}
         </div>
         {/* Right box: Grinder of the Week */}
-        <div className="bg-white border border-gray-200 rounded-3xl w-[180px] sm:w-[320px] h-[340px] sm:h-[340px] flex flex-col items-center pt-4 px-2">
-          <div className="w-full text-center text-sm sm:text-base font-bold text-gray-700 mb-4">Grinder of the Week</div>
-          <div className="flex flex-row items-center w-full justify-start gap-3 px-2">
-            <div className="w-14 h-14 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-              {/* Static profile image placeholder */}
-              <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Grinder of the Week" className="w-full h-full object-cover rounded-full" />
+        <div className="bg-white border border-gray-200 rounded-3xl w-[180px] sm:w-[320px] h-[300px] sm:h-[340px] flex flex-col items-center pt-4 px-2">
+          <div className="w-full text-center text-xs sm:text-base font-bold text-gray-700 mb-3 sm:mb-4">Grinder of the Week</div>
+          {grinderOfWeekId && top3.some(u => u.id === grinderOfWeekId) ? (
+            (() => {
+              const grinder = top3.find(u => u.id === grinderOfWeekId);
+              return (
+                <>
+                  <div className="flex flex-row items-center w-full justify-start gap-3 px-2">
+                    <div className="w-14 h-14 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                      {grinder.profilePictureUrl ? (
+                        <img 
+                          src={grinder.profilePictureUrl} 
+                          alt={grinder.name} 
+                          className="w-full h-full object-cover rounded-full"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'flex';
+                          }}
+                        />
+                      ) : null}
+                      <div 
+                        className={`w-full h-full flex items-center justify-center text-gray-500 font-semibold text-lg ${
+                          grinder.profilePictureUrl ? 'hidden' : 'flex'
+                        }`}
+                        style={{ backgroundColor: '#E5E7EB' }}
+                      >
+                        {grinder.name ? grinder.name.charAt(0).toUpperCase() : 'A'}
+                      </div>
+                    </div>
+                    <div className="font-semibold text-base sm:text-lg text-gray-900 ml-2 sm:ml-4 truncate">{getShortName(grinder.name)}</div>
+                  </div>
+                  {/* Info Row: Age, Level, Position */}
+                  <div className="flex justify-center items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-400 italic font-semibold mt-2 mb-1 w-full">
+                    <span>Age: {calculateAge(grinder.dateOfBirth)}</span>
+                    <span>•</span>
+                    <span>Level {getLevelFromXP(grinder.xpTotal || 0)}</span>
+                    <span>•</span>
+                    <span>{getPositionAbbreviation(grinder.position) || 'N/A'}</span>
+                  </div>
+                  {/* XP bar */}
+                  <div className="w-full mb-1">
+                    <div className="relative w-full h-1.5 sm:h-2.5 rounded-full bg-gray-200 overflow-hidden">
+                      <div 
+                        className="absolute left-0 top-0 h-1.5 sm:h-2.5 rounded-full bg-red-500" 
+                        style={{ width: `${getXPProgress(grinder.xpTotal || 0)}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                  {/* Height/Weight Row */}
+                  <div className="flex justify-between w-full text-gray-500 text-[9px] sm:text-xs font-medium mt-0 px-2">
+                    <span>Height: {grinder.height ? formatHeight(grinder.height) : '--'}</span>
+                    <span>Weight: {grinder.weight ? formatWeight(grinder.weight) : '--'}</span>
+                  </div>
+                  {/* Scouts interest row */}
+                  <div className="flex items-center text-gray-500 text-xs mt-4 w-full justify-center">
+                    <span className="mr-2" role="img" aria-label="eye">👁️</span>
+                    <span>{grinderViewCount} Scouts showed interest in this athlete.</span>
+                  </div>
+                  {/* Action buttons */}
+                  <div className="flex flex-col w-full px-2 mt-4">
+                    <button 
+                      className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-1.5 sm:py-2 rounded-full mb-1.5 sm:mb-2 transition-colors text-xs sm:text-sm"
+                      onClick={() => navigate(`/messages?conversation=${grinder.id}`)}
+                    >
+                      Message this Talent
+                    </button>
+                    <button 
+                      className="w-full border border-gray-300 text-gray-700 font-bold py-1.5 sm:py-2 rounded-full transition-colors text-xs sm:text-sm"
+                      onClick={() => handleViewProfile(grinder)}
+                    >
+                      View Full Profile
+                    </button>
+                  </div>
+                </>
+              );
+            })()
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-gray-400">
+              <div className="text-center">
+                <div className="w-14 h-14 rounded-full bg-gray-200 flex items-center justify-center mb-4">
+                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <p className="text-sm font-semibold">No Grinder of the Week</p>
+                <p className="text-xs mt-1">Check back next week!</p>
+              </div>
             </div>
-            <div className="font-semibold text-base sm:text-lg text-gray-900 ml-2 sm:ml-4">Stephan Ziadieh</div>
-          </div>
-          {/* Info Row: Age, Level, Position */}
-          <div className="flex justify-center items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-400 italic font-semibold mt-2 mb-1 w-full">
-            <span>Age: 18</span>
-            <span>•</span>
-            <span>Level 5</span>
-            <span>•</span>
-            <span>SG</span>
-          </div>
-          {/* XP bar */}
-          <div className="w-full mb-1">
-            <div className="relative w-full h-1.5 sm:h-2.5 rounded-full bg-gray-200 overflow-hidden">
-              <div className="absolute left-0 top-0 h-1.5 sm:h-2.5 rounded-full bg-red-500" style={{ width: '60%' }}></div>
-            </div>
-          </div>
-          {/* Height/Weight Row */}
-          <div className="flex justify-between w-full text-gray-500 text-[9px] sm:text-xs font-medium mt-0 px-2">
-            <span>Height: 6'2"</span>
-            <span>Weight: 180 lbs</span>
-          </div>
-          {/* Scouts interest row */}
-          <div className="flex items-center text-gray-500 text-xs mt-4 w-full justify-center">
-            <span className="mr-2" role="img" aria-label="eye">👁️</span>
-            <span>12 Scouts showed interest in this athlete.</span>
-          </div>
-          {/* Action buttons */}
-          <div className="flex flex-col w-full px-2 mt-4">
-            <button className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-full mb-2 transition-colors">Message this Talent</button>
-            <button className="w-full border border-gray-300 text-gray-700 font-bold py-2 rounded-full transition-colors">View Full Profile</button>
-          </div>
+          )}
         </div>
       </div>
       <h1 className="text-3xl font-bold text-left text-red-600 mb-2 tracking-tight pl-2">THE LEADERBOARD</h1>
@@ -1167,14 +1431,14 @@ const ScoutDashboardPage = () => {
                 </div>
                 {/* Star button (far right) */}
                 <button
-                  className="ml-auto flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-100 transition"
+                  className="ml-auto flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 rounded-full hover:bg-gray-100 transition"
                   onClick={() => handleToggleStar(user.id)}
                   aria-label={isStarred ? 'Unstar' : 'Star'}
                 >
                   {isStarred ? (
-                    <svg className="w-6 h-6 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.967a1 1 0 00.95.69h4.175c.969 0 1.371 1.24.588 1.81l-3.38 2.455a1 1 0 00-.364 1.118l1.287 3.966c.3.922-.755 1.688-1.54 1.118l-3.38-2.454a1 1 0 00-1.175 0l-3.38 2.454c-.784.57-1.838-.196-1.54-1.118l1.287-3.966a1 1 0 00-.364-1.118L2.05 9.394c-.783-.57-.38-1.81.588-1.81h4.175a1 1 0 00.95-.69l1.286-3.967z"/></svg>
+                    <svg className="w-4 h-4 sm:w-6 sm:h-6 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.967a1 1 0 00.95.69h4.175c.969 0 1.371 1.24.588 1.81l-3.38 2.455a1 1 0 00-.364 1.118l1.287 3.966c.3.922-.755 1.688-1.54 1.118l-3.38-2.454a1 1 0 00-1.175 0l-3.38 2.454c-.784.57-1.838-.196-1.54-1.118l1.287-3.966a1 1 0 00-.364-1.118L2.05 9.394c-.783-.57-.38-1.81.588-1.81h4.175a1 1 0 00.95-.69l1.286-3.967z"/></svg>
                   ) : (
-                    <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.967a1 1 0 00.95.69h4.175c.969 0 1.371 1.24.588 1.81l-3.38 2.455a1 1 0 00-.364 1.118l1.287 3.966c.3.922-.755 1.688-1.54 1.118l-3.38-2.454a1 1 0 00-1.175 0l-3.38 2.454c-.784.57-1.838-.196-1.54-1.118l1.287-3.966a1 1 0 00-.364-1.118L2.05 9.394c-.783-.57-.38-1.81.588-1.81h4.175a1 1 0 00.95-.69l1.286-3.967z"/></svg>
+                    <svg className="w-4 h-4 sm:w-6 sm:h-6 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.967a1 1 0 00.95.69h4.175c.969 0 1.371 1.24.588 1.81l-3.38 2.455a1 1 0 00-.364 1.118l1.287 3.966c.3.922-.755 1.688-1.54 1.118l-3.38-2.454a1 1 0 00-1.175 0l-3.38 2.454c-.784.57-1.838-.196-1.54-1.118l1.287-3.966a1 1 0 00-.364-1.118L2.05 9.394c-.783-.57-.38-1.81.588-1.81h4.175a1 1 0 00.95-.69l1.286-3.967z"/></svg>
                   )}
                 </button>
               </div>
@@ -1185,6 +1449,7 @@ const ScoutDashboardPage = () => {
           <div className="flex justify-center py-2 text-gray-400 text-xs">Loading more...</div>
         )}
       </div>
+      
     </div>
   );
 };

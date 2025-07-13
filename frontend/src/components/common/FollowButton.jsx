@@ -24,10 +24,10 @@ const FollowButton = ({ isFollowing, loading, onFollow, onUnfollow, className = 
 
   const smallStyle = isSmallScreen
     ? {
-        fontSize: '0.65rem',
-        padding: '0.05rem 0.3rem',
-        minHeight: 18,
-        maxWidth: 60,
+        fontSize: '0.75rem',
+        padding: '0.25rem 1.5rem',
+        minHeight: 28,
+        maxWidth: 180,
       }
     : {};
 

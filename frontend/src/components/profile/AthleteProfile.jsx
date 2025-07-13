@@ -3,11 +3,9 @@ import ProfileTabs from './ProfileTabs';
 import UpgradePremiumButton from './UpgradePremiumButton';
 import FollowersModal from './FollowersModal';
 import { useEffect, useState } from 'react';
-import { useEffect, useState } from 'react';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useNavigate } from 'react-router-dom';
 import { formatHeight, formatWeight } from '../../utils/levelUtils';
-import { getFollowerCount } from '../../api/userApi';
 import { starPlayer, unstarPlayer, getStarredPlayers } from '../../api/starredApi';
 
 const AthleteProfile = ({
@@ -32,55 +30,57 @@ const AthleteProfile = ({
   } = profile;
   const [showFollowers, setShowFollowers] = useState(false);
   const [connectionsCount, setConnectionsCount] = useState(connections);
+  const [starred, setStarred] = useState(false);
+  const [starLoading, setStarLoading] = useState(false);
   const logout = useAuthStore((state) => state.logout);
   const authUser = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const navigate = useNavigate();
+  
+  // Check if current user is a scout
+  const isScout = authUser?.role?.toLowerCase() === 'scout';
 
+  // Check if athlete is starred by current scout
   useEffect(() => {
-    if (profile?.id) {
-      getFollowerCount(profile.id).then(setConnectionsCount).catch(() => setConnectionsCount(0));
-    }
-  }, [profile.id]);
-
-  // When modal closes, refresh count
-  const handleCloseFollowers = () => {
-    setShowFollowers(false);
-    if (profile?.id) {
-      getFollowerCount(profile.id).then(setConnectionsCount).catch(() => {});
-    }
-  };
-  const [starred, setStarred] = useState(false);
-  const [starLoading, setStarLoading] = useState(false);
-
-  // Only scouts can star, and only on other users' profiles
-  const isScout = isAuthenticated && authUser?.role === 'scout' && authUser.id !== profile.id;
-
-  useEffect(() => {
-    if (isScout) {
-      setStarLoading(true);
-      getStarredPlayers(authUser.id)
-        .then(res => {
-          setStarred((res.starred || []).some(p => p.athleteId === profile.id));
-        })
-        .finally(() => setStarLoading(false));
-    }
-  }, [isScout, authUser?.id, profile.id]);
+    const checkStarredStatus = async () => {
+      if (isAuthenticated && isScout && authUser?.id && userId) {
+        try {
+          const response = await getStarredPlayers(authUser.id);
+          const isStarred = response.starred?.some(player => player.athleteId === userId);
+          setStarred(isStarred);
+        } catch (error) {
+          console.error('Failed to check starred status:', error);
+          // Temporarily set starred to false to prevent UI errors
+          setStarred(false);
+        }
+      }
+    };
+    
+    checkStarredStatus();
+  }, [isAuthenticated, isScout, authUser?.id, userId]);
 
   const handleToggleStar = async () => {
-    if (!isScout) return;
+    if (!isAuthenticated || !isScout || !authUser?.id || !userId) return;
+    
     setStarLoading(true);
     try {
       if (starred) {
-        await unstarPlayer(authUser.id, profile.id);
+        await unstarPlayer(authUser.id, userId);
         setStarred(false);
       } else {
-        await starPlayer(authUser.id, profile.id);
+        await starPlayer(authUser.id, userId);
         setStarred(true);
       }
+    } catch (error) {
+      console.error('Failed to toggle star:', error);
+      alert('Failed to update star status. Please try again.');
     } finally {
       setStarLoading(false);
     }
+  };
+
+  const handleCloseFollowers = () => {
+    setShowFollowers(false);
   };
 
   return (
@@ -94,27 +94,11 @@ const AthleteProfile = ({
         onUnfollow={onUnfollow}
         quote={quote}
         showShareButton={true}
+        isScout={isScout}
+        starred={starred}
+        starLoading={starLoading}
+        onToggleStar={handleToggleStar}
       />
-      {isScout && (
-        <div className="flex justify-center mt-2 mb-2">
-          <button
-            className="flex items-center gap-2 px-4 py-2 rounded-full border border-gray-300 bg-white shadow hover:bg-gray-50 disabled:opacity-60"
-            onClick={handleToggleStar}
-            disabled={starLoading}
-            aria-label={starred ? 'Unstar Athlete' : 'Star Athlete'}
-          >
-            {starred ? (
-              <svg className="w-6 h-6 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.967a1 1 0 00.95.69h4.175c.969 0 1.371 1.24.588 1.81l-3.38 2.455a1 1 0 00-.364 1.118l1.287 3.966c.3.922-.755 1.688-1.54 1.118l-3.38-2.454a1 1 0 00-1.175 0l-3.38 2.454c-.784.57-1.838-.196-1.54-1.118l1.287-3.966a1 1 0 00-.364-1.118L2.05 9.394c-.783-.57-.38-1.81.588-1.81h4.175a1 1 0 00.95-.69l1.286-3.967z"/></svg>
-            ) : (
-              <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.967a1 1 0 00.95.69h4.175c.969 0 1.371 1.24.588 1.81l-3.38 2.455a1 1 0 00-.364 1.118l1.287 3.966c.3.922-.755 1.688-1.54 1.118l-3.38-2.454a1 1 0 00-1.175 0l-3.38 2.454c-.784.57-1.838-.196-1.54-1.118l1.287-3.966a1 1 0 00-.364-1.118L2.05 9.394c-.783-.57-.38-1.81.588-1.81h4.175a1 1 0 00.95-.69l1.286-3.967z"/></svg>
-            )}
-            <span className="text-sm font-semibold text-gray-700">
-              {starred ? 'Starred' : 'Star Athlete'}
-            </span>
-            {starLoading && <span className="ml-2 animate-spin">⏳</span>}
-          </button>
-        </div>
-      )}
       {/* Height and Weight */}
       {(height || weight || profile.country) && (
         <>

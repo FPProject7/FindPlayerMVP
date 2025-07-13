@@ -22,6 +22,21 @@ async function resolveUserId(identifier) {
   return res.rows[0].id;
 }
 
+// Utility: check if user is premium
+async function isUserPremium(userId) {
+  const client = new Client({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    ssl: { rejectUnauthorized: false }
+  });
+  await client.connect();
+  const res = await client.query('SELECT is_premium_member FROM users WHERE id = $1 LIMIT 1', [userId]);
+  await client.end();
+  return res.rows.length > 0 && res.rows[0].is_premium_member === true;
+}
+
 export const handler = async (event) => {
   try {
     const claims = event.identity.claims;
@@ -31,6 +46,12 @@ export const handler = async (event) => {
     // Always resolve to UUID
     userId = await resolveUserId(userId);
     otherUserId = await resolveUserId(otherUserId);
+
+    // Check premium status from DB
+    const isPremium = await isUserPremium(userId);
+    if (!isPremium) {
+      throw new Error('Only premium members can initiate new conversations. Free users can respond to existing conversations.');
+    }
 
     if (!otherUserId || otherUserId === userId) {
       throw new Error('Invalid otherUserId');

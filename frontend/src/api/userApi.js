@@ -84,6 +84,30 @@ export const trackProfileView = async (viewedUserId) => {
   }
 };
 
+// Get most viewed athletes of the week
+export const getMostViewedAthletes = async () => {
+  const token = await useAuthStore.getState().getValidToken();
+  
+  try {
+    const response = await axios.get('https://20mot13f4g.execute-api.us-east-1.amazonaws.com/get-most-viewed-athletes', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    return response;
+  } catch (error) {
+    console.error('getMostViewedAthletes error details:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      url: error.config?.url
+    });
+    throw error;
+  }
+};
+
 export { connectionsApiClient };
 
 const PUBLIC_CONNECTIONS_URL = 'https://6gsow5ouw8.execute-api.us-east-1.amazonaws.com/default/getConnections';
@@ -265,4 +289,20 @@ export const updateUserStatus = async (statusData) => {
     console.error('Error updating user status:', error);
     throw error;
   }
+};
+
+// Fetch count of unique athletes and coaches viewed by a scout (plural endpoint)
+export const getUsersViewedByScouts = async (scoutId) => {
+  const token = await useAuthStore.getState().getValidToken();
+  const response = await userApiClient.get(`/getUsersViewedByScouts?scoutId=${scoutId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  // Return just the counts
+  return {
+    athleteCount: response.data.athleteCount,
+    coachCount: response.data.coachCount
+  };
 };

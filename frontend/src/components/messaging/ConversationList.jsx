@@ -31,7 +31,7 @@ const LIST_CONVERSATIONS = gql`
 const PULL_THRESHOLD = 80;
 const MAX_PULL_DISTANCE = 120;
 
-export default function ConversationList({ onSelectConversation }) {
+export default function ConversationList({ onSelectConversation, isPremium }) {
   const [search, setSearch] = useState('');
   const [userResults, setUserResults] = useState([]);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
@@ -52,11 +52,27 @@ export default function ConversationList({ onSelectConversation }) {
   // Sync local conversations state with data from backend
   useEffect(() => {
     if (data?.listConversations?.items) {
-      setConversations(data.listConversations.items);
+      // Deduplicate by conversationId
+      const uniqueConversations = [];
+      const seen = new Set();
+      for (const conv of data.listConversations.items) {
+        if (!seen.has(conv.conversationId)) {
+          uniqueConversations.push(conv);
+          seen.add(conv.conversationId);
+        }
+      }
+      setConversations(uniqueConversations);
     }
   }, [data]);
 
   useEffect(() => {
+    // Disable search for free users
+    if (!isPremium) {
+      setUserResults([]);
+      setShowUserDropdown(false);
+      return;
+    }
+    
     if (search.trim().length < 2) {
       setUserResults([]);
       setShowUserDropdown(false);
@@ -76,7 +92,7 @@ export default function ConversationList({ onSelectConversation }) {
       }
     }, 300);
     return () => clearTimeout(timeout);
-  }, [search]);
+  }, [search, isPremium]);
 
   // Pull-to-refresh handlers
   const handleTouchStart = (e) => {
@@ -188,10 +204,19 @@ export default function ConversationList({ onSelectConversation }) {
       <div className="conversation-search-bar">
         <input
           type="text"
-          placeholder="Search for Teammates, Coaches, Scouts..."
+          placeholder={isPremium ? "Search for Teammates, Coaches, Scouts..." : "Upgrade to Premium to start new conversations"}
           value={search}
           onChange={e => setSearch(e.target.value)}
-          style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid #ddd' }}
+          disabled={!isPremium}
+          style={{ 
+            width: '100%', 
+            padding: 8, 
+            borderRadius: 8, 
+            border: '1px solid #ddd',
+            backgroundColor: isPremium ? 'white' : '#f5f5f5',
+            color: isPremium ? 'black' : '#999',
+            cursor: isPremium ? 'text' : 'not-allowed'
+          }}
           onFocus={() => { if (userResults.length > 0) setShowUserDropdown(true); }}
           onBlur={() => setTimeout(() => setShowUserDropdown(false), 200)}
         />

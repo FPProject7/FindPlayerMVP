@@ -1,10 +1,11 @@
 // frontend/src/components/profile/ProfileHeader.jsx
 import FollowButton from '../common/FollowButton';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FiShare2 } from 'react-icons/fi';
 import { getXPDetails } from '../../utils/levelUtils';
 import { createProfileUrl } from '../../utils/profileUrlUtils';
 import UserStatusBadge from '../common/UserStatusBadge';
+import ChallengeLoader from '../common/ChallengeLoader';
 
 // Toast for share/copy feedback
 const ShareToast = ({ message }) => (
@@ -15,7 +16,20 @@ const ShareToast = ({ message }) => (
   </div>
 );
 
-const ProfileHeader = ({ profile, currentUserId, isFollowing, buttonLoading, onFollow, onUnfollow, quote, showShareButton = true }) => {
+const ProfileHeader = ({ profile, currentUserId, isFollowing, buttonLoading, onFollow, onUnfollow, quote, showShareButton = true, isScout = false, starred = false, starLoading = false, onToggleStar }) => {
+  // Responsive state for iPhone SE
+  const [isSmallScreen, setIsSmallScreen] = useState(
+    typeof window !== 'undefined' ? window.innerWidth <= 375 : false
+  );
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsSmallScreen(window.innerWidth <= 375);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Share button logic
   const [showToast, setShowToast] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
@@ -153,6 +167,35 @@ const ProfileHeader = ({ profile, currentUserId, isFollowing, buttonLoading, onF
               onFollow={onFollow}
               onUnfollow={onUnfollow}
             />
+          </div>
+        )}
+        {/* Star button for scouts */}
+        {isScout && (
+          <div className="flex justify-center mt-2 mb-2 w-full">
+            <button
+              className="w-full max-w-[200px] px-8 py-2 rounded-full font-bold text-lg shadow-md transition-colors duration-150 flex items-center justify-center focus:outline-none border-2 border-yellow-500 bg-white text-yellow-600 hover:bg-yellow-50 disabled:opacity-70 disabled:cursor-not-allowed"
+              onClick={onToggleStar}
+              disabled={starLoading}
+              aria-label={starred ? 'Unstar Athlete' : 'Star Athlete'}
+              style={{ 
+                minHeight: 48,
+                ...(isSmallScreen && {
+                  fontSize: '0.75rem',
+                  padding: '0.25rem 1.5rem',
+                  minHeight: 28,
+                  maxWidth: 180,
+                })
+              }}
+            >
+              {starred ? (
+                <svg className="w-5 h-5 text-yellow-500 mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.967a1 1 0 00.95.69h4.175c.969 0 1.371 1.24.588 1.81l-3.38 2.455a1 1 0 00-.364 1.118l1.287 3.966c.3.922-.755 1.688-1.54 1.118l-3.38-2.454a1 1 0 00-1.175 0l-3.38 2.454c-.784.57-1.838-.196-1.54-1.118l1.287-3.966a1 1 0 00-.364-1.118L2.05 9.394c-.783-.57-.38-1.81.588-1.81h4.175a1 1 0 00.95-.69l1.286-3.967z"/></svg>
+              ) : (
+                <svg className="w-5 h-5 text-yellow-500 mr-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.967a1 1 0 00.95.69h4.175c.969 0 1.371 1.24.588 1.81l-3.38 2.455a1 1 0 00-.364 1.118l1.287 3.966c.3.922-.755 1.688-1.54 1.118l-3.38-2.454a1 1 0 00-1.175 0l-3.38 2.454c-.784.57-1.838-.196-1.54-1.118l1.287-3.966a1 1 0 00-.364-1.118L2.05 9.394c-.783-.57-.38-1.81.588-1.81h4.175a1 1 0 00.95-.69l1.286-3.967z"/></svg>
+              )}
+              <span className="font-bold text-lg" style={isSmallScreen ? { fontSize: '0.8rem' } : {}}>
+                {starred ? 'Starred' : 'Star Player'}
+              </span>
+            </button>
           </div>
         )}
       </div>

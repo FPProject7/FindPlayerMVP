@@ -1,6 +1,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand, ScanCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
-const { Client } = require('pg');
+import pkg from 'pg';
+const { Client } = pkg;
 
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
@@ -25,6 +26,21 @@ async function resolveUserId(identifier) {
   return res.rows[0].id;
 }
 
+// Utility: check if user is premium
+async function isUserPremium(userId) {
+  const client = new Client({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    ssl: { rejectUnauthorized: false }
+  });
+  await client.connect();
+  const res = await client.query('SELECT is_premium_member FROM users WHERE id = $1 LIMIT 1', [userId]);
+  await client.end();
+  return res.rows.length > 0 && res.rows[0].is_premium_member === true;
+}
+
 export const handler = async (event) => {
     const now = new Date().toISOString();
     try {
@@ -37,11 +53,16 @@ export const handler = async (event) => {
         senderId = await resolveUserId(senderId);
         receiverId = await resolveUserId(receiverId);
 
-        // Deterministic conversationId for user pair (trim and lowercase for safety)
+        // Check premium status from DB
+        const isPremium = await isUserPremium(senderId);
+
+        // Deterministic conversationId for user pair
         const participants = [senderId, receiverId].sort();
         const conversationId = participants.join('_');
         let conversationTimestamp = now;
         let isNewConversation = false;
+
+        console.log('[send-message] senderId:', senderId, 'receiverId:', receiverId, 'conversationId:', conversationId, 'isPremium:', isPremium);
 
         // Check if conversation already exists (use Scan due to sort key)
         const scanParams = {
@@ -51,7 +72,13 @@ export const handler = async (event) => {
             Limit: 1
         };
         const scanResult = await docClient.send(new ScanCommand(scanParams));
+        console.log('[send-message] scanResult.Items.length:', scanResult.Items ? scanResult.Items.length : 0);
         if (!scanResult.Items || scanResult.Items.length === 0) {
+            // Only block non-premium users if they are initiating a new conversation (no previous messages)
+            if (!isPremium) {
+                console.log('[send-message] BLOCKED: Non-premium user trying to start new conversation');
+                throw new Error('Only premium members can initiate new conversations. Free users can respond to existing conversations.');
+            }
             // Create new conversation
             isNewConversation = true;
             const newConversation = {

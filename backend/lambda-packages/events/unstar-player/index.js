@@ -28,7 +28,13 @@ exports.handler = async (event) => {
         body: JSON.stringify({ error: 'Missing scoutId or athleteId' })
       };
     }
-    const client = new Client();
+    const client = new Client({
+      host: process.env.DB_HOST,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
+      ssl: { rejectUnauthorized: false }
+    });
     await client.connect();
     // Delete the star
     const result = await client.query(

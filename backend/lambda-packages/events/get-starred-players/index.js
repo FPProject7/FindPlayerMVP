@@ -24,7 +24,13 @@ exports.handler = async (event) => {
         body: JSON.stringify({ error: 'Missing scoutId' })
       };
     }
-    const client = new Client();
+    const client = new Client({
+      host: process.env.DB_HOST,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
+      ssl: { rejectUnauthorized: false }
+    });
     await client.connect();
     const result = await client.query(
       `SELECT
@@ -57,6 +63,7 @@ exports.handler = async (event) => {
       body: JSON.stringify({ success: true, starred: starredPlayers, count: starredPlayers.length })
     };
   } catch (err) {
+    console.error('Error in get-starred-players:', err);
     return {
       statusCode: 500,
       headers: {
