@@ -37,13 +37,13 @@ const VerifyButton = ({ isVerified, onStatusUpdate }) => {
         className={`w-full max-w-xs px-8 py-3 font-semibold rounded-full shadow-md transition-colors duration-200 text-base border-2
           ${isVerified || isLoading
             ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
-            : 'bg-white border-[#dc2626] text-black hover:bg-[#ffeaea]'}
+            : 'bg-white border-[#FF0505] text-black hover:bg-[#ffeaea]'}
         `}
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       >
         {/* Check icon */}
         <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-          <circle cx="12" cy="12" r="10" fill="#dc2626" stroke="#dc2626" strokeWidth="2.5" />
+          <circle cx="12" cy="12" r="10" fill="#FF0505" stroke="#FF0505" strokeWidth="2.5" />
           <path d="M8 12l2.5 2.5L16 9" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         {isLoading ? 'Verifying...' : isVerified ? 'Verified' : 'Verify'}

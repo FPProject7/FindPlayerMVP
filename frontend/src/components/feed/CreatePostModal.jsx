@@ -244,7 +244,7 @@ const CreatePostModal = ({ isOpen, onClose, onPostCreated }) => {
                 type="file"
                 accept="image/jpeg,image/png,image/gif,video/mp4,video/webm,video/quicktime"
                 onChange={handleFileChange}
-                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-[#dc2626] file:hover:bg-[#b91c1c] file:text-white"
+                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-[#FF0505] file:hover:bg-[#CC0000] file:text-white"
                 disabled={isLoading}
               />
               <p className="text-xs text-gray-500 mt-1">
@@ -333,7 +333,7 @@ const CreatePostModal = ({ isOpen, onClose, onPostCreated }) => {
               </button>
               <button
                 type="submit"
-                className="bg-[#dc2626] hover:bg-[#b91c1c] text-white rounded-full font-bold px-6 py-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-[#FF0505] hover:bg-[#CC0000] text-white rounded-full font-bold px-6 py-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={isLoading || !content.trim() || isUploading}
               >
                 {isLoading ? 'Posting...' : 'Post'}

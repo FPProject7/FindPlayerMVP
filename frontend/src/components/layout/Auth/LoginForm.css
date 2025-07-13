@@ -127,7 +127,7 @@ width: 60px;      /* or whatever size looks good */
 
 .login-button {
   width: 100%;
-  background-color: #dc2626 !important;
+  background-color: #FF0505 !important;
   color: white !important;
   padding: 0.75rem;
   border: none;
@@ -139,5 +139,5 @@ width: 60px;      /* or whatever size looks good */
 }
 
 .login-button:hover {
-  background-color: #b91c1c !important;
+  background-color: #CC0000 !important;
 }

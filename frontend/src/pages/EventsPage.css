@@ -48,7 +48,7 @@
 
 .search-input:focus {
   outline: none;
-  border-color: #dc2626;
+  border-color: #FF0505;
   box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
 }
 
@@ -148,5 +148,5 @@
 
 .autocomplete-item:hover, .autocomplete-item:focus {
   background: #fef2f2;
-  color: #b91c1c;
+  color: #CC0000;
 }

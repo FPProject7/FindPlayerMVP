@@ -206,7 +206,7 @@ const NotificationsPage = () => {
             if (notif.type === 'challenge_submission') {
               message = (
                 <>
-                  Submitted an attempt for <span style={{ color: '#dc2626', fontWeight: 600 }}>{notif.challengeTitle || 'this challenge'}</span>
+                  Submitted an attempt for <span style={{ color: '#FF0505', fontWeight: 600 }}>{notif.challengeTitle || 'this challenge'}</span>
                 </>
               );
             } else if (notif.type === 'challenge_review') {
@@ -214,7 +214,7 @@ const NotificationsPage = () => {
               const action = notif.reviewResult === 'approve' ? 'approved' : 'rejected';
               message = (
                 <>
-                  <span style={{ color: '#dc2626', fontWeight: 600 }}>{challengeName}</span> has been {action}
+                  <span style={{ color: '#FF0505', fontWeight: 600 }}>{challengeName}</span> has been {action}
                 </>
               );
             } else if (notif.type === 'like_post') {

@@ -11,6 +11,7 @@ import { GoogleMap, Marker, useLoadScript } from '@react-google-maps/api';
 import usePlacesAutocomplete, { getGeocode, getLatLng } from 'use-places-autocomplete';
 import { eventsApi } from '../api/eventsApi';
 import { getUserInfo } from '../api/userApi';
+import { PUBLIC_BASE_URL } from '../config';
 
 import './EventsPage.css';
 
@@ -158,7 +159,7 @@ const EventCard = ({ event }) => {
           {/* Share button in top right */}
           <div className="absolute top-3 right-3 z-10" onClick={(e) => e.stopPropagation()}>
             <ShareButton 
-              url={`${window.location.origin}/events/${event.eventId}`}
+              url={`${PUBLIC_BASE_URL}/events/${event.eventId}`}
               title={`Check out this event: ${event.title}`}
               iconSize={20}
             />
@@ -327,7 +328,7 @@ const HostedEventCard = ({ event }) => {
         {/* Share button in top right */}
         <div className="absolute top-2 right-2 z-10" onClick={(e) => e.stopPropagation()}>
           <ShareButton 
-            url={`${window.location.origin}/events/${event.eventId}`}
+            url={`${PUBLIC_BASE_URL}/events/${event.eventId}`}
             title={`Check out this event: ${event.title}`}
             iconSize={18}
           />
@@ -428,7 +429,7 @@ const ParticipatingEventCard = ({ event, onDeregister }) => {
         {/* Share button in top right */}
         <div className="absolute top-2 right-2 z-10" onClick={(e) => e.stopPropagation()}>
           <ShareButton 
-            url={`${window.location.origin}/events/${event.id}`}
+            url={`${PUBLIC_BASE_URL}/events/${event.id}`}
             title={`Check out this event: ${event.title}`}
             iconSize={18}
           />

@@ -177,7 +177,7 @@ const CommentModal = ({ isOpen, onClose, post, onCommentAdded }) => {
             <button
               type="submit"
               disabled={!comment.trim() || isSubmitting}
-              className={`w-32 bg-[#dc2626] hover:bg-[#b91c1c] text-white font-bold py-2 rounded-full text-sm uppercase transition-colors duration-200 ${(!comment.trim() || isSubmitting) ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`w-32 bg-[#FF0505] hover:bg-[#CC0000] text-white font-bold py-2 rounded-full text-sm uppercase transition-colors duration-200 ${(!comment.trim() || isSubmitting) ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               {isSubmitting ? 'Posting...' : 'Post'}
             </button>

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { FiShare2 } from 'react-icons/fi';
 import { getXPDetails } from '../../utils/levelUtils';
 import { createProfileUrl } from '../../utils/profileUrlUtils';
+import { PUBLIC_BASE_URL } from '../../config';
 import UserStatusBadge from '../common/UserStatusBadge';
 import ChallengeLoader from '../common/ChallengeLoader';
 
@@ -34,7 +35,7 @@ const ProfileHeader = ({ profile, currentUserId, isFollowing, buttonLoading, onF
   const [showToast, setShowToast] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const handleShare = async () => {
-    const url = window.location.origin + createProfileUrl(profile.name, profile.role);
+    const url = PUBLIC_BASE_URL + createProfileUrl(profile.name, profile.role);
 
     // Try Web Share API first (mobile)
     if (navigator.share) {
@@ -151,7 +152,7 @@ const ProfileHeader = ({ profile, currentUserId, isFollowing, buttonLoading, onF
               title="Share profile"
               style={{ boxShadow: 'none' }}
             >
-              <FiShare2 size={22} color="#dc2626" />
+              <FiShare2 size={22} color="#FF0505" />
             </button>
           </div>
         )}

@@ -108,7 +108,7 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
       {currentUserRole === 'athlete' && !isOwnProfile && (profile.is_premium_member || profile.isPremiumMember) && (
         <div className="flex justify-center my-4">
           <button
-            className="w-full max-w-xl bg-[#dc2626] hover:bg-[#b91c1c] text-white rounded-full px-12 py-3 font-semibold shadow-md transition-colors duration-150 text-lg"
+            className="w-full max-w-xl bg-[#FF0505] hover:bg-[#CC0000] text-white rounded-full px-12 py-3 font-semibold shadow-md transition-colors duration-150 text-lg"
             onClick={handleBookSession}
           >
             Book a Session
@@ -125,7 +125,7 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
       {currentUserId === profile.id && (
         <div className="flex justify-center mt-8 mb-24">
           <button
-            className="w-full max-w-xs bg-[#dc2626] hover:bg-[#b91c1c] text-white rounded-full px-8 py-3 font-semibold shadow-md transition-colors duration-200 text-base"
+            className="w-full max-w-xs bg-[#FF0505] hover:bg-[#CC0000] text-white rounded-full px-8 py-3 font-semibold shadow-md transition-colors duration-200 text-base"
             onClick={() => { logout(); navigate('/login'); }}
           >
             Sign Out
