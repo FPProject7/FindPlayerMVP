@@ -54,6 +54,22 @@ exports.handler = async (event) => {
       };
     }
     
+    // Validate participation fee if provided
+    if (participationFee !== undefined && participationFee !== null && participationFee !== '') {
+      const feeNumber = parseFloat(participationFee);
+      if (isNaN(feeNumber) || feeNumber < 0) {
+        return { 
+          statusCode: 400, 
+          headers: { 
+            'Access-Control-Allow-Origin': '*', 
+            'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS', 
+            'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token' 
+          },
+          body: JSON.stringify({ error: 'Participation fee must be a valid positive number' }) 
+        };
+      }
+    }
+    
     // Handle image URL (optional)
     const imageUrl = body.imageUrl || null;
     
@@ -96,7 +112,7 @@ exports.handler = async (event) => {
       sport: sport || null,
       location,
       maxParticipants: maxParticipants || null,
-      participationFee: participationFee || null,
+      participationFee: participationFee ? parseFloat(participationFee) : null,
       imageUrl,
       registeredPlayers: 0, // Initialize with 0 registered players
       createdAt: new Date().toISOString(),

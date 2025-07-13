@@ -96,9 +96,9 @@ exports.handler = async (event) => {
     const viewerRole = viewerResult.rows[0].role;
     const viewedUserRole = viewedUserResult.rows[0].role;
 
-    // Check if this is a scout viewing an athlete's profile
-    if (viewerRole === 'scout' && viewedUserRole === 'athlete') {
-      // Check if we already have a recent notification for this scout-athlete pair
+    // Check if this is a scout viewing an athlete or coach's profile
+    if (viewerRole === 'scout' && (viewedUserRole === 'athlete' || viewedUserRole === 'coach')) {
+      // Check if we already have a recent notification for this scout-user pair
       const existingNotification = await client.query(
         `SELECT id FROM notifications 
          WHERE type = 'profile_view' 
@@ -109,7 +109,7 @@ exports.handler = async (event) => {
       );
 
       if (existingNotification.rowCount === 0) {
-        // Create notification for athlete
+        // Create notification for athlete or coach
         await client.query(
           `INSERT INTO notifications (type, from_user_id, to_user_id, is_read, created_at)
            VALUES ($1, $2, $3, $4, NOW())`,

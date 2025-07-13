@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useNavigate } from 'react-router-dom';
 import { formatHeight, formatWeight } from '../../utils/levelUtils';
-import { getFollowerCount } from '../../api/userApi';
+import { starPlayer, unstarPlayer, getStarredPlayers } from '../../api/starredApi';
 
 const AthleteProfile = ({
   profile,
@@ -30,22 +30,57 @@ const AthleteProfile = ({
   } = profile;
   const [showFollowers, setShowFollowers] = useState(false);
   const [connectionsCount, setConnectionsCount] = useState(connections);
+  const [starred, setStarred] = useState(false);
+  const [starLoading, setStarLoading] = useState(false);
   const logout = useAuthStore((state) => state.logout);
+  const authUser = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const navigate = useNavigate();
+  
+  // Check if current user is a scout
+  const isScout = authUser?.role?.toLowerCase() === 'scout';
 
+  // Check if athlete is starred by current scout
   useEffect(() => {
-    if (profile?.id) {
-      getFollowerCount(profile.id).then(setConnectionsCount).catch(() => setConnectionsCount(0));
-    }
-  }, [profile.id]);
+    const checkStarredStatus = async () => {
+      if (isAuthenticated && isScout && authUser?.id && userId) {
+        try {
+          const response = await getStarredPlayers(authUser.id);
+          const isStarred = response.starred?.some(player => player.athleteId === userId);
+          setStarred(isStarred);
+        } catch (error) {
+          console.error('Failed to check starred status:', error);
+          // Temporarily set starred to false to prevent UI errors
+          setStarred(false);
+        }
+      }
+    };
+    
+    checkStarredStatus();
+  }, [isAuthenticated, isScout, authUser?.id, userId]);
 
-  // When modal closes, refresh count
+  const handleToggleStar = async () => {
+    if (!isAuthenticated || !isScout || !authUser?.id || !userId) return;
+    
+    setStarLoading(true);
+    try {
+      if (starred) {
+        await unstarPlayer(authUser.id, userId);
+        setStarred(false);
+      } else {
+        await starPlayer(authUser.id, userId);
+        setStarred(true);
+      }
+    } catch (error) {
+      console.error('Failed to toggle star:', error);
+      alert('Failed to update star status. Please try again.');
+    } finally {
+      setStarLoading(false);
+    }
+  };
+
   const handleCloseFollowers = () => {
     setShowFollowers(false);
-    if (profile?.id) {
-      getFollowerCount(profile.id).then(setConnectionsCount).catch(() => {});
-    }
   };
 
   return (
@@ -59,6 +94,10 @@ const AthleteProfile = ({
         onUnfollow={onUnfollow}
         quote={quote}
         showShareButton={true}
+        isScout={isScout}
+        starred={starred}
+        starLoading={starLoading}
+        onToggleStar={handleToggleStar}
       />
       {/* Height and Weight */}
       {(height || weight || profile.country) && (

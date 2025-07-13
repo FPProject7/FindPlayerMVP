@@ -59,7 +59,7 @@ const eventTypeOptionsBySport = {
 const TITLE_LIMIT = 50;
 const MAX_PLAYERS_LIMIT = 5; // 5 digits
 const DRESS_CODE_LIMIT = 40;
-const PARTICIPATION_FEE_LIMIT = 30;
+const PARTICIPATION_FEE_LIMIT = 10; // Reduced for numeric input
 const DESCRIPTION_LIMIT = 300;
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
@@ -219,7 +219,8 @@ const CreateEventForm = ({ onClose }) => {
     if (!form.maxPlayers || isNaN(form.maxPlayers) || !Number.isInteger(Number(form.maxPlayers)) || Number(form.maxPlayers) <= 0) newErrors.maxPlayers = 'Enter a valid integer number of players.';
     if (String(form.maxPlayers).length > MAX_PLAYERS_LIMIT) newErrors.maxPlayers = `Max ${MAX_PLAYERS_LIMIT} digits.`;
     if (!form.participationFee.trim()) newErrors.participationFee = 'Participation fee is required.';
-    if (form.participationFee.length > PARTICIPATION_FEE_LIMIT) newErrors.participationFee = `Max ${PARTICIPATION_FEE_LIMIT} characters.`;
+    if (isNaN(Number(form.participationFee)) || Number(form.participationFee) < 0) newErrors.participationFee = 'Please enter a valid number.';
+    if (form.participationFee.length > PARTICIPATION_FEE_LIMIT) newErrors.participationFee = `Max ${PARTICIPATION_FEE_LIMIT} digits.`;
     if (form.dressCode.length > DRESS_CODE_LIMIT) newErrors.dressCode = `Max ${DRESS_CODE_LIMIT} characters.`;
     if (!form.description.trim()) newErrors.description = 'Description is required.';
     if (form.description.length > DESCRIPTION_LIMIT) newErrors.description = `Max ${DESCRIPTION_LIMIT} characters.`;
@@ -234,7 +235,15 @@ const CreateEventForm = ({ onClose }) => {
     if (name === 'title') newValue = value.slice(0, TITLE_LIMIT);
     if (name === 'maxPlayers') newValue = value.replace(/[^0-9]/g, '').slice(0, MAX_PLAYERS_LIMIT);
     if (name === 'dressCode') newValue = value.slice(0, DRESS_CODE_LIMIT);
-    if (name === 'participationFee') newValue = value.slice(0, PARTICIPATION_FEE_LIMIT);
+    if (name === 'participationFee') {
+      // Only allow numbers and decimal point
+      newValue = value.replace(/[^0-9.]/g, '').slice(0, PARTICIPATION_FEE_LIMIT);
+      // Prevent multiple decimal points
+      const parts = newValue.split('.');
+      if (parts.length > 2) {
+        newValue = parts[0] + '.' + parts.slice(1).join('');
+      }
+    }
     if (name === 'description') newValue = value.slice(0, DESCRIPTION_LIMIT);
     setForm((prev) => ({
       ...prev,
@@ -578,17 +587,20 @@ const CreateEventForm = ({ onClose }) => {
                 {errors.maxPlayers && <div className="text-red-500 text-xs mt-1">{errors.maxPlayers}</div>}
               </div>
               <div className="flex-1">
-                <label className="block font-medium mb-1">Player fee</label>
-                <input
-                  type="text"
-                  name="participationFee"
-                  value={form.participationFee}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded p-2 focus:outline-none focus:ring-2 focus:ring-red-400"
-                  placeholder="E.g., '$10 per player (cash only)'"
-                  disabled={isSubmitting}
-                  maxLength={PARTICIPATION_FEE_LIMIT}
-                />
+                <label className="block font-medium mb-1">Player fee (USD)</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                  <input
+                    type="text"
+                    name="participationFee"
+                    value={form.participationFee}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded p-2 pl-8 focus:outline-none focus:ring-2 focus:ring-red-400"
+                    placeholder="0.00"
+                    disabled={isSubmitting}
+                    maxLength={PARTICIPATION_FEE_LIMIT}
+                  />
+                </div>
                 <div className="text-xs text-gray-400 text-right">{form.participationFee.length}/{PARTICIPATION_FEE_LIMIT}</div>
                 {errors.participationFee && <div className="text-red-500 text-xs mt-1">{errors.participationFee}</div>}
               </div>

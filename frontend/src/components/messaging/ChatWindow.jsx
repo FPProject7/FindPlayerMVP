@@ -264,10 +264,19 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
 
   // Remove useAuthStore premium checks
   // Use dbUser for all premium/verified checks
-  const isPremium = dbUser?.is_premium_member;
+  const isPremium = dbUser?.is_premium_member || dbUser?.isPremiumMember;
   const isScout = dbUser?.role === 'scout';
   const isVerified = dbUser?.is_verified;
-  const canSendMessages = isPremium && (!isScout || isVerified);
+  // Free users can send messages in existing conversations, but need premium for new conversations
+  const canSendMessages = isNewConversation ? (isPremium && (!isScout || isVerified)) : true;
+
+  useEffect(() => {
+    console.log('[ChatWindow] conversationId:', currentConversationId);
+    console.log('[ChatWindow] isNewConversation:', isNewConversation);
+    console.log('[ChatWindow] canSendMessages:', canSendMessages);
+    console.log('[ChatWindow] isPremium:', isPremium);
+    console.log('[ChatWindow] myId:', myId, 'otherUserId:', otherUserId);
+  }, [currentConversationId, isNewConversation, canSendMessages, isPremium, myId, otherUserId]);
 
   const handleSendAutomatedMessage = async () => {
     if (!automatedMessageText.trim()) return;
@@ -279,7 +288,7 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
     }
     // Use dbUser for premium check
     if (!canSendMessages) {
-      setErrorMessage('Premium Feature - Upgrade to send messages');
+      setErrorMessage('Premium Feature - Upgrade to start new conversations');
       setTimeout(() => setErrorMessage(''), 3000);
       return;
     }
@@ -311,6 +320,9 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
       if (msg.includes('Only premium members can use messaging.')) {
         setErrorMessage('Premium Feature');
         setTimeout(() => setErrorMessage(''), 2000);
+      } else if (msg.includes('Only premium members can initiate new conversations')) {
+        setErrorMessage('Upgrade to Premium to start new conversations. You can still respond to existing conversations.');
+        setTimeout(() => setErrorMessage(''), 4000);
       } else {
         setErrorMessage(msg || 'Failed to send message.');
         setTimeout(() => setErrorMessage(''), 2000);
@@ -321,6 +333,11 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
 
   const handleSend = async e => {
     e.preventDefault();
+    if (!currentConversationId || !myId || !otherUserId) {
+      setErrorMessage('Error: Conversation not found. Please select a conversation from your inbox.');
+      return;
+    }
+    console.log('[ChatWindow] handleSend called. conversationId:', currentConversationId, 'isNewConversation:', isNewConversation, 'canSendMessages:', canSendMessages, 'input:', input);
     if (!input.trim()) return;
     const receiverId = otherUserId;
     if (!receiverId || receiverId === 'new' || receiverId === myId) {
@@ -330,7 +347,7 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
     }
     // Use dbUser for premium check
     if (!canSendMessages) {
-      setErrorMessage('Premium Feature - Upgrade to send messages');
+      setErrorMessage('Premium Feature - Upgrade to start new conversations');
       setTimeout(() => setErrorMessage(''), 3000);
       return;
     }
@@ -363,6 +380,9 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
       if (msg.includes('Only premium members can use messaging.')) {
         setErrorMessage('Premium Feature');
         setTimeout(() => setErrorMessage(''), 2000);
+      } else if (msg.includes('Only premium members can initiate new conversations')) {
+        setErrorMessage('Upgrade to Premium to start new conversations. You can still respond to existing conversations.');
+        setTimeout(() => setErrorMessage(''), 4000);
       } else {
         setErrorMessage(msg || 'Failed to send message.');
         setTimeout(() => setErrorMessage(''), 2000);
@@ -383,6 +403,18 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
 
   // Modal not open - return null after all hooks are called
   if (!isOpen) return null;
+
+  // Guard: If conversationId, myId, or otherUserId are missing, show error and block input
+  if (!currentConversationId || !myId || !otherUserId) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-0" style={{ minHeight: '100vh' }}>
+        <div className="bg-white w-full max-w-[380px] mx-auto flex flex-col items-center justify-center p-8" style={{ height: '40vh', borderRadius: 24, boxShadow: '0 4px 32px rgba(0,0,0,0.12)', overflow: 'hidden', position: 'relative' }}>
+          <div className="text-red-600 text-lg font-bold mb-2">Error: Conversation not found</div>
+          <div className="text-gray-700 mb-4">Please select a conversation from your inbox to reply.</div>
+        </div>
+      </div>
+    );
+  }
 
   // Modal content
   const modalContent = (
@@ -410,6 +442,24 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
           {/* Close button in top right */}
           <button onClick={onClose} className="absolute right-4 top-1/2 -translate-y-1/2 text-2xl text-gray-500 hover:text-gray-700 font-bold" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}>&times;</button>
         </div>
+        
+        {/* Free User Banner for New Conversations */}
+        {isNewConversation && !isPremium && (
+          <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-3">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-yellow-800">
+                  <strong>Free User:</strong> You can respond to existing conversations but need Premium to start new ones.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         {/* Messages */}
         <div
           className="flex-1 overflow-y-auto px-3 py-4 bg-[#f8f8fa]"
@@ -449,7 +499,8 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
                   <div className="flex gap-2">
                     <button
                       onClick={() => { handleSendAutomatedMessage(); localStorage.removeItem('bookingFlow'); }}
-                      className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
+                      disabled={isNewConversation && !isPremium}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isNewConversation && !isPremium ? 'bg-gray-400 text-gray-600 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700'}`}
                     >
                       Send Message
                     </button>
@@ -459,7 +510,8 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
                         setShowAutomatedMessage(false);
                         localStorage.removeItem('bookingFlow');
                       }}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                      disabled={isNewConversation && !isPremium}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isNewConversation && !isPremium ? 'bg-gray-400 text-gray-600 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
                     >
                       Edit & Send
                     </button>
@@ -474,7 +526,9 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
               )}
               
               {isNewConversation ? (
-                <div className="text-center text-gray-400 mt-10">Start a new conversation</div>
+                <div className="text-center text-gray-400 mt-10">
+                  {isPremium ? "Start a new conversation" : "Upgrade to Premium to start new conversations"}
+                </div>
               ) : (
                 messages.map(msg => {
                   const isMe = msg.senderId === myId;
@@ -506,13 +560,14 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
             type="text"
             value={input}
             onChange={e => setInput(e.target.value)}
-            placeholder="Message..."
-            className="flex-1 p-3 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-400 text-[15px]"
+            placeholder={isNewConversation && !isPremium ? "Upgrade to Premium to start new conversations" : "Message..."}
+            disabled={isNewConversation && !isPremium}
+            className={`flex-1 p-3 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-400 text-[15px] ${isNewConversation && !isPremium ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
             style={{ marginRight: 12 }}
           />
           <button
             type="submit"
-            disabled={sending || !input.trim()}
+            disabled={sending || !input.trim() || (isNewConversation && !isPremium)}
             className="ml-2 px-6 py-2 rounded-full font-bold text-white bg-[#FF0505] hover:bg-[#CC0000] transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {sending ? 'Sending...' : 'Send'}

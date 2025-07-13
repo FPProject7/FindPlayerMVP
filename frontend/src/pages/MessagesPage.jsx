@@ -5,7 +5,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import ConversationList from '../components/messaging/ConversationList';
 import ChatWindow from '../components/messaging/ChatWindow';
 import { useAuthStore } from '../stores/useAuthStore';
-import { getUserInfo } from '../api/userApi';
+import { getUserInfo, getInfoUser } from '../api/userApi';
 import './MessagesPageSE.css';
 import ChallengeLoader from '../components/common/ChallengeLoader';
 
@@ -59,17 +59,75 @@ export default function MessagesPage() {
     }
   }, [selectedConversation]);
 
-  // Check if we're opening a specific conversation from URL (optional: can be removed if not needed)
+  // Check if we're opening a specific conversation from URL query parameter
   useEffect(() => {
-    const pathParts = location.pathname.split('/');
-    if (pathParts[2] && pathParts[2] !== 'new') {
-      setSelectedConversation({ conversationId: pathParts[2] });
-      setIsChatOpen(true);
-    } else if (pathParts[2] === 'new') {
-      setSelectedConversation({ conversationId: 'new' });
-      setIsChatOpen(true);
-    }
-  }, [location]);
+    const handleConversationFromUrl = async () => {
+      const urlParams = new URLSearchParams(location.search);
+      const conversationId = urlParams.get('conversation');
+      
+      if (conversationId && !initialized) {
+        // This is a new conversation with a specific user
+        // Fetch the athlete's information first
+        try {
+          const athleteInfo = await getInfoUser(conversationId);
+          const athlete = athleteInfo.data;
+          
+          // Update URL to include the parameters that ChatWindow expects
+          const newUrl = `/messages?userId=${conversationId}&userName=${encodeURIComponent(athlete.name)}&userProfilePic=${encodeURIComponent(athlete.profilePictureUrl || '')}`;
+          navigate(newUrl, { replace: true });
+          
+          setSelectedConversation({
+            conversationId: 'new',
+            userId: conversationId,
+            name: athlete.name,
+            profilePic: athlete.profilePictureUrl
+          });
+          setIsChatOpen(true);
+          setInitialized(true);
+        } catch (error) {
+          console.error('Failed to fetch athlete info:', error);
+          // Fallback to generic athlete info
+          const newUrl = `/messages?userId=${conversationId}&userName=Athlete&userProfilePic=`;
+          navigate(newUrl, { replace: true });
+          
+          setSelectedConversation({
+            conversationId: 'new',
+            userId: conversationId,
+            name: 'Athlete',
+            profilePic: null
+          });
+          setIsChatOpen(true);
+          setInitialized(true);
+        }
+      } else if (urlParams.get('userId') && !initialized) {
+        // Handle the case where we already have userId in URL (after redirect)
+        const userId = urlParams.get('userId');
+        const userName = urlParams.get('userName') || 'Athlete';
+        const userProfilePic = urlParams.get('userProfilePic') || '';
+        
+        setSelectedConversation({
+          conversationId: 'new',
+          userId: userId,
+          name: userName,
+          profilePic: userProfilePic
+        });
+        setIsChatOpen(true);
+        setInitialized(true);
+      } else {
+        // Check if we're opening a specific conversation from URL path
+        const pathParts = location.pathname.split('/');
+        if (pathParts[2] && pathParts[2] !== 'new') {
+          setSelectedConversation({ conversationId: pathParts[2] });
+          setIsChatOpen(true);
+        } else if (pathParts[2] === 'new') {
+          setSelectedConversation({ conversationId: 'new' });
+          setIsChatOpen(true);
+        }
+      }
+    };
+
+    handleConversationFromUrl();
+  }, [location, initialized, navigate]);
 
   useEffect(() => {
     if (isAuthenticated && user?.id) {
@@ -97,11 +155,13 @@ export default function MessagesPage() {
   };
 
   // Use dbUser for all checks
-  const isPremium = dbUser?.is_premium_member;
+  const isPremium = dbUser?.is_premium_member || dbUser?.isPremiumMember;
   const isScout = dbUser?.role === 'scout';
   const isVerified = dbUser?.is_verified;
-  // Scouts need BOTH premium and verified; others just need premium
-  const hasMessagingAccess = isScout ? (isPremium && isVerified) : isPremium;
+  // All users can view existing conversations, but only premium users can initiate new ones
+  // Scouts need BOTH premium and verified for full access
+  const canInitiateConversations = isScout ? (isPremium && isVerified) : isPremium;
+  const hasMessagingAccess = true; // All authenticated users can access messaging
 
   // Determine what message/button to show for scouts
   let scoutMessage = '';
@@ -116,26 +176,8 @@ export default function MessagesPage() {
     }
   }
 
-  if (!hasMessagingAccess) {
-    return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 overflow-hidden">
-        <div className="text-center p-8 bg-white rounded-lg shadow-md max-w-md">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">
-            {isScout ? (!isVerified ? 'Verification Required' : 'Premium Feature') : 'Premium Feature'}
-          </h2>
-          <p className="text-gray-600 mb-6">
-            {isScout ? scoutMessage : 'Upgrade to Premium to access messaging features.'}
-          </p>
-          <button
-            onClick={() => navigate('/profile')}
-            className="bg-red-600 text-white px-6 py-2 rounded-full hover:bg-red-700 transition-colors"
-          >
-            {isScout ? scoutButton : 'Upgrade to Premium'}
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // Remove the premium check block - all authenticated users can access messaging
+  // The premium restrictions are now handled at the conversation level
 
   if (!isAuthenticated) {
     return (
@@ -166,7 +208,7 @@ export default function MessagesPage() {
     <div className="messages-page-container" style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Conversation List - always visible */}
       <div style={{ flex: 1, overflow: 'hidden' }}>
-        <ConversationList onSelectConversation={handleConversationSelect} />
+        <ConversationList onSelectConversation={handleConversationSelect} isPremium={canInitiateConversations} />
       </div>
       
       {/* Chat Window Modal */}

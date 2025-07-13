@@ -7,7 +7,7 @@ import VerifyButton from './VerifyButton';
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useNavigate } from 'react-router-dom';
-import { getFollowerCount } from '../../api/userApi';
+import { getFollowerCount, getUsersViewedByScouts } from '../../api/userApi';
 
 const ScoutProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFollow, onUnfollow }) => {
   const {
@@ -21,6 +21,8 @@ const ScoutProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
 
   const [showFollowers, setShowFollowers] = useState(false);
   const [connectionsCount, setConnectionsCount] = useState(profile.connections || 0);
+  const [athletesViewedCount, setAthletesViewedCount] = useState(0);
+  const [coachesViewedCount, setCoachesViewedCount] = useState(0);
   const logout = useAuthStore((state) => state.logout);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const navigate = useNavigate();
@@ -28,6 +30,13 @@ const ScoutProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
   useEffect(() => {
     if (profile?.id) {
       getFollowerCount(profile.id).then(setConnectionsCount).catch(() => setConnectionsCount(0));
+      getUsersViewedByScouts(profile.id).then(data => {
+        setAthletesViewedCount(data.athleteCount || 0);
+        setCoachesViewedCount(data.coachCount || 0);
+      }).catch(() => {
+        setAthletesViewedCount(0);
+        setCoachesViewedCount(0);
+      });
     }
   }, [profile.id]);
 
@@ -72,11 +81,11 @@ const ScoutProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
           <span className="text-xs text-gray-500">Connections</span>
         </div>
         <div className="flex flex-col items-center">
-          <span className="font-bold text-lg">{athletesViewed}</span>
+          <span className="font-bold text-lg">{athletesViewedCount}</span>
           <span className="text-xs text-gray-500">Athletes Viewed</span>
         </div>
         <div className="flex flex-col items-center">
-          <span className="font-bold text-lg">{coachesViewed}</span>
+          <span className="font-bold text-lg">{coachesViewedCount}</span>
           <span className="text-xs text-gray-500">Coaches Viewed</span>
         </div>
       </div>

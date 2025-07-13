@@ -13,16 +13,8 @@ exports.handler = async (event) => {
         console.log('Cognito Username:', cognitoUsername);
         console.log('Claims:', JSON.stringify(claims, null, 2));
         
-        // Check if user is premium
-        const isPremium = claims['custom:is_premium_member'] === 'true';
-        if (!isPremium) {
-            return {
-                statusCode: 403,
-                body: JSON.stringify({
-                    error: 'Premium membership required to mark messages as read'
-                })
-            };
-        }
+        // Remove premium check - allow all users to mark messages as read
+        // Premium restrictions are handled at the conversation initiation level
         
         // Verify user exists in Cognito and get their attributes
         let userAttributes;

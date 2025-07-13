@@ -1,0 +1,62 @@
+/* Custom styling for date and time inputs to match the app's red theme */
+
+/* Date input styling */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(27%) sepia(51%) saturate(2878%) hue-rotate(346deg) brightness(104%) contrast(97%);
+  cursor: pointer;
+}
+
+input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+  color: #374151;
+}
+
+input[type="date"]::-webkit-datetime-edit-text {
+  color: #374151;
+}
+
+input[type="date"]::-webkit-datetime-edit-month-field,
+input[type="date"]::-webkit-datetime-edit-day-field,
+input[type="date"]::-webkit-datetime-edit-year-field {
+  color: #374151;
+}
+
+/* Time input styling */
+input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(27%) sepia(51%) saturate(2878%) hue-rotate(346deg) brightness(104%) contrast(97%);
+  cursor: pointer;
+}
+
+input[type="time"]::-webkit-datetime-edit-fields-wrapper {
+  color: #374151;
+}
+
+input[type="time"]::-webkit-datetime-edit-text {
+  color: #374151;
+}
+
+input[type="time"]::-webkit-datetime-edit-hour-field,
+input[type="time"]::-webkit-datetime-edit-minute-field {
+  color: #374151;
+}
+
+/* Focus states for date and time inputs */
+input[type="date"]:focus,
+input[type="time"]:focus {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2);
+}
+
+/* Firefox specific styling */
+input[type="date"]::-moz-calendar-picker-indicator,
+input[type="time"]::-moz-calendar-picker-indicator {
+  filter: invert(27%) sepia(51%) saturate(2878%) hue-rotate(346deg) brightness(104%) contrast(97%);
+  cursor: pointer;
+}
+
+/* Edge/IE specific styling */
+input[type="date"]::-ms-clear,
+input[type="date"]::-ms-expand,
+input[type="time"]::-ms-clear,
+input[type="time"]::-ms-expand {
+  color: #dc2626;
+} 

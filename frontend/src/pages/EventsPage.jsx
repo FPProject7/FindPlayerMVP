@@ -136,9 +136,13 @@ const EventCard = ({ event }) => {
   };
 
   const fee =
-    event.participationFee === undefined || event.participationFee === null || event.participationFee === ''
-      ? 'Free'
-      : event.participationFee;
+    event.participationFee !== undefined &&
+    event.participationFee !== null &&
+    event.participationFee !== '' &&
+    !isNaN(Number(event.participationFee)) &&
+    Number(event.participationFee) > 0
+      ? `$${Number(event.participationFee)}`
+      : 'Free';
   return (
     <>
       <div
@@ -402,6 +406,15 @@ const ParticipatingEventCard = ({ event, onDeregister }) => {
     }
   };
 
+  const fee =
+    event.participationFee !== undefined &&
+    event.participationFee !== null &&
+    event.participationFee !== '' &&
+    !isNaN(Number(event.participationFee)) &&
+    Number(event.participationFee) > 0
+      ? `$${Number(event.participationFee)}`
+      : 'Free';
+
   return (
     <div
       className="bg-white rounded-2xl shadow border border-gray-100 p-4 cursor-pointer hover:shadow-lg transition-shadow"
@@ -431,7 +444,7 @@ const ParticipatingEventCard = ({ event, onDeregister }) => {
       </div>
       <div className="text-gray-700 text-sm mb-3">{(event.currentParticipantCount !== undefined ? event.currentParticipantCount : (event.registeredPlayers || 0))} / {event.maxParticipants || event.maxPlayers} Registered</div>
       <div className="flex items-center justify-between">
-        <div className="text-lg font-bold text-gray-900">{event.participationFee || 'Free'} <span className="text-sm font-normal text-gray-500">/player</span></div>
+        <div className="text-lg font-bold text-gray-900">{fee} <span className="text-sm font-normal text-gray-500">/player</span></div>
         <button
           className="bg-red-500 text-white px-4 py-2 rounded-full font-semibold hover:bg-red-600 text-sm transition"
           onClick={(e) => {
@@ -520,10 +533,16 @@ function LocationSearchBar({ onSelect, isLoaded }) {
 
 // Helper to generate a custom SVG bubble for the marker
 function getBubbleSVG(participationFee) {
-  const text =
-    participationFee === undefined || participationFee === null || participationFee === ''
-      ? 'Free'
-      : participationFee;
+  let text = 'Free';
+  if (
+    participationFee !== undefined &&
+    participationFee !== null &&
+    participationFee !== '' &&
+    !isNaN(Number(participationFee)) &&
+    Number(participationFee) > 0
+  ) {
+    text = `$${Number(participationFee)}`;
+  }
   const width = 60;
   const height = 36;
   return {

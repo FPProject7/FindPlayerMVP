@@ -559,13 +559,13 @@ const LeaderboardPage = () => {
         </div>
       )}
       {activeTab === 'athletes' || activeTab === 'coaches' ? (
-        <>
+        <div className="flex flex-col items-center w-full gap-10">
           {top3.length === 0 ? (
             <div className="p-8 text-center text-gray-500 w-full">
               <p>No users found matching your filters.</p>
             </div>
           ) : (
-            <div className="flex flex-row justify-center items-stretch gap-2 sm:gap-8 sm:max-w-5xl mx-auto w-full h-[300px] sm:h-[420px] sm:-ml-7">
+            <div className="flex flex-row justify-center items-stretch gap-2 sm:gap-8 sm:max-w-5xl mx-auto w-full sm:-ml-7">
               {/* Card 1 */}
               <div className="bg-white rounded-3xl shadow-lg w-[180px] sm:w-[320px] h-full flex flex-col items-center text-center relative p-2 sm:p-4 gap-y-2 sm:gap-y-4 overflow-hidden mb-0">
                 {/* Country code (top right, above name) */}
@@ -686,7 +686,7 @@ const LeaderboardPage = () => {
                 )}
               </div>
               {/* Cards 2 & 3 stacked vertically */}
-              <div className="grid grid-rows-2 w-[140px] sm:w-[260px] gap-2 sm:gap-4 h-full">
+              <div className="grid grid-rows-2 w-[140px] sm:w-[260px] gap-2 sm:gap-4 h-full" style={{ gridTemplateRows: '1fr 1fr' }}>
                 {/* Card 2 (top) */}
                 {top3[1] && (
                   <div className="bg-white rounded-3xl shadow-lg w-full flex flex-col h-full p-2 sm:p-4 flex-shrink min-w-0 relative">
@@ -902,7 +902,7 @@ const LeaderboardPage = () => {
               </div>
             </div>
           )}
-        </>
+        </div>
       ) : null}
 
       {/* Filter Section */}
