@@ -7,6 +7,7 @@ import { getUserInfo } from '../api/userApi';
 import { useAuthStore } from '../stores/useAuthStore';
 import ChallengeLoader from '../components/common/ChallengeLoader';
 import { createProfileUrl } from '../utils/profileUrlUtils';
+import { PUBLIC_BASE_URL } from '../config';
 
 // SVG icon for user (person)
 function UserIcon({ className = '', size = 20 }) {
@@ -413,7 +414,7 @@ const EventDetailPage = () => {
           {/* Share button in top right */}
           <div className="absolute top-3 right-3">
             <ShareButton 
-              url={`${window.location.origin}/events/${eventId}`}
+              url={`${PUBLIC_BASE_URL}/events/${eventId}`}
               title={`Check out this event: ${event.title}`}
               className="bg-white bg-opacity-80 rounded-full p-2 hover:bg-opacity-100"
               iconSize={20}

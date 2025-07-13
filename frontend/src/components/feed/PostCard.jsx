@@ -20,10 +20,11 @@ const PostCard = ({ post, onLikeUpdate }) => {
   // Defensive handling for missing user object
   const userObj = post.user || {
     name: post.user_name || post.username || 'Unknown User',
-    profilePictureUrl: post.profile_picture_url || post.profilePictureUrl || null
+    profilePictureUrl: post.profile_picture_url || post.profilePictureUrl || null,
+    role: post.role || 'athlete',
   };
   const userName = userObj.name || post.user_name || post.username || 'Unknown User';
-  const userRole = userObj.role || post.role || 'athlete';
+  const userRole = userObj.role || 'athlete';
   const handleProfileClick = (e) => {
     e.stopPropagation();
     navigate(createProfileUrl(userName, userRole));
@@ -59,7 +60,7 @@ const PostCard = ({ post, onLikeUpdate }) => {
 
     setIsLiking(true);
     try {
-      const response = await likePost(post.id);
+      const response = await likePost(user.id, post.id);
       if (response.status === 200) {
         const newIsLiked = response.data.isLiked;
         const newLikesCount = response.data.likesCount;
@@ -240,9 +241,8 @@ const PostCard = ({ post, onLikeUpdate }) => {
       <CommentModal
         isOpen={isCommentModalOpen}
         onClose={() => setIsCommentModalOpen(false)}
-        postId={post.id}
-        postContent={post.content}
-        userName={userName}
+        post={post}
+        onCommentAdded={handleCommentAdded}
       />
     </>
   );

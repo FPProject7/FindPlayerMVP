@@ -21,8 +21,8 @@ const UserStatusBadge = ({ user, className = '' }) => {
   } else if (is_premium_member && (role === 'athlete' || role === 'coach')) {
     // Red star for premium athletes/coaches
     badgeIcon = (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="#EF4444" className={`inline-block ${className}`} style={{verticalAlign: 'middle'}}>
-        <polygon points="12,2 15,9 22,9.5 17,14.5 18.5,22 12,18 5.5,22 7,14.5 2,9.5 9,9" stroke="#B91C1C" strokeWidth="1" fill="#EF4444" />
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="#FF0505" className={`inline-block ${className}`} style={{verticalAlign: 'middle'}}>
+        <polygon points="12,2 15,9 22,9.5 17,14.5 18.5,22 12,18 5.5,22 7,14.5 2,9.5 9,9" stroke="#CC0000" strokeWidth="1" fill="#FF0505" />
       </svg>
     );
   } else if (is_verified && role === 'scout' && !is_premium_member) {
