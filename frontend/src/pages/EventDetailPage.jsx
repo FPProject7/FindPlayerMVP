@@ -451,7 +451,8 @@ const EventDetailPage = () => {
                 event.participationFee !== undefined &&
                 event.participationFee !== null &&
                 event.participationFee !== '' &&
-                !isNaN(Number(event.participationFee))
+                !isNaN(Number(event.participationFee)) &&
+                Number(event.participationFee) > 0
                   ? `$${Number(event.participationFee)}`
                   : 'Free'
               } per player</span>

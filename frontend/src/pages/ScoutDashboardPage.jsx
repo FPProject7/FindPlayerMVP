@@ -642,13 +642,9 @@ const ScoutDashboardPage = () => {
   const rest = restUsers;
 
   return (
-    <div className="w-full px-0 sm:px-0">
-      {/* Centered dashboard heading above the Starred Players box */}
-      <div className="flex w-full sm:max-w-5xl mx-auto sm:-ml-7">
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-center text-gray-900 mb-6 mt-4 w-[380px] sm:w-[664px] mx-auto">{user?.name || 'Scout'}'s Dashboard</h1>
-      </div>
-      {/* New top box spanning the width of both below boxes, left-aligned above the two boxes */}
-      <div className="flex w-full mb-6 sm:max-w-5xl mx-auto sm:-ml-7">
+    <div className="w-full flex flex-col items-center px-0 sm:px-0">
+      {/* Centered Starred Players Section */}
+      <div className="flex justify-center w-full mb-6 sm:max-w-5xl mx-auto sm:-ml-7">
         <div className="bg-white border border-gray-200 rounded-3xl h-[190px] sm:h-[210px] w-[360px] sm:w-[664px] flex flex-col p-4 relative">
           <div className="flex flex-row justify-between items-start w-full mb-2">
             {/* Left: Starred Players + star icon */}
@@ -678,7 +674,7 @@ const ScoutDashboardPage = () => {
                 }}
               >
                 {getCurrentStarredPlayers().map(user => (
-                  <div key={user.athleteId} className="flex items-center py-2 border-b border-gray-100 last:border-b-0 cursor-pointer" onClick={() => navigate(`/profile/${user.athleteId}`)}>
+                  <div key={user.athleteId} className="flex items-center py-2 border-b border-gray-100 last:border-b-0 cursor-pointer hover:bg-gray-50" onClick={() => handleViewProfile(user)}>
                     {/* Profile picture with fallback to initials */}
                     <div className="w-10 h-10 rounded-full mr-3 overflow-hidden flex items-center justify-center">
                       {user.img ? (
@@ -702,7 +698,7 @@ const ScoutDashboardPage = () => {
                       </div>
                     </div>
                     <div className="flex flex-col flex-1 min-w-0">
-                      <span className="font-semibold text-gray-800 truncate">{user.name}</span>
+                      <span className="font-semibold text-gray-800 truncate hover:underline">{user.name}</span>
                       <span className="text-xs text-gray-500 truncate">{user.email}</span>
                     </div>
                     <button
@@ -737,7 +733,7 @@ const ScoutDashboardPage = () => {
                 {currentStarredPage > 0 && (
                   <button
                     className={`absolute left-2 top-1/2 transform -translate-y-1/2 w-8 h-8 bg-white border border-gray-300 rounded-full shadow-md flex items-center justify-center transition-all duration-200 ${
-                      isStarredHovered ? 'opacity-100' : 'opacity-60'
+                      isStarredHovered ? 'opacity-100' : 'opacity-600'
                     } hover:bg-gray-50 hover:shadow-lg z-10`}
                     onClick={() => handleStarredPageChange('prev')}
                   >
@@ -751,7 +747,7 @@ const ScoutDashboardPage = () => {
                 {currentStarredPage < totalStarredPages - 1 && (
                   <button
                     className={`absolute right-2 top-1/2 transform -translate-y-1/2 w-8 h-8 bg-white border border-gray-300 rounded-full shadow-md flex items-center justify-center transition-all duration-200 ${
-                      isStarredHovered ? 'opacity-100' : 'opacity-60'
+                      isStarredHovered ? 'opacity-100' : 'opacity-600'
                     } hover:bg-gray-50 hover:shadow-lg z-10`}
                     onClick={() => handleStarredPageChange('next')}
                   >
@@ -765,14 +761,14 @@ const ScoutDashboardPage = () => {
           </div>
         </div>
       </div>
-      {/* Two empty boxes side by side, same size as card 1, aligned above card 1 */}
+      {/* Restore Most Viewed and Grinder of the Week cards */}
       <div className="flex flex-row justify-center items-stretch gap-2 sm:gap-8 sm:max-w-5xl mx-auto w-full sm:-ml-7 mb-6">
-        {/* Left box: Most Viewed Athlete this Week */}
+        {/* Most Viewed Athlete this Week */}
         <div className="bg-white border border-gray-200 rounded-3xl w-[180px] sm:w-[320px] h-[300px] sm:h-[340px] flex flex-col items-center pt-4 px-2">
           <div className="w-full text-center text-xs sm:text-base font-bold text-gray-700 mb-3 sm:mb-4">Most Viewed this Week</div>
           {mostViewedAthlete ? (
             <>
-              <div className="flex flex-row items-center w-full justify-start gap-3 px-2">
+              <div className="flex flex-row items-center w-full justify-start gap-3 px-2 cursor-pointer" onClick={() => handleViewProfile(mostViewedAthlete)}>
                 <div className="w-14 h-14 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
                   {mostViewedAthlete.profilePictureUrl ? (
                     <img 
@@ -794,7 +790,7 @@ const ScoutDashboardPage = () => {
                     {mostViewedAthlete.name ? mostViewedAthlete.name.charAt(0).toUpperCase() : 'A'}
                   </div>
                 </div>
-                <div className="font-semibold text-base sm:text-lg text-gray-900 ml-2 sm:ml-4 truncate">{getShortName(mostViewedAthlete.name)}</div>
+                <div className="font-semibold text-base sm:text-lg text-gray-900 ml-2 sm:ml-4 truncate hover:underline">{getShortName(mostViewedAthlete.name)}</div>
               </div>
               {/* Info Row: Age, Level, Position */}
               <div className="flex justify-center items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-400 italic font-semibold mt-2 mb-1 w-full">
@@ -854,7 +850,7 @@ const ScoutDashboardPage = () => {
             </div>
           )}
         </div>
-        {/* Right box: Grinder of the Week */}
+        {/* Grinder of the Week */}
         <div className="bg-white border border-gray-200 rounded-3xl w-[180px] sm:w-[320px] h-[300px] sm:h-[340px] flex flex-col items-center pt-4 px-2">
           <div className="w-full text-center text-xs sm:text-base font-bold text-gray-700 mb-3 sm:mb-4">Grinder of the Week</div>
           {grinderOfWeekId && top3.some(u => u.id === grinderOfWeekId) ? (
@@ -862,7 +858,7 @@ const ScoutDashboardPage = () => {
               const grinder = top3.find(u => u.id === grinderOfWeekId);
               return (
                 <>
-                  <div className="flex flex-row items-center w-full justify-start gap-3 px-2">
+                  <div className="flex flex-row items-center w-full justify-start gap-3 px-2 cursor-pointer" onClick={() => handleViewProfile(grinder)}>
                     <div className="w-14 h-14 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
                       {grinder.profilePictureUrl ? (
                         <img 
@@ -884,7 +880,7 @@ const ScoutDashboardPage = () => {
                         {grinder.name ? grinder.name.charAt(0).toUpperCase() : 'A'}
                       </div>
                     </div>
-                    <div className="font-semibold text-base sm:text-lg text-gray-900 ml-2 sm:ml-4 truncate">{getShortName(grinder.name)}</div>
+                    <div className="font-semibold text-base sm:text-lg text-gray-900 ml-2 sm:ml-4 truncate hover:underline">{getShortName(grinder.name)}</div>
                   </div>
                   {/* Info Row: Age, Level, Position */}
                   <div className="flex justify-center items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-400 italic font-semibold mt-2 mb-1 w-full">
@@ -946,13 +942,14 @@ const ScoutDashboardPage = () => {
           )}
         </div>
       </div>
-      <h1 className="text-3xl font-bold text-left text-red-600 mb-2 tracking-tight pl-2">THE LEADERBOARD</h1>
+      {/* Centered THE LEADERBOARD Heading */}
+      <h1 className="text-3xl font-bold text-center text-red-600 mb-2 tracking-tight">THE LEADERBOARD</h1>
       {top3.length === 0 ? (
         <div className="p-8 text-center text-gray-500 w-full">
           <p>No users found matching your filters.</p>
         </div>
       ) : (
-        <div className="flex flex-row justify-center items-stretch gap-2 sm:gap-8 sm:max-w-5xl mx-auto w-full h-[300px] sm:h-[420px] sm:-ml-7">
+        <div className="flex flex-row justify-center items-stretch gap-2 sm:gap-8 sm:max-w-5xl mx-auto w-full h-[300px] sm:h-[420px] sm:-ml-7 mb-16">
           {/* Card 1 */}
           <div className="bg-white rounded-3xl shadow-lg w-[180px] sm:w-[320px] h-full flex flex-col items-center text-center relative p-2 sm:p-4 gap-y-2 sm:gap-y-4 overflow-hidden mb-0">
             {/* Country code (top right, above name) */}

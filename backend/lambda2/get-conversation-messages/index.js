@@ -1,11 +1,30 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import pkg from 'pg';
+const { Client } = pkg;
 
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
 const MESSAGES_TABLE = process.env.MESSAGES_TABLE;
 const CONVERSATIONS_TABLE = process.env.CONVERSATIONS_TABLE;
+
+// Utility: resolveUserId (returns UUID if already UUID, else looks up by email)
+async function resolveUserId(identifier) {
+  if (/^[0-9a-fA-F-]{36}$/.test(identifier)) return identifier;
+  const client = new Client({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    ssl: { rejectUnauthorized: false }
+  });
+  await client.connect();
+  const res = await client.query('SELECT id FROM users WHERE email = $1 LIMIT 1', [identifier]);
+  await client.end();
+  if (res.rows.length === 0) throw new Error(`User not found for identifier: ${identifier}`);
+  return res.rows[0].id;
+}
 
 // Helper: Check if user is a participant in the conversation
 async function isConversationParticipant(conversationId, userId) {
@@ -47,9 +66,17 @@ export const handler = async (event) => {
     const claims = event.identity.claims;
     console.log('JWT claims:', JSON.stringify(claims, null, 2));
     
-    // Use cognito:username to match sendMessage function
-    const userId = claims['cognito:username'];
-    console.log('User ID:', userId);
+    // Extract user info from JWT claims and resolve to UUID
+    let userId = claims['cognito:username'] || claims['sub'];
+    console.log('Original User ID:', userId);
+    
+    if (!userId) {
+      throw new Error('User not authenticated');
+    }
+    
+    // Always resolve to UUID for consistency with send-message function
+    userId = await resolveUserId(userId);
+    console.log('Resolved User ID:', userId);
     
     const { conversationId, limit = 20, nextToken } = event.arguments;
     if (!conversationId) {

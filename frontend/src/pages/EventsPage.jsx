@@ -139,7 +139,8 @@ const EventCard = ({ event }) => {
     event.participationFee !== undefined &&
     event.participationFee !== null &&
     event.participationFee !== '' &&
-    !isNaN(Number(event.participationFee))
+    !isNaN(Number(event.participationFee)) &&
+    Number(event.participationFee) > 0
       ? `$${Number(event.participationFee)}`
       : 'Free';
   return (
@@ -409,7 +410,8 @@ const ParticipatingEventCard = ({ event, onDeregister }) => {
     event.participationFee !== undefined &&
     event.participationFee !== null &&
     event.participationFee !== '' &&
-    !isNaN(Number(event.participationFee))
+    !isNaN(Number(event.participationFee)) &&
+    Number(event.participationFee) > 0
       ? `$${Number(event.participationFee)}`
       : 'Free';
 
@@ -536,7 +538,8 @@ function getBubbleSVG(participationFee) {
     participationFee !== undefined &&
     participationFee !== null &&
     participationFee !== '' &&
-    !isNaN(Number(participationFee))
+    !isNaN(Number(participationFee)) &&
+    Number(participationFee) > 0
   ) {
     text = `$${Number(participationFee)}`;
   }
