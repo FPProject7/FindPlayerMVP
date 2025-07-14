@@ -18,6 +18,17 @@
   color: #374151;
   font-size: 14px;
   cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.social-button:hover:not(:disabled) {
+  background-color: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.social-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .social-button.black {
@@ -32,4 +43,12 @@
 
 .social-icon.white {
   color: #ffffff;
+}
+
+.social-error {
+  color: #dc2626;
+  font-size: 12px;
+  text-align: center;
+  margin: 0;
+  padding: 0;
 }

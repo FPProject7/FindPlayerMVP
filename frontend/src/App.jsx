@@ -8,6 +8,8 @@ import EventsPage from './pages/EventsPage';
 import LoginPage from './pages/Auth/LoginPage';
 import SignUpPage from './pages/Auth/SignUpPage';
 import ResetPasswordPage from './pages/Auth/ResetPasswordPage';
+import CompleteProfilePage from './pages/Auth/CompleteProfilePage';
+import GoogleCallbackPage from './pages/Auth/GoogleCallbackPage';
 import LoginPromptModal from "./components/common/LoginPromptModal";
 import { useAuthStore } from './stores/useAuthStore';
 import { useTokenRefresh } from './hooks/useTokenRefresh';
@@ -84,6 +86,8 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/complete-profile" element={<CompleteProfilePage />} />
+        <Route path="/google-callback" element={<GoogleCallbackPage />} />
 
         {/* Public Content Route - Accessible to all, not blocked by modal */}
         <Route path="/events" element={<MainLayout />}>
