@@ -54,7 +54,6 @@ function LoginForm() {
       navigate('/home');
 
     } catch (err) {
-      // Prefer backend message, but fallback to a generic one if it's technical or missing
       let errorMessage = err.response?.data?.message;
       if (
         !errorMessage ||
@@ -68,6 +67,14 @@ function LoginForm() {
       setIsLoading(false);
     }
   };
+
+  // Helper: check if error is unverified account
+  const isUnverifiedError = apiError && (
+    apiError.toLowerCase().includes('not verified') ||
+    apiError.toLowerCase().includes('unverified') ||
+    apiError.toLowerCase().includes('not confirmed') ||
+    apiError.toLowerCase().includes('confirm your account')
+  );
 
   return (
     <>
@@ -119,6 +126,16 @@ function LoginForm() {
       </div>
       {errors.password && <p className="login-error">{errors.password.message}</p>}
       {apiError && <p className="login-error">{apiError}</p>}
+      {isUnverifiedError && (
+        <button
+          type="button"
+          className="login-button"
+          style={{ marginTop: 0, marginBottom: '0.75rem', background: '#fff', color: '#FF0505', border: '2px solid #FF0505' }}
+          onClick={() => navigate('/verify-email?email=' + encodeURIComponent(document.querySelector('input[type=email]')?.value || ''))}
+        >
+          Verify Your Account
+        </button>
+      )}
 
       <button type="submit" className="login-button" disabled={isLoading}>
         {isLoading ? <LoadingDots /> : 'Continue'} {/* <--- Use LoadingDots component here */}

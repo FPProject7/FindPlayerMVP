@@ -8,6 +8,7 @@ import EventsPage from './pages/EventsPage';
 import LoginPage from './pages/Auth/LoginPage';
 import SignUpPage from './pages/Auth/SignUpPage';
 import ResetPasswordPage from './pages/Auth/ResetPasswordPage';
+import EmailVerificationPage from './pages/Auth/EmailVerificationPage';
 import LoginPromptModal from "./components/common/LoginPromptModal";
 import { useAuthStore } from './stores/useAuthStore';
 import { useTokenRefresh } from './hooks/useTokenRefresh';
@@ -58,7 +59,7 @@ function App() {
 
   useEffect(() => {
     // Added new pages to trulyPublicPages for modal logic
-    const authRelatedPaths = ['/login', '/signup', '/reset-password'];
+    const authRelatedPaths = ['/login', '/signup', '/reset-password', '/verify-email']; // Added '/verify-email'
     const trulyPublicPages = ['/events', '/profile', '/scout-dashboard', '/notifications', '/messages'];
     const isAuthRelatedPath = authRelatedPaths.includes(location.pathname);
     // Allow /profile/:role/:profileUserId as public (regex match)
@@ -84,6 +85,7 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/verify-email" element={<EmailVerificationPage />} />
 
         {/* Public Content Route - Accessible to all, not blocked by modal */}
         <Route path="/events" element={<MainLayout />}>

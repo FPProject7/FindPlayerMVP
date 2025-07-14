@@ -127,25 +127,37 @@ function CoachSignUpForm() {
 
       const response = await api.post('/signup', payload);
 
-      const { idToken, accessToken, refreshToken, userProfile } = response.data;
-
-      login(userProfile, {
-        IdToken: idToken,
-        AccessToken: accessToken,
-        RefreshToken: refreshToken
-      });
-
-      navigate('/home');
+      // Check if email verification is required
+      if (response.data.requiresVerification) {
+        navigate('/verify-email', { 
+          state: { email: data.email } 
+        });
+      } else {
+        const { idToken, accessToken, refreshToken, userProfile } = response.data;
+        login(userProfile, {
+          IdToken: idToken,
+          AccessToken: accessToken,
+          RefreshToken: refreshToken
+        });
+        navigate('/home');
+      }
 
     } catch (err) {
-      console.error('Coach signup error:', err);
-      setApiError(
-        err.response?.data?.message ||
-        err.message ||
-        'Sign up failed. Please try again.'
-      );
+      let backendMsg = err.response?.data?.message || '';
+      if (
+        backendMsg.toLowerCase().includes('already exists') ||
+        backendMsg.toLowerCase().includes('already verified')
+      ) {
+        setApiError('An account with this email already exists and is verified. Please log in or reset your password.');
+      } else {
+        setApiError(
+          backendMsg ||
+          err.message ||
+          'Sign up failed. Please try again.'
+        );
+      }
     } finally {
-      setIsLoading(false); // <--- Set loading to false when submission finishes
+      setIsLoading(false);
     }
   };
 
