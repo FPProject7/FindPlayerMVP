@@ -88,34 +88,18 @@ export const handler = async (event) => {
     let idToken = null, accessToken = null, refreshToken = null;
 
     try {
-        // Step 1: Sign up the user
+        // Step 1: Sign up the user (email verification required)
         const signUpCommand = new SignUpCommand(signUpParams);
-        await cognitoClient.send(signUpCommand);
+        const signUpResponse = await cognitoClient.send(signUpCommand);
         signupSucceeded = true;
 
-        // Step 2: Try to auto-login
-        try {
-            const initiateAuthParams = {
-                AuthFlow: "ADMIN_NO_SRP_AUTH",
-                UserPoolId: USER_POOL_ID,
-                ClientId: CLIENT_ID,
-                AuthParameters: {
-                    USERNAME: email,
-                    PASSWORD: password,
-                },
-            };
-            const initiateAuthCommand = new AdminInitiateAuthCommand(initiateAuthParams);
-            const authResponse = await cognitoClient.send(initiateAuthCommand);
-            const authenticationResult = authResponse.AuthenticationResult;
-            idToken = authenticationResult.IdToken;
-            accessToken = authenticationResult.AccessToken;
-            refreshToken = authenticationResult.RefreshToken;
-        } catch (autoLoginError) {
-            // Auto-login failed, but signup succeeded
-            idToken = null;
-            accessToken = null;
-            refreshToken = null;
-        }
+        console.log(`User ${email} signed up successfully. Email verification required.`);
+        
+        // Note: Auto-login is disabled for email verification workflow
+        // Users must verify their email before they can sign in
+        idToken = null;
+        accessToken = null;
+        refreshToken = null;
 
         // Step 3: Handle Profile Picture Upload to S3 (if provided)
         if (profilePictureBase64 && S3_BUCKET_NAME) {
@@ -238,10 +222,9 @@ export const handler = async (event) => {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                message: "User signed up and logged in successfully.",
-                idToken: idToken,
-                accessToken: accessToken,
-                refreshToken: refreshToken,
+                message: "User signed up successfully. Please check your email for verification code.",
+                requiresVerification: true,
+                email: email,
                 userProfile: userProfile
             }),
         };

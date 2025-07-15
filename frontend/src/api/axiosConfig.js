@@ -37,7 +37,7 @@ apiClient.interceptors.response.use(
   async (error) => {
     if (error.response?.status === 401) {
       try {
-        await useAuthStore.getState().refreshToken();
+        await useAuthStore.getState().refreshTokenAsync();
         const originalRequest = error.config;
         const token = await useAuthStore.getState().getValidToken();
         if (token) {
@@ -45,7 +45,7 @@ apiClient.interceptors.response.use(
         }
         return apiClient(originalRequest);
       } catch (refreshError) {
-        useAuthStore.getState().logout();
+        useAuthStore.getState().logout(true); // Mark as session expired
       }
     }
     return Promise.reject(error);
@@ -75,7 +75,7 @@ eventsApiClient.interceptors.response.use(
   async (error) => {
     if (error.response?.status === 401) {
       try {
-        await useAuthStore.getState().refreshToken();
+        await useAuthStore.getState().refreshTokenAsync();
         const originalRequest = error.config;
         const token = await useAuthStore.getState().getValidIdToken();
         if (token) {
@@ -83,7 +83,7 @@ eventsApiClient.interceptors.response.use(
         }
         return eventsApiClient(originalRequest);
       } catch (refreshError) {
-        useAuthStore.getState().logout();
+        useAuthStore.getState().logout(true); // Mark as session expired
       }
     }
     return Promise.reject(error);

@@ -8,6 +8,7 @@ import EventsPage from './pages/EventsPage';
 import LoginPage from './pages/Auth/LoginPage';
 import SignUpPage from './pages/Auth/SignUpPage';
 import ResetPasswordPage from './pages/Auth/ResetPasswordPage';
+import EmailVerificationPage from './pages/Auth/EmailVerificationPage';
 import LoginPromptModal from "./components/common/LoginPromptModal";
 import { useAuthStore } from './stores/useAuthStore';
 import { useTokenRefresh } from './hooks/useTokenRefresh';
@@ -53,12 +54,21 @@ const RoleProtectedRoute = ({ children, allowedRoles }) => {
 
 function App() {
   const [showModal, setShowModal] = useState(false);
+  const [modalType, setModalType] = useState('access');
   const location = useLocation();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, sessionExpired, clearSessionExpiredFlag } = useAuthStore();
 
   useEffect(() => {
+    // Check for session expiry first
+    if (sessionExpired) {
+      setModalType('expired');
+      setShowModal(true);
+      clearSessionExpiredFlag(); // Clear the flag after showing the modal
+      return;
+    }
+
     // Added new pages to trulyPublicPages for modal logic
-    const authRelatedPaths = ['/login', '/signup', '/reset-password'];
+    const authRelatedPaths = ['/login', '/signup', '/reset-password', '/verify-email']; // Added '/verify-email'
     const trulyPublicPages = ['/events', '/profile', '/scout-dashboard', '/notifications', '/messages'];
     const isAuthRelatedPath = authRelatedPaths.includes(location.pathname);
     // Allow /profile/:role/:profileUserId as public (regex match)
@@ -67,23 +77,25 @@ function App() {
     const isEventDetailPage = /^\/events\/[^/]+$/.test(location.pathname);
     const isTrulyPublicPage = trulyPublicPages.includes(location.pathname) || isProfileUserPage || isEventDetailPage;
     if (!isAuthenticated && !isAuthRelatedPath && !isTrulyPublicPage) {
+      setModalType('access');
       setShowModal(true);
     } else {
       setShowModal(false);
     }
-  }, [location.pathname, isAuthenticated]);
+  }, [location.pathname, isAuthenticated, sessionExpired, clearSessionExpiredFlag]);
 
   useTokenRefresh();
 
   return (
     <>
-      {showModal && <LoginPromptModal />}
+      {showModal && <LoginPromptModal type={modalType} />}
 
       <Routes>
         {/* Public Routes - Authentication forms (no MainLayout) */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/verify-email" element={<EmailVerificationPage />} />
 
         {/* Public Content Route - Accessible to all, not blocked by modal */}
         <Route path="/events" element={<MainLayout />}>
