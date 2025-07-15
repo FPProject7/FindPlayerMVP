@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import SocialLoginButtons from './SocialLoginButtons';
 import './LoginForm.css';
 import loginLogo from '../../../assets/login-logo.jpg';
 import { Link, useNavigate } from 'react-router-dom';
@@ -155,8 +154,6 @@ function LoginForm() {
         <span>Don't Have An Account?</span>
         <Link to="/signup" className="signup">SIGN UP</Link>
       </div>
-
-      <SocialLoginButtons />
 
       <p className="login-terms">
         By clicking continue, you agree to our <button type="button" className="terms-link" onClick={() => setShowTermsModal(true)}>Terms of Service</button> and <button type="button" className="terms-link" onClick={() => setShowTermsModal(true)}>Privacy Policy</button>.
