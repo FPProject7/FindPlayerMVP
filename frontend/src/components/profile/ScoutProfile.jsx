@@ -48,6 +48,8 @@ const ScoutProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
     }
   };
 
+  const isPremium = profile?.isPremiumMember || profile?.is_premium_member;
+
   return (
     <div>
       <ProfileHeader profile={profile} currentUserId={currentUserId} isFollowing={isFollowing} buttonLoading={buttonLoading} onFollow={onFollow} onUnfollow={onUnfollow} />
@@ -92,7 +94,13 @@ const ScoutProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
       {isAuthenticated && (
         <FollowersModal userId={userId} open={showFollowers} onClose={handleCloseFollowers} />
       )}
-      <UpgradePremiumButton profile={profile} />
+      {currentUserId === profile.id && (
+        isPremium ? (
+          <div className="premium-activated" style={{color: 'green', fontWeight: 'bold', margin: '16px 0', textAlign: 'center'}}>Premium Activated</div>
+        ) : (
+          <UpgradePremiumButton profile={profile} />
+        )
+      )}
       <div className="text-xs text-center text-gray-400 mb-4">
         Get exclusive scouting insights & priority access to top athletes.
       </div>

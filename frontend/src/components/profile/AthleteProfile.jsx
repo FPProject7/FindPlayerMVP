@@ -7,6 +7,7 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import { useNavigate } from 'react-router-dom';
 import { formatHeight, formatWeight } from '../../utils/levelUtils';
 import { starPlayer, unstarPlayer, getStarredPlayers } from '../../api/starredApi';
+import SubscribeButton from '../common/SubscribeButton';
 
 const AthleteProfile = ({
   profile,
@@ -83,6 +84,8 @@ const AthleteProfile = ({
     setShowFollowers(false);
   };
 
+  const isPremium = profile?.isPremiumMember || profile?.is_premium_member;
+
   return (
     <div>
       <ProfileHeader
@@ -142,7 +145,13 @@ const AthleteProfile = ({
       {isAuthenticated && (
         <FollowersModal userId={userId} open={showFollowers} onClose={handleCloseFollowers} />
       )}
-      {currentUserId === profile.id && <UpgradePremiumButton />}
+      {currentUserId === profile.id && (
+        isPremium ? (
+          <div className="premium-activated" style={{color: 'green', fontWeight: 'bold', margin: '16px 0', textAlign: 'center'}}>Premium Activated</div>
+        ) : (
+          <SubscribeButton userId={userId} />
+        )
+      )}
       {currentUserId === profile.id && (
         <div className="text-xs text-center text-gray-400 mb-4">
           Stand out, get noticed, and unlock exclusive opportunities.

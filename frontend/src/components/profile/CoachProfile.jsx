@@ -30,6 +30,7 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
   const isCoach = (role || '').toLowerCase() === 'coach';
   // Placeholder: Assume current user is athlete if not coach
   const showBookSession = !isCoach && !isOwnProfile;
+  const isPremium = profile?.isPremiumMember || profile?.is_premium_member;
 
   useEffect(() => {
     if (profile?.id) {
@@ -115,7 +116,13 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
           </button>
         </div>
       )}
-      {currentUserRole !== 'athlete' && currentUserId === profile.id && <UpgradePremiumButton />}
+      {currentUserRole !== 'athlete' && currentUserId === profile.id && (
+        isPremium ? (
+          <div className="premium-activated" style={{color: 'green', fontWeight: 'bold', margin: '16px 0', textAlign: 'center'}}>Premium Activated</div>
+        ) : (
+          <UpgradePremiumButton profile={profile} />
+        )
+      )}
       {currentUserId === profile.id && (
         <div className="text-xs text-center text-gray-400 mb-4">
           Expand your reach, train more athletes, and grow your influence.
