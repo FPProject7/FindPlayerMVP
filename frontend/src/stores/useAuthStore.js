@@ -15,6 +15,7 @@ export const useAuthStore = create(
       user: null,           // User profile information
       isAuthenticated: false,
       tokenExpiry: null,    // When the token expires
+      sessionExpired: false, // Track if session expired vs manual logout
 
       // --- ACTIONS ---
       /**
@@ -32,12 +33,13 @@ export const useAuthStore = create(
           user: userProfile,
           isAuthenticated: true,
           tokenExpiry: expiryTime,
+          sessionExpired: false, // Reset session expired flag on login
         });
         // Zustand persist middleware will automatically save this to localStorage
       },
 
       // The logout action will clear all session data
-      logout: () => {
+      logout: (isSessionExpired = false) => {
         set({
           token: null,
           accessToken: null,
@@ -45,8 +47,14 @@ export const useAuthStore = create(
           user: null,
           isAuthenticated: false,
           tokenExpiry: null,
+          sessionExpired: isSessionExpired, // Track if logout was due to session expiry
         });
         // Zustand persist middleware will automatically clear from localStorage
+      },
+
+      // Clear session expired flag (call this after showing the expired session modal)
+      clearSessionExpiredFlag: () => {
+        set({ sessionExpired: false });
       },
 
       // You might add an action here to update the token or user profile later
@@ -57,6 +65,7 @@ export const useAuthStore = create(
           accessToken: newAccessToken,
           refreshToken: newRefreshToken || get().refreshToken,
           tokenExpiry: new Date(Date.now() + 3600000), // 1 hour
+          sessionExpired: false, // Reset session expired flag on token update
         });
       },
 
@@ -166,6 +175,7 @@ export const useAuthStore = create(
             user: state.user, // Preserve user profile information
             isAuthenticated: state.isAuthenticated, // Preserve authentication state
             tokenExpiry: new Date(Date.now() + 3600000), // 1 hour
+            sessionExpired: false, // Reset session expired flag on successful refresh
           });
           return tokenType === 'id' ? data.idToken : data.accessToken;
         } catch (error) {
@@ -176,6 +186,7 @@ export const useAuthStore = create(
             user: null,
             isAuthenticated: false,
             tokenExpiry: null,
+            sessionExpired: true, // Mark as session expired when refresh fails
           });
           throw new Error('Authentication expired. Please log in again.');
         }
