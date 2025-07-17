@@ -127,24 +127,49 @@ export function calculateAge(dateOfBirth) {
   }
 }
 
+// Conversion functions
+const inchesToCm = (inches) => Math.round(inches * 2.54);
+const cmToInches = (cm) => Math.round(cm / 2.54);
+const lbsToKg = (lbs) => Math.round(lbs * 0.453592);
+const kgToLbs = (kg) => Math.round(kg / 0.453592);
+
+// Format height for display
+const formatHeightImperial = (inches) => {
+  const feet = Math.floor(inches / 12);
+  const inch = inches % 12;
+  return `${feet}'${inch}"`;
+};
+
+const formatHeightMetric = (cm) => {
+  const meters = Math.floor(cm / 100);
+  const remainingCm = cm % 100;
+  return `${meters}m ${remainingCm}cm`;
+};
+
 /**
  * Format height in inches to feet/inches and cm (e.g., 6'0" (183 cm))
  * @param {number} height - Height in inches
+ * @param {boolean} useMetric - Whether to display in metric units
  * @returns {string} Formatted height string
  */
-export function formatHeight(height) {
+export function formatHeight(height, useMetric = false) {
   if (!height) return 'N/A';
-  const feet = Math.floor(height / 12);
-  const inches = height % 12;
-  return `${feet}'${inches}\"`;
+  if (useMetric) {
+    return formatHeightMetric(inchesToCm(height));
+  }
+  return formatHeightImperial(height);
 }
 
 /**
  * Format weight in lbs to lbs and kg (e.g., 190 lbs (86 kg))
  * @param {number} weight - Weight in lbs
+ * @param {boolean} useMetric - Whether to display in metric units
  * @returns {string} Formatted weight string
  */
-export function formatWeight(weight) {
+export function formatWeight(weight, useMetric = false) {
   if (!weight) return 'N/A';
+  if (useMetric) {
+    return `${lbsToKg(weight)} kg`;
+  }
   return `${weight} lbs`;
 } 

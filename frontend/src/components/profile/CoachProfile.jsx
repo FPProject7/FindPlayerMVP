@@ -5,8 +5,11 @@ import { useNavigate } from 'react-router-dom';
 import FollowersModal from './FollowersModal';
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '../../stores/useAuthStore';
+import EditableBio from '../common/EditableBio';
 import UpgradePremiumButton from './UpgradePremiumButton';
 import { getFollowerCount } from '../../api/userApi';
+import { getUserBio, updateUserBio } from '../../api/bioApi';
+import api from '../../api/axiosConfig';
 
 const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFollow, onUnfollow, connections, challengesUploaded }) => {
   const {
@@ -19,6 +22,24 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
 
   const [showFollowers, setShowFollowers] = useState(false);
   const [connectionsCount, setConnectionsCount] = useState(connections);
+  const [bio, setBio] = useState(profile.bio || '');
+
+  // Load bio from API
+  useEffect(() => {
+    const loadBio = async () => {
+      try {
+        const bioData = await getUserBio(profile.id);
+        setBio(bioData.bio || '');
+      } catch (error) {
+        console.error('Failed to load bio:', error);
+        // Keep existing bio if API fails
+      }
+    };
+    
+    if (profile.id) {
+      loadBio();
+    }
+  }, [profile.id]);
   const navigate = useNavigate();
   const logout = useAuthStore((state) => state.logout);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -60,6 +81,17 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
     });
   };
 
+  // Handle bio save
+  const handleBioSave = async (newBio) => {
+    try {
+      await updateUserBio(profile.id, newBio);
+      setBio(newBio);
+    } catch (error) {
+      console.error('Failed to save bio:', error);
+      throw error;
+    }
+  };
+
   return (
     <div>
       <ProfileHeader
@@ -77,6 +109,16 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
           Country: {profile.country}
         </div>
       )}
+      
+      {/* Bio Section */}
+      <div className="px-4">
+        <EditableBio
+          bio={bio}
+          isOwnProfile={currentUserId === profile.id}
+          onSave={handleBioSave}
+          placeholder="Add a description about yourself..."
+        />
+      </div>
       <div className="flex justify-around my-4">
         <div className="flex flex-col items-center">
           {isAuthenticated ? (

@@ -1,0 +1,143 @@
+.bio-container {
+  position: relative;
+  margin: 1rem 0;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.bio-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  position: relative;
+  min-height: 60px;
+}
+
+.bio-text {
+  margin: 0;
+  color: #333333;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  word-wrap: break-word;
+  text-align: center;
+  flex: 1;
+}
+
+.bio-placeholder {
+  margin: 0;
+  color: #6c757d;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  font-style: italic;
+  text-align: center;
+  flex: 1;
+}
+
+.bio-edit-btn {
+  background: #dc2626;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.8rem;
+  font-weight: 500;
+  z-index: 10;
+}
+
+.bio-edit-btn:hover {
+  background: #b91c1c;
+  transform: translateY(-1px);
+}
+
+.bio-container.editing {
+  background: #ffffff;
+  border-color: #dc2626;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.1);
+}
+
+.bio-edit-content {
+  margin-bottom: 0.75rem;
+}
+
+.bio-textarea {
+  width: 100%;
+  min-height: 60px;
+  padding: 0.75rem;
+  background: #ffffff;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  color: #333333;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.bio-textarea:focus {
+  outline: none;
+  border-color: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+.bio-textarea::placeholder {
+  color: #6c757d;
+}
+
+.bio-char-count {
+  text-align: right;
+  font-size: 0.75rem;
+  color: #6c757d;
+  margin-top: 0.25rem;
+}
+
+.bio-edit-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.bio-save-btn,
+.bio-cancel-btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.bio-save-btn {
+  background: #dc2626;
+  color: white;
+}
+
+.bio-save-btn:hover:not(:disabled) {
+  background: #b91c1c;
+  transform: translateY(-1px);
+}
+
+.bio-save-btn:disabled {
+  background: rgba(220, 38, 38, 0.5);
+  cursor: not-allowed;
+  transform: none;
+}
+
+.bio-cancel-btn {
+  background: #6c757d;
+  color: white;
+}
+
+.bio-cancel-btn:hover {
+  background: #5a6268;
+  color: white;
+} 

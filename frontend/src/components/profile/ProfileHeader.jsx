@@ -1,12 +1,13 @@
 // frontend/src/components/profile/ProfileHeader.jsx
 import FollowButton from '../common/FollowButton';
 import { useState, useEffect } from 'react';
-import { FiShare2 } from 'react-icons/fi';
+import { FiShare2, FiEdit3 } from 'react-icons/fi';
 import { getXPDetails } from '../../utils/levelUtils';
 import { createProfileUrl } from '../../utils/profileUrlUtils';
 import { PUBLIC_BASE_URL } from '../../config';
 import UserStatusBadge from '../common/UserStatusBadge';
 import ChallengeLoader from '../common/ChallengeLoader';
+import ProfilePictureEditor from './ProfilePictureEditor';
 
 // Toast for share/copy feedback
 const ShareToast = ({ message }) => (
@@ -22,6 +23,9 @@ const ProfileHeader = ({ profile, currentUserId, isFollowing, buttonLoading, onF
   const [isSmallScreen, setIsSmallScreen] = useState(
     typeof window !== 'undefined' ? window.innerWidth <= 375 : false
   );
+
+  // Profile picture editor state
+  const [showProfilePictureEditor, setShowProfilePictureEditor] = useState(false);
 
   useEffect(() => {
     const handleResize = () => {
@@ -102,10 +106,18 @@ const ProfileHeader = ({ profile, currentUserId, isFollowing, buttonLoading, onF
   const xpTotal = profile.xpTotal || 0;
   const xpDetails = getXPDetails(xpTotal);
 
+  // Check if current user is viewing their own profile
+  const isOwnProfile = currentUserId && profile.id === currentUserId;
+
+  const handleProfilePictureUpdate = (newProfilePictureUrl) => {
+    // Update the profile object with new picture URL
+    profile.profilePictureUrl = newProfilePictureUrl;
+  };
+
   return (
     <div className="flex flex-row items-center w-full mb-4">
       {/* Profile Picture */}
-      <div className="flex-shrink-0 mr-6 flex flex-col items-center">
+      <div className="flex-shrink-0 mr-6 flex flex-col items-center relative">
         {profile.profilePictureUrl ? (
           <img
             src={profile.profilePictureUrl}
@@ -116,6 +128,17 @@ const ProfileHeader = ({ profile, currentUserId, isFollowing, buttonLoading, onF
           <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 font-bold text-5xl">
             <span>{(profile.name || 'U').charAt(0)}</span>
           </div>
+        )}
+        
+        {/* Edit Button - only show on own profile */}
+        {isOwnProfile && (
+          <button
+            onClick={() => setShowProfilePictureEditor(true)}
+            className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-red-600 text-white rounded-full p-2 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 shadow-lg"
+            title="Edit profile picture"
+          >
+            <FiEdit3 size={16} />
+          </button>
         )}
       </div>
       {/* Info and XP Bar */}
@@ -200,6 +223,15 @@ const ProfileHeader = ({ profile, currentUserId, isFollowing, buttonLoading, onF
           </div>
         )}
       </div>
+      
+      {/* Profile Picture Editor Modal */}
+      {showProfilePictureEditor && (
+        <ProfilePictureEditor
+          currentProfilePictureUrl={profile.profilePictureUrl}
+          onUpdate={handleProfilePictureUpdate}
+          onClose={() => setShowProfilePictureEditor(false)}
+        />
+      )}
     </div>
   );
 };

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { getLeaderboardWithStreak } from '../api/userApi';
-import { calculateAge, getLevelFromXP, getXPProgress, getXPDetails } from '../utils/levelUtils';
+import { calculateAge, getLevelFromXP, getXPProgress, getXPDetails, formatHeight, formatWeight } from '../utils/levelUtils';
 import ChallengeLoader from '../components/common/ChallengeLoader';
 import { useNavigate } from 'react-router-dom';
 import { createProfileUrl } from '../utils/profileUrlUtils';
@@ -301,6 +301,7 @@ const LeaderboardPage = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const observer = useRef();
   const navigate = useNavigate();
+  const [useMetric, setUseMetric] = useState(false);
 
   // Debounced fetch function
   const debouncedFetch = useCallback(
@@ -443,24 +444,35 @@ const LeaderboardPage = () => {
   useEffect(() => {
     setOffset(3);
     setHasMore(true);
-    // Only fetch on tab, gender, sport, timeRange, sort, sortOrder changes
-    fetchTopThree(getCurrentFilters());
-    fetchRest(getCurrentFilters(), false, 3);
+    
+    // Make all API calls in parallel for better performance
+    const parallelCalls = [
+      fetchTopThree(getCurrentFilters()),
+      fetchRest(getCurrentFilters(), false, 3)
+    ];
 
-    // Fetch Grinder of the Week (athletes only)
+    // Fetch Grinder of the Week (athletes only) in parallel
     if (activeTab === 'athletes') {
-      getLeaderboardWithStreak({ timeFrame: 'week', sortBy: 'xpTotal', sortOrder: 'DESC', limit: 1, role: 'athlete', gender })
-        .then(res => {
-          if (res.data && res.data.leaderboard && res.data.leaderboard.length > 0) {
-            setGrinderOfWeekId(res.data.leaderboard[0].id);
-          } else {
-            setGrinderOfWeekId(null);
-          }
-        })
-        .catch(() => setGrinderOfWeekId(null));
+      parallelCalls.push(
+        getLeaderboardWithStreak({ timeFrame: 'week', sortBy: 'xpTotal', sortOrder: 'DESC', limit: 1, role: 'athlete', gender })
+          .then(res => {
+            if (res.data && res.data.leaderboard && res.data.leaderboard.length > 0) {
+              setGrinderOfWeekId(res.data.leaderboard[0].id);
+            } else {
+              setGrinderOfWeekId(null);
+            }
+          })
+          .catch(() => setGrinderOfWeekId(null))
+      );
     } else {
       setGrinderOfWeekId(null);
     }
+    
+    // Wait for all parallel calls to complete
+    Promise.all(parallelCalls).catch(error => {
+      console.error('Error in parallel leaderboard calls:', error);
+    });
+    
   // Remove position, country, ageMin, ageMax from dependencies
   }, [timeRange, sport, sortBy, sortOrder, activeTab, gender]);
 
@@ -469,21 +481,16 @@ const LeaderboardPage = () => {
     if (activeTab === 'coaches') {
       setOffset(3);
       setHasMore(true);
-      fetchTopThree(getCurrentFilters());
-      fetchRest(getCurrentFilters(), false, 3);
+      
+      // Make API calls in parallel for better performance
+      Promise.all([
+        fetchTopThree(getCurrentFilters()),
+        fetchRest(getCurrentFilters(), false, 3)
+      ]).catch(error => {
+        console.error('Error in parallel coach leaderboard calls:', error);
+      });
     }
   }, [country, activeTab]);
-
-  const formatHeight = (height) => {
-    if (!height) return 'N/A';
-    const feet = Math.floor(height / 12);
-    const inches = height % 12;
-    return `${feet}'${inches}"`;
-  };
-  const formatWeight = (weight) => {
-    if (!weight) return 'N/A';
-    return `${weight} lbs`;
-  };
 
   // Handler for viewing full profile
   const handleViewProfile = (user) => {
@@ -524,6 +531,53 @@ const LeaderboardPage = () => {
       {/* Header */}
       <h1 className="text-5xl font-extrabold text-center text-red-600 mb-2 tracking-tight">LEADERBOARD</h1>
       <h2 className="text-2xl font-semibold text-center text-gray-400 mb-2 tracking-wide">#BeHEARD</h2>
+      {/* Imperial/Metric Toggle */}
+      <div className="flex justify-center mb-2">
+        <div className="flex items-center gap-3 text-sm text-gray-500">
+          <span className={!useMetric ? 'text-gray-700 font-medium' : ''}>Imperial</span>
+          <label style={{
+            position: 'relative',
+            display: 'inline-block',
+            width: '50px',
+            height: '24px'
+          }}>
+            <input 
+              type="checkbox" 
+              checked={useMetric} 
+              onChange={() => setUseMetric(!useMetric)}
+              style={{
+                opacity: 0,
+                width: 0,
+                height: 0
+              }}
+            />
+            <span style={{
+              position: 'absolute',
+              cursor: 'pointer',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: useMetric ? '#FF0505' : '#ccc',
+              transition: '.4s',
+              borderRadius: '24px'
+            }}>
+              <span style={{
+                position: 'absolute',
+                content: '""',
+                height: '18px',
+                width: '18px',
+                left: useMetric ? '26px' : '3px',
+                bottom: '3px',
+                backgroundColor: 'white',
+                transition: '.4s',
+                borderRadius: '50%'
+              }}></span>
+            </span>
+          </label>
+          <span className={useMetric ? 'text-gray-700 font-medium' : ''}>Metric</span>
+        </div>
+      </div>
       {/* Athlete/Coach Tabs */}
       <div className="flex justify-center mb-2 sm:mb-8 gap-4">
         <button
@@ -632,8 +686,8 @@ const LeaderboardPage = () => {
                 {/* Height/Weight Row */}
                 {activeTab === 'athletes' && (
                   <div className="flex justify-between w-full text-gray-500 text-[9px] sm:text-xs font-medium mt-0">
-                    <span>Height: {top3[0]?.height ? formatHeight(top3[0].height) : '--'}</span>
-                    <span>Weight: {top3[0]?.weight ? formatWeight(top3[0].weight) : '--'}</span>
+                    <span>Height: {top3[0]?.height ? formatHeight(top3[0].height, useMetric) : '--'}</span>
+                    <span>Weight: {top3[0]?.weight ? formatWeight(top3[0].weight, useMetric) : '--'}</span>
                   </div>
                 )}
                 {/* Stats (center, stacked) - Only show what we have, placeholders for missing */}
@@ -751,8 +805,8 @@ const LeaderboardPage = () => {
                     </div>
                     <div className="flex justify-between w-full text-gray-500 text-[9px] sm:text-xs font-medium mt-0">
                       {activeTab === 'athletes' && <>
-                        <span>Height: {top3[1].height ? formatHeight(top3[1].height) : '--'}</span>
-                        <span>Weight: {top3[1].weight ? formatWeight(top3[1].weight) : '--'}</span>
+                        <span>Height: {top3[1].height ? formatHeight(top3[1].height, useMetric) : '--'}</span>
+                        <span>Weight: {top3[1].weight ? formatWeight(top3[1].weight, useMetric) : '--'}</span>
                       </>}
                     </div>
                     {/* Stats (challenges, approvals or created/approved) */}
@@ -857,8 +911,8 @@ const LeaderboardPage = () => {
                     </div>
                     <div className="flex justify-between w-full text-gray-500 text-[9px] sm:text-xs font-medium mt-0">
                       {activeTab === 'athletes' && <>
-                        <span>Height: {top3[2].height ? formatHeight(top3[2].height) : '--'}</span>
-                        <span>Weight: {top3[2].weight ? formatWeight(top3[2].weight) : '--'}</span>
+                        <span>Height: {top3[2].height ? formatHeight(top3[2].height, useMetric) : '--'}</span>
+                        <span>Weight: {top3[2].weight ? formatWeight(top3[2].weight, useMetric) : '--'}</span>
                       </>}
                     </div>
                     {/* Stats (challenges, approvals or created/approved) */}
@@ -1141,8 +1195,8 @@ const LeaderboardPage = () => {
                     </div>
                     <div className="flex flex-row gap-1 mt-0.5">
                       {activeTab === 'athletes' && <>
-                        <div className="text-[8px] sm:text-xs text-gray-600">{user.height ? formatHeight(user.height) : '--'}</div>
-                        <div className="text-[8px] sm:text-xs text-gray-600">{user.weight ? formatWeight(user.weight) : '--'}</div>
+                        <div className="text-[8px] sm:text-xs text-gray-600">{user.height ? formatHeight(user.height, useMetric) : '--'}</div>
+                        <div className="text-[8px] sm:text-xs text-gray-600">{user.weight ? formatWeight(user.weight, useMetric) : '--'}</div>
                       </>}
                     </div>
                   </div>

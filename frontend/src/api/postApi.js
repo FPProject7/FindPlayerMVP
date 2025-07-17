@@ -65,4 +65,13 @@ export const getComments = (postId, limit = 50, offset = 0) => {
   return postApiClient.get('/get-comments', {
     params: { postId, limit, offset }
   });
+};
+
+// Get trending posts based on engagement
+export const getTrendingPosts = (limit = 20, offset = 0, userId = null) => {
+  const params = { limit, offset };
+  if (userId) {
+    params.userId = userId;
+  }
+  return postApiClient.get('/get-trending-posts', { params });
 }; 

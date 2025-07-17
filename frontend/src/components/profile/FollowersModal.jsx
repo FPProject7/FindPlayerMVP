@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ChallengeLoader from '../common/ChallengeLoader';
-import { connectionsApiClient } from '../../api/userApi';
+import { connectionsApiClient, getInfoUser } from '../../api/userApi';
 import { createProfileUrl } from '../../utils/profileUrlUtils';
 
 const FollowersModal = ({ userId, open, onClose }) => {
@@ -23,6 +23,32 @@ const FollowersModal = ({ userId, open, onClose }) => {
       .catch(() => setError('Failed to load connections.'))
       .finally(() => setLoading(false));
   }, [userId, open]);
+
+  const handleUserClick = async (user) => {
+    if (!user.name) return;
+    
+    try {
+      let userRole = user.role;
+      
+      // If role is not available, fetch it from the API
+      if (!userRole && user.id) {
+        const userInfo = await getInfoUser(user.id);
+        userRole = userInfo.data.role || 'athlete';
+      }
+      
+      // Default to athlete if no role is found
+      const finalRole = userRole || 'athlete';
+      const profileUrl = createProfileUrl(user.name, finalRole);
+      navigate(profileUrl);
+      onClose(); // Close the modal after navigation
+    } catch (error) {
+      console.error('Failed to navigate to user profile:', error);
+      // Fallback to athlete role if API call fails
+      const profileUrl = createProfileUrl(user.name, 'athlete');
+      navigate(profileUrl);
+      onClose();
+    }
+  };
 
   if (!open) return null;
 
@@ -47,7 +73,11 @@ const FollowersModal = ({ userId, open, onClose }) => {
               <div className="text-center text-gray-400 py-8">No connections found.</div>
             ) : (
               followers.map((user) => (
-                <li key={user.id} className="py-3 flex items-center">
+                <li 
+                  key={user.id} 
+                  className="py-3 flex items-center cursor-pointer hover:bg-gray-50 transition-colors duration-150 rounded-lg px-2"
+                  onClick={() => handleUserClick(user)}
+                >
                   {user.profile_picture_url ? (
                     <img src={user.profile_picture_url} alt="avatar" className="w-10 h-10 rounded-full mr-4 object-cover" />
                   ) : (
@@ -55,7 +85,12 @@ const FollowersModal = ({ userId, open, onClose }) => {
                       <span>{(user.name || 'U').charAt(0)}</span>
                     </div>
                   )}
-                  <span className="font-medium">{user.name}</span>
+                  <div className="flex-1">
+                    <span className="font-medium text-gray-900">{user.name}</span>
+                    {user.role && (
+                      <span className="block text-sm text-gray-500 capitalize">{user.role}</span>
+                    )}
+                  </div>
                 </li>
               ))
             )}
