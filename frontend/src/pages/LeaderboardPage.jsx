@@ -444,24 +444,35 @@ const LeaderboardPage = () => {
   useEffect(() => {
     setOffset(3);
     setHasMore(true);
-    // Only fetch on tab, gender, sport, timeRange, sort, sortOrder changes
-    fetchTopThree(getCurrentFilters());
-    fetchRest(getCurrentFilters(), false, 3);
+    
+    // Make all API calls in parallel for better performance
+    const parallelCalls = [
+      fetchTopThree(getCurrentFilters()),
+      fetchRest(getCurrentFilters(), false, 3)
+    ];
 
-    // Fetch Grinder of the Week (athletes only)
+    // Fetch Grinder of the Week (athletes only) in parallel
     if (activeTab === 'athletes') {
-      getLeaderboardWithStreak({ timeFrame: 'week', sortBy: 'xpTotal', sortOrder: 'DESC', limit: 1, role: 'athlete', gender })
-        .then(res => {
-          if (res.data && res.data.leaderboard && res.data.leaderboard.length > 0) {
-            setGrinderOfWeekId(res.data.leaderboard[0].id);
-          } else {
-            setGrinderOfWeekId(null);
-          }
-        })
-        .catch(() => setGrinderOfWeekId(null));
+      parallelCalls.push(
+        getLeaderboardWithStreak({ timeFrame: 'week', sortBy: 'xpTotal', sortOrder: 'DESC', limit: 1, role: 'athlete', gender })
+          .then(res => {
+            if (res.data && res.data.leaderboard && res.data.leaderboard.length > 0) {
+              setGrinderOfWeekId(res.data.leaderboard[0].id);
+            } else {
+              setGrinderOfWeekId(null);
+            }
+          })
+          .catch(() => setGrinderOfWeekId(null))
+      );
     } else {
       setGrinderOfWeekId(null);
     }
+    
+    // Wait for all parallel calls to complete
+    Promise.all(parallelCalls).catch(error => {
+      console.error('Error in parallel leaderboard calls:', error);
+    });
+    
   // Remove position, country, ageMin, ageMax from dependencies
   }, [timeRange, sport, sortBy, sortOrder, activeTab, gender]);
 
@@ -470,8 +481,14 @@ const LeaderboardPage = () => {
     if (activeTab === 'coaches') {
       setOffset(3);
       setHasMore(true);
-      fetchTopThree(getCurrentFilters());
-      fetchRest(getCurrentFilters(), false, 3);
+      
+      // Make API calls in parallel for better performance
+      Promise.all([
+        fetchTopThree(getCurrentFilters()),
+        fetchRest(getCurrentFilters(), false, 3)
+      ]).catch(error => {
+        console.error('Error in parallel coach leaderboard calls:', error);
+      });
     }
   }, [country, activeTab]);
 

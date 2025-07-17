@@ -497,38 +497,53 @@ const ScoutDashboardPage = () => {
   useEffect(() => {
     setOffset(3);
     setHasMore(true);
-    // Only fetch on tab, gender, sport, timeRange, sort, sortOrder changes
-    fetchTopThree(getCurrentFilters());
-    fetchRest(getCurrentFilters(), false, 3);
+    
+    // Make all API calls in parallel for better performance
+    const parallelCalls = [
+      fetchTopThree(getCurrentFilters()),
+      fetchRest(getCurrentFilters(), false, 3)
+    ];
 
-    // Fetch Grinder of the Week (athletes only)
-    getLeaderboardWithStreak({ timeFrame: 'week', sortBy: 'xpTotal', sortOrder: 'DESC', limit: 1, role: 'athlete', gender: 'Male' })
-      .then(res => {
-        if (res.data && res.data.leaderboard && res.data.leaderboard.length > 0) {
-          setGrinderOfWeekId(res.data.leaderboard[0].id);
-        } else {
-          setGrinderOfWeekId(null);
-        }
-      })
-      .catch(() => setGrinderOfWeekId(null));
-
-    // Fetch Most Viewed Athlete of the Week
-    getMostViewedAthletes()
-      .then(res => {
-        if (res.data && res.data.data && res.data.data.mostViewedAthletes && res.data.data.mostViewedAthletes.length > 0) {
-          const athlete = res.data.data.mostViewedAthletes[0];
-          setMostViewedAthlete(athlete);
-        } else {
+    // Fetch Grinder of the Week (athletes only) in parallel
+    parallelCalls.push(
+      getLeaderboardWithStreak({ timeFrame: 'week', sortBy: 'xpTotal', sortOrder: 'DESC', limit: 1, role: 'athlete', gender: 'Male' })
+        .then(res => {
+          if (res.data && res.data.leaderboard && res.data.leaderboard.length > 0) {
+            setGrinderOfWeekId(res.data.leaderboard[0].id);
+          } else {
+            setGrinderOfWeekId(null);
+          }
+        })
+        .catch(() => setGrinderOfWeekId(null))
+    );
+    
+    // Fetch Most Viewed Athlete of the Week in parallel
+    parallelCalls.push(
+      getMostViewedAthletes()
+        .then(res => {
+          if (res.data && res.data.data && res.data.data.mostViewedAthletes && res.data.data.mostViewedAthletes.length > 0) {
+            const athlete = res.data.data.mostViewedAthletes[0];
+            setMostViewedAthlete(athlete);
+          } else {
+            setMostViewedAthlete(null);
+          }
+          
+          // Set grinder view count
+          const grinderCount = res.data?.data?.grinderViewCount || 0;
+          setGrinderViewCount(grinderCount);
+        })
+        .catch((error) => {
+          console.error('Error fetching most viewed athletes:', error);
           setMostViewedAthlete(null);
-        }
-        
-        // Set grinder view count
-        const grinderCount = res.data?.data?.grinderViewCount || 0;
-        setGrinderViewCount(grinderCount);
-      })
-      .catch((error) => {
-        setMostViewedAthlete(null);
-      });
+        })
+    );
+    
+    // Wait for all parallel calls to complete
+    Promise.all(parallelCalls).catch(error => {
+      console.error('Error in parallel scout dashboard calls:', error);
+    });
+    
+  // Remove position, country, ageMin, ageMax from dependencies
   }, [timeRange, sport, sortBy, sortOrder]);
 
   // Fetch leaderboard for coaches when country changes

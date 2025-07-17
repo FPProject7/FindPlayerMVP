@@ -59,10 +59,11 @@ const HomePage = () => {
         
         if (reset) {
           setPosts(newPosts);
-          // If main feed is empty, load trending posts as fallback
+          // If main feed is empty, load trending posts as fallback in parallel
           if (newPosts.length === 0) {
             setShowTrendingFallback(true);
-            await loadTrendingPosts();
+            // Load trending posts in parallel instead of waiting
+            loadTrendingPosts();
           } else {
             setShowTrendingFallback(false);
             setTrendingPosts([]);
@@ -78,10 +79,10 @@ const HomePage = () => {
       console.error('Error loading feed:', err);
       setError('Failed to load feed. Please try again.');
       
-      // If main feed fails, try to load trending posts as fallback
+      // If main feed fails, try to load trending posts as fallback in parallel
       if (reset && posts.length === 0) {
         setShowTrendingFallback(true);
-        await loadTrendingPosts();
+        loadTrendingPosts();
       }
     } finally {
       setIsLoading(false);

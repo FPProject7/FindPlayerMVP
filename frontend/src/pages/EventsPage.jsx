@@ -643,19 +643,22 @@ const EventsPage = () => {
           case 'participating':
             const registeredData = await eventsApi.getMyRegisteredEvents();
             const registrations = registeredData.events || [];
-            // Fetch full event details for each registration
-            const eventDetails = await Promise.all(
-              registrations.map(async (reg) => {
-                const eventId = reg.eventId || reg.id;
-                try {
-                  const event = await eventsApi.getEvent(eventId);
-                  return { ...event, id: event.id || event.eventId, eventId: event.eventId };
-                } catch (e) {
-                  // If event not found (404), return null
-                  return null;
-                }
-              })
-            );
+            // Fetch full event details for each registration in parallel
+            const eventDetailPromises = registrations.map(async (reg) => {
+              const eventId = reg.eventId || reg.id;
+              try {
+                const event = await eventsApi.getEvent(eventId);
+                return { ...event, id: event.id || event.eventId, eventId: event.eventId };
+              } catch (e) {
+                // If event not found (404), return null
+                console.error(`Event ${eventId} not found:`, e);
+                return null;
+              }
+            });
+            
+            // Wait for all event detail requests to complete in parallel
+            const eventDetails = await Promise.all(eventDetailPromises);
+            
             // Remove nulls (404s) and duplicates based on id
             const uniqueEvents = eventDetails.filter(event => event && event.id)
               .filter((event, index, self) =>
