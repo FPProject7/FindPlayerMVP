@@ -345,24 +345,24 @@ function AthleteSignUpForm() {
           <span>Metric</span>
         </div>
         <div className="height-slider-wrapper">
-          <input
-            id="height-slider"
-            type="range"
+      <input
+        id="height-slider"
+        type="range"
             min={useMetric ? 122 : 48}
             max={useMetric ? 244 : 96}
-            step={1}
+        step={1}
             value={useMetric ? inchesToCm(heightInInches) : heightInInches}
-            onChange={e => {
-              const newValue = Number(e.target.value);
+        onChange={e => {
+          const newValue = Number(e.target.value);
               const newHeightInInches = useMetric ? cmToInches(newValue) : newValue;
               setHeightInInches(newHeightInInches);
               setValue('height', newHeightInInches);
-            }}
-            className="login-input"
-          />
+        }}
+        className="login-input"
+      />
         </div>
-        <input type="hidden" {...register('height')} />
-        {errors.height && <p className="login-error">{errors.height.message}</p>}
+      <input type="hidden" {...register('height')} />
+      {errors.height && <p className="login-error">{errors.height.message}</p>}
       </div>
 
       <div className="form-group">

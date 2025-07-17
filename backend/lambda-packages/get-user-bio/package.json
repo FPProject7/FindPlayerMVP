@@ -1,0 +1,21 @@
+{
+  "name": "get-user-bio",
+  "version": "1.0.0",
+  "description": "Lambda function to get user bio",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.1574.0",
+    "pg": "^8.11.5"
+  },
+  "keywords": [
+    "lambda",
+    "bio",
+    "user",
+    "get"
+  ],
+  "author": "",
+  "license": "ISC"
+} 

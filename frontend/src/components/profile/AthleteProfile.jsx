@@ -7,6 +7,8 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import { useNavigate } from 'react-router-dom';
 import { formatHeight, formatWeight } from '../../utils/levelUtils';
 import { starPlayer, unstarPlayer, getStarredPlayers } from '../../api/starredApi';
+import { getUserBio, updateUserBio } from '../../api/bioApi';
+import EditableBio from '../common/EditableBio';
 
 // Conversion functions
 const inchesToCm = (inches) => Math.round(inches * 2.54);
@@ -52,6 +54,24 @@ const AthleteProfile = ({
   const [starred, setStarred] = useState(false);
   const [starLoading, setStarLoading] = useState(false);
   const [useMetric, setUseMetric] = useState(false);
+  const [bio, setBio] = useState(profile.bio || '');
+
+  // Load bio from API
+  useEffect(() => {
+    const loadBio = async () => {
+      try {
+        const bioData = await getUserBio(profile.id);
+        setBio(bioData.bio || '');
+      } catch (error) {
+        console.error('Failed to load bio:', error);
+        // Keep existing bio if API fails
+      }
+    };
+    
+    if (profile.id) {
+      loadBio();
+    }
+  }, [profile.id]);
   const logout = useAuthStore((state) => state.logout);
   const authUser = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -106,6 +126,17 @@ const AthleteProfile = ({
   // Handle unit toggle
   const handleUnitToggle = () => {
     setUseMetric(!useMetric);
+  };
+
+  // Handle bio save
+  const handleBioSave = async (newBio) => {
+    try {
+      await updateUserBio(profile.id, newBio);
+      setBio(newBio);
+    } catch (error) {
+      console.error('Failed to save bio:', error);
+      throw error;
+    }
   };
 
   // Format height and weight based on unit preference
@@ -195,6 +226,16 @@ const AthleteProfile = ({
           </div>
         </>
       )}
+      
+      {/* Bio Section */}
+      <div className="px-4 mb-4">
+        <EditableBio
+          bio={bio}
+          isOwnProfile={currentUserId === profile.id}
+          onSave={handleBioSave}
+          placeholder="Add a description about yourself..."
+        />
+      </div>
       {/* Stats Row */}
       <div className="flex justify-between my-6 max-w-xs mx-auto">
         <div className="flex flex-col items-center flex-1">
