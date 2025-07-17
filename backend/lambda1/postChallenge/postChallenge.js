@@ -164,21 +164,21 @@ exports.handler = async (event) => {
     }
 
     const isPremium = userResult.rows[0].is_premium_member;
-    const maxChallenges = isPremium ? 5 : 3; // Premium: 5/period, Free: 3/period
-    // Change quota window from 7 days to 5 minutes for testing
-    const minutesBack = 5;
+    const maxChallenges = isPremium ? 5 : 3; // Premium: 5/week, Free: 3/week
+    // Use a 7-day window
+    const daysBack = 7;
 
-    // Count challenges created in the last 5 minutes
+    // Count challenges created in the last 7 days
     const quotaResult = await client.query(
       `SELECT COUNT(*) as challenge_count 
        FROM challenges 
        WHERE coach_id = $1 
-       AND created_at >= NOW() - INTERVAL '${minutesBack} minutes'`,
+       AND created_at >= NOW() - INTERVAL '${daysBack} days'`,
       [coachId]
     );
 
     const currentCount = parseInt(quotaResult.rows[0].challenge_count);
-    console.log(`Lambda - Coach ${coachId} has created ${currentCount}/${maxChallenges} challenges in the last ${minutesBack} minutes (Premium: ${isPremium})`);
+    console.log(`Lambda - Coach ${coachId} has created ${currentCount}/${maxChallenges} challenges in the last ${daysBack} days (Premium: ${isPremium})`);
 
     if (currentCount >= maxChallenges) {
       await client.end();
@@ -189,11 +189,11 @@ exports.handler = async (event) => {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({ 
-          message: `Challenge creation quota exceeded. You can create ${maxChallenges} challenges per ${minutesBack}-minute period. Current usage: ${currentCount}/${maxChallenges}`,
+          message: `Challenge creation quota exceeded. You can create ${maxChallenges} challenges per ${daysBack}-day period. Current usage: ${currentCount}/${maxChallenges}`,
           quota: {
             current: currentCount,
             max: maxChallenges,
-            period: `${minutesBack} minutes`,
+            period: `${daysBack} days`,
             isPremium: isPremium
           }
         })

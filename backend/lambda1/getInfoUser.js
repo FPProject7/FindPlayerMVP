@@ -55,7 +55,7 @@ exports.handler = async (event) => {
       const query = `
         SELECT 
           id, name, email, profile_picture_url AS "profilePictureUrl", role, xp_total AS "xpTotal", height, weight, date_of_birth, country, sport, position,
-          is_premium_member, is_verified,
+          is_premium_member, is_verified, stripe_customer_id,
           (SELECT COUNT(*) FROM followers WHERE following_id = users.id) AS "followersCount",
           (SELECT COUNT(*) FROM followers WHERE follower_id = users.id) AS "followingCount",
           (SELECT COUNT(*) FROM user_completed_challenges WHERE user_id = users.id) AS "challengesCompleted"
@@ -70,11 +70,10 @@ exports.handler = async (event) => {
       result = await client.query(query, [normalizedUsername]);
 
     } else {
-      // ✅ Enhanced userId-based query with counts
       result = await client.query(
         `SELECT 
            id, name, email, profile_picture_url AS "profilePictureUrl", role, xp_total AS "xpTotal", height, weight, date_of_birth, country, sport, position,
-           is_premium_member, is_verified,
+           is_premium_member, is_verified, stripe_customer_id,
            (SELECT COUNT(*) FROM followers WHERE following_id = users.id) AS "followersCount",
            (SELECT COUNT(*) FROM followers WHERE follower_id = users.id) AS "followingCount",
            (SELECT COUNT(*) FROM user_completed_challenges WHERE user_id = users.id) AS "challengesCompleted"

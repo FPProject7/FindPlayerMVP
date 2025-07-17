@@ -1,18 +1,25 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
-// Map userType and billingPeriod to Stripe Price IDs (test mode)
+// Map userType and billingPeriod to Stripe Price IDs (production mode)
 const priceMap = {
   athlete: {
-    monthly: 'price_1RlBIS1Bdg9XFcbAWUgv7dlY', // 9.99
-    yearly: 'price_1RlBIS1Bdg9XFcbAWUgv7dlY',  // 99.99 (using same ID for now)
+    monthly: 'price_1RkpE91Bdg9XFcbAJKIwibLv', // Athlete Premium (monthly)
+    yearly: 'price_1RkpEn1Bdg9XFcbAc06lumxp',  // Athlete Premium (yearly)
   },
-  // Add coach and scout when you create their test prices
+  coach: {
+    monthly: 'price_1RkpFY1Bdg9XFcbACo1vwvVM', // Coach Premium (monthly)
+    yearly: 'price_1RkpFx1Bdg9XFcbAw6XjKrok',  // Coach Premium (yearly)
+  },
+  scout: {
+    monthly: 'price_1RkpGV1Bdg9XFcbAzKUr8Aqb', // Scout Premium (monthly)
+    yearly: 'price_1RkpGw1Bdg9XFcbANgA5rNha',  // Scout Premium (yearly)
+  },
 };
 
 exports.handler = async (event) => {
   try {
     const body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
-    const { userType, billingPeriod, userId } = body;
+    const { userType, billingPeriod, userId, returnUrl } = body;
 
     if (!userType || !billingPeriod || !priceMap[userType] || !priceMap[userType][billingPeriod]) {
       return {
@@ -28,8 +35,8 @@ exports.handler = async (event) => {
       payment_method_types: ['card'],
       mode: 'subscription',
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: 'https://findplayer.app/profile',
-      cancel_url: 'https://findplayer.app/profile',
+      success_url: returnUrl || 'https://findplayer.app/profile',
+      cancel_url: returnUrl || 'https://findplayer.app/profile',
       metadata: { userId: userId || '' }, // Optionally pass userId for later reference
     });
 

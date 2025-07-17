@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { getInfoUser, getFollowerCount, trackProfileView } from '../api/userApi';
 import { followUser, unfollowUser, checkFollowing } from '../api/followApi';
 import ChallengeLoader from '../components/common/ChallengeLoader';
@@ -19,6 +19,7 @@ function isUUID(str) {
 const UserProfilePage = () => {
   const { role, profileUserId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser); // <-- add this line
@@ -121,7 +122,7 @@ const UserProfilePage = () => {
       }
     };
     loadUser();
-  }, [role, profileUserId, isAuthenticated]);
+  }, [role, profileUserId, isAuthenticated, location.search]);
 
   const handleFollow = async () => {
     setIsFollowing(true);

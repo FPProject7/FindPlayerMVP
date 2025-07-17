@@ -7,6 +7,8 @@ import { useEffect, useState } from 'react';
 import { useAuthStore } from '../../stores/useAuthStore';
 import UpgradePremiumButton from './UpgradePremiumButton';
 import { getFollowerCount } from '../../api/userApi';
+import SubscribeButton from '../common/SubscribeButton';
+import ManageSubscriptionButton from '../common/ManageSubscriptionButton';
 
 const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFollow, onUnfollow, connections, challengesUploaded }) => {
   const {
@@ -31,6 +33,7 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
   // Placeholder: Assume current user is athlete if not coach
   const showBookSession = !isCoach && !isOwnProfile;
   const isPremium = profile?.isPremiumMember || profile?.is_premium_member;
+  const stripeCustomerId = profile?.stripeCustomerId || profile?.stripe_customer_id;
 
   useEffect(() => {
     if (profile?.id) {
@@ -118,9 +121,12 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
       )}
       {currentUserRole !== 'athlete' && currentUserId === profile.id && (
         isPremium ? (
-          <div className="premium-activated" style={{color: 'green', fontWeight: 'bold', margin: '16px 0', textAlign: 'center'}}>Premium Activated</div>
+          <>
+            <div className="premium-activated" style={{color: 'green', fontWeight: 'bold', margin: '16px 0', textAlign: 'center'}}>Premium Activated</div>
+            <ManageSubscriptionButton customerId={stripeCustomerId} isPremium={isPremium} />
+          </>
         ) : (
-          <UpgradePremiumButton profile={profile} />
+          <SubscribeButton userId={userId} userType="coach" isPremium={isPremium} />
         )
       )}
       {currentUserId === profile.id && (

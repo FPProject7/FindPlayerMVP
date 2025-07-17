@@ -22,19 +22,22 @@ exports.handler = async (event) => {
   }
 
   try {
-    // Extract user ID from API Gateway authorizer (HTTP API v2 format)
-    const userId = event.requestContext?.authorizer?.jwt?.claims?.sub;
+    // Try to get userId from authorizer, fallback to body for internal calls
+    let userId = event.requestContext?.authorizer?.jwt?.claims?.sub;
+    const body = JSON.parse(event.body || '{}');
+    if (!userId && body.userId) {
+      userId = body.userId;
+    }
     if (!userId) {
       return {
         statusCode: 401,
         headers: corsHeaders,
-        body: JSON.stringify({ error: 'Unauthorized: No userId in event.requestContext.authorizer.jwt.claims' })
+        body: JSON.stringify({ error: 'Unauthorized: No userId provided' })
       };
     }
     console.log('User ID from authorizer:', userId);
 
     // Parse request body
-    const body = JSON.parse(event.body || '{}');
     const { is_premium_member, is_verified } = body;
 
     // Validate input

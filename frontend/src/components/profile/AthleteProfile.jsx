@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { formatHeight, formatWeight } from '../../utils/levelUtils';
 import { starPlayer, unstarPlayer, getStarredPlayers } from '../../api/starredApi';
 import SubscribeButton from '../common/SubscribeButton';
+import ManageSubscriptionButton from '../common/ManageSubscriptionButton';
 
 const AthleteProfile = ({
   profile,
@@ -85,6 +86,7 @@ const AthleteProfile = ({
   };
 
   const isPremium = profile?.isPremiumMember || profile?.is_premium_member;
+  const stripeCustomerId = profile?.stripeCustomerId || profile?.stripe_customer_id;
 
   return (
     <div>
@@ -147,9 +149,12 @@ const AthleteProfile = ({
       )}
       {currentUserId === profile.id && (
         isPremium ? (
-          <div className="premium-activated" style={{color: 'green', fontWeight: 'bold', margin: '16px 0', textAlign: 'center'}}>Premium Activated</div>
+          <>
+            <div className="premium-activated" style={{color: 'green', fontWeight: 'bold', margin: '16px 0', textAlign: 'center'}}>Premium Activated</div>
+            <ManageSubscriptionButton customerId={stripeCustomerId} isPremium={isPremium} />
+          </>
         ) : (
-          <SubscribeButton userId={userId} />
+          <SubscribeButton userId={userId} userType="athlete" isPremium={isPremium} />
         )
       )}
       {currentUserId === profile.id && (
