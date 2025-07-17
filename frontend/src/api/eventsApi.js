@@ -133,6 +133,19 @@ export const eventsApi = {
       contentType
     });
     return response.data;
+  },
+
+  // Get count of events a user has participated in
+  getUserParticipatedEventsCount: async (userId) => {
+    try {
+      // For now, return 0 since the backend doesn't have a public endpoint
+      // for getting another user's participated events count
+      // TODO: Add backend endpoint /users/{userId}/participated-events/count
+      return 0;
+    } catch (error) {
+      console.error('Error fetching user participated events count:', error);
+      return 0;
+    }
   }
 };
 

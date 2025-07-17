@@ -254,7 +254,7 @@ const AthleteProfile = ({
         </div>
         <div className="flex flex-col items-center flex-1">
           <span className="font-bold text-lg">{achievements}</span>
-          <span className="text-xs text-gray-500">Achievements</span>
+          <span className="text-xs text-gray-500">Events</span>
         </div>
         <div className="flex flex-col items-center flex-1">
           <span className="font-bold text-lg">{challengesCompleted}</span>

@@ -11,6 +11,7 @@ import ScoutProfile from '../components/profile/ScoutProfile';
 import challengeClient, { coachClient } from '../api/challengeApi';
 import { fetchChallengesForAthlete, fetchCoachChallenges } from '../api/challengeApi';
 import { useAuthStore } from '../stores/useAuthStore';
+import { eventsApi } from '../api/eventsApi';
 
 function isUUID(str) {
   return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(str);
@@ -30,6 +31,7 @@ const UserProfilePage = () => {
   const [error, setError] = useState(null);
   const [followerCount, setFollowerCount] = useState(0);
   const [challengesCompleted, setChallengesCompleted] = useState(0);
+  const [participatedEventsCount, setParticipatedEventsCount] = useState(0);
 
   // Redirect /profile to the correct role-based URL for the current user
   useEffect(() => {
@@ -155,6 +157,22 @@ const UserProfilePage = () => {
             })
           );
         }
+
+        // Fetch participated events count (only for current user viewing their own profile)
+        if (actualUserRole === 'athlete' && isAuthenticated && currentUserRes && currentUserRes.data.id === userProfile.id) {
+          parallelCalls.push(
+            eventsApi.getMyRegisteredEvents().then(data => {
+              const count = (data.events || []).length;
+              setParticipatedEventsCount(count);
+            }).catch(error => {
+              console.error('Failed to fetch current user participated events:', error);
+              setParticipatedEventsCount(0);
+            })
+          );
+        } else {
+          // For other users or non-athletes, set to 0 for now
+          setParticipatedEventsCount(0);
+        }
         
         // Preload follow status (only if authenticated and not viewing own profile)
         if (isAuthenticated && currentUserRes && currentUserRes.data.id !== (userProfile.id || decodedProfileId)) {
@@ -244,7 +262,7 @@ const UserProfilePage = () => {
           onUnfollow={handleUnfollow}
           connections={followerCount}
           challengesUploaded={challengesCompleted}
-          achievements={0}
+          achievements={participatedEventsCount}
         />
       ) : (
         <ProfileComponent
@@ -255,7 +273,7 @@ const UserProfilePage = () => {
           onFollow={handleFollow}
           onUnfollow={handleUnfollow}
           connections={followerCount}
-          achievements={0}
+          achievements={participatedEventsCount}
           challengesCompleted={challengesCompleted}
         />
       )}
