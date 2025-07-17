@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { getLeaderboardWithStreak, getMostViewedAthletes } from '../api/userApi';
-import { calculateAge, getLevelFromXP, getXPProgress, getXPDetails } from '../utils/levelUtils';
+import { calculateAge, getLevelFromXP, getXPProgress, getXPDetails, formatHeight, formatWeight } from '../utils/levelUtils';
 import ChallengeLoader from '../components/common/ChallengeLoader';
 import { useNavigate } from 'react-router-dom';
 import { createProfileUrl } from '../utils/profileUrlUtils';
@@ -310,6 +310,7 @@ const ScoutDashboardPage = () => {
   const [isStarredHovered, setIsStarredHovered] = useState(false);
   const [mostViewedAthlete, setMostViewedAthlete] = useState(null);
   const [grinderViewCount, setGrinderViewCount] = useState(0);
+  const [useMetric, setUseMetric] = useState(false);
 
 
 
@@ -541,17 +542,6 @@ const ScoutDashboardPage = () => {
     // }
   }, [country]);
 
-  const formatHeight = (height) => {
-    if (!height) return 'N/A';
-    const feet = Math.floor(height / 12);
-    const inches = height % 12;
-    return `${feet}'${inches}"`;
-  };
-  const formatWeight = (weight) => {
-    if (!weight) return 'N/A';
-    return `${weight} lbs`;
-  };
-
   // Handler for viewing full profile
   const handleViewProfile = (user) => {
     if (user && user.name) {
@@ -642,7 +632,54 @@ const ScoutDashboardPage = () => {
   const rest = restUsers;
 
   return (
-    <div className="w-full flex flex-col items-center px-0 sm:px-0">
+    <div className="w-full px-0 sm:px-0">
+      {/* Imperial/Metric Toggle */}
+      <div className="flex justify-center mb-2">
+        <div className="flex items-center gap-3 text-sm text-gray-500">
+          <span className={!useMetric ? 'text-gray-700 font-medium' : ''}>Imperial</span>
+          <label style={{
+            position: 'relative',
+            display: 'inline-block',
+            width: '50px',
+            height: '24px'
+          }}>
+            <input 
+              type="checkbox" 
+              checked={useMetric} 
+              onChange={() => setUseMetric(!useMetric)}
+              style={{
+                opacity: 0,
+                width: 0,
+                height: 0
+              }}
+            />
+            <span style={{
+              position: 'absolute',
+              cursor: 'pointer',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: useMetric ? '#FF0505' : '#ccc',
+              transition: '.4s',
+              borderRadius: '24px'
+            }}>
+              <span style={{
+                position: 'absolute',
+                content: '""',
+                height: '18px',
+                width: '18px',
+                left: useMetric ? '26px' : '3px',
+                bottom: '3px',
+                backgroundColor: 'white',
+                transition: '.4s',
+                borderRadius: '50%'
+              }}></span>
+            </span>
+          </label>
+          <span className={useMetric ? 'text-gray-700 font-medium' : ''}>Metric</span>
+        </div>
+      </div>
       {/* Centered Starred Players Section */}
       <div className="flex justify-center w-full mb-6 sm:max-w-5xl mx-auto sm:-ml-7">
         <div className="bg-white border border-gray-200 rounded-3xl h-[190px] sm:h-[210px] w-[360px] sm:w-[664px] flex flex-col p-4 relative">
@@ -811,8 +848,8 @@ const ScoutDashboardPage = () => {
               </div>
               {/* Height/Weight Row */}
               <div className="flex justify-between w-full text-gray-500 text-[9px] sm:text-xs font-medium mt-0 px-2">
-                <span>Height: {mostViewedAthlete.height ? formatHeight(mostViewedAthlete.height) : '--'}</span>
-                <span>Weight: {mostViewedAthlete.weight ? formatWeight(mostViewedAthlete.weight) : '--'}</span>
+                <span>Height: {mostViewedAthlete.height ? formatHeight(mostViewedAthlete.height, useMetric) : '--'}</span>
+                <span>Weight: {mostViewedAthlete.weight ? formatWeight(mostViewedAthlete.weight, useMetric) : '--'}</span>
               </div>
               {/* Scouts interest row */}
               <div className="flex items-center text-gray-500 text-xs mt-4 w-full justify-center">
@@ -901,8 +938,8 @@ const ScoutDashboardPage = () => {
                   </div>
                   {/* Height/Weight Row */}
                   <div className="flex justify-between w-full text-gray-500 text-[9px] sm:text-xs font-medium mt-0 px-2">
-                    <span>Height: {grinder.height ? formatHeight(grinder.height) : '--'}</span>
-                    <span>Weight: {grinder.weight ? formatWeight(grinder.weight) : '--'}</span>
+                    <span>Height: {grinder.height ? formatHeight(grinder.height, useMetric) : '--'}</span>
+                    <span>Weight: {grinder.weight ? formatWeight(grinder.weight, useMetric) : '--'}</span>
                   </div>
                   {/* Scouts interest row */}
                   <div className="flex items-center text-gray-500 text-xs mt-4 w-full justify-center">
@@ -1007,8 +1044,8 @@ const ScoutDashboardPage = () => {
             </div>
             {/* Height/Weight Row */}
             <div className="flex justify-between w-full text-gray-500 text-[9px] sm:text-xs font-medium mt-0">
-              <span>Height: {top3[0]?.height ? formatHeight(top3[0].height) : '--'}</span>
-              <span>Weight: {top3[0]?.weight ? formatWeight(top3[0].weight) : '--'}</span>
+              <span>Height: {top3[0]?.height ? formatHeight(top3[0].height, useMetric) : '--'}</span>
+              <span>Weight: {top3[0]?.weight ? formatWeight(top3[0].weight, useMetric) : '--'}</span>
             </div>
             {/* Stats (center, stacked) - Only show what we have, placeholders for missing */}
             <div className="flex flex-col gap-1 sm:gap-2 w-full -mt-2 sm:-mt-2 mb-2 sm:mb-4 items-center text-xs sm:text-lg">
@@ -1097,8 +1134,8 @@ const ScoutDashboardPage = () => {
                   </div>
                 </div>
                 <div className="flex justify-between w-full text-gray-500 text-[9px] sm:text-xs font-medium mt-0">
-                  <span>Height: {top3[1].height ? formatHeight(top3[1].height) : '--'}</span>
-                  <span>Weight: {top3[1].weight ? formatWeight(top3[1].weight) : '--'}</span>
+                  <span>Height: {top3[1].height ? formatHeight(top3[1].height, useMetric) : '--'}</span>
+                  <span>Weight: {top3[1].weight ? formatWeight(top3[1].weight, useMetric) : '--'}</span>
                 </div>
                 {/* Stats (challenges, approvals or created/approved) */}
                 <div className="flex flex-col gap-0.5 sm:gap-1 w-full mt-1 items-center text-[8px] sm:text-xs se-upsize">
@@ -1178,8 +1215,8 @@ const ScoutDashboardPage = () => {
                   </div>
                 </div>
                 <div className="flex justify-between w-full text-gray-500 text-[9px] sm:text-xs font-medium mt-0">
-                  <span>Height: {top3[2].height ? formatHeight(top3[2].height) : '--'}</span>
-                  <span>Weight: {top3[2].weight ? formatWeight(top3[2].weight) : '--'}</span>
+                  <span>Height: {top3[2].height ? formatHeight(top3[2].height, useMetric) : '--'}</span>
+                  <span>Weight: {top3[2].weight ? formatWeight(top3[2].weight, useMetric) : '--'}</span>
                 </div>
                 {/* Stats (challenges, approvals or created/approved) */}
                 <div className="flex flex-col gap-0.5 sm:gap-1 w-full mt-1 items-center text-[8px] sm:text-xs se-upsize">
@@ -1421,8 +1458,8 @@ const ScoutDashboardPage = () => {
                   </div>
                   <div className="flex flex-row gap-1 mt-0.5">
                     {/* activeTab === 'athletes' && <> */}
-                      <div className="text-[8px] sm:text-xs text-gray-600">{user.height ? formatHeight(user.height) : '--'}</div>
-                      <div className="text-[8px] sm:text-xs text-gray-600">{user.weight ? formatWeight(user.weight) : '--'}</div>
+                      <div className="text-[8px] sm:text-xs text-gray-600">{user.height ? formatHeight(user.height, useMetric) : '--'}</div>
+                      <div className="text-[8px] sm:text-xs text-gray-600">{user.weight ? formatWeight(user.weight, useMetric) : '--'}</div>
                     {/* </> */}
                   </div>
                 </div>
