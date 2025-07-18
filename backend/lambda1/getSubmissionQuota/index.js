@@ -89,16 +89,16 @@ exports.handler = async (event) => {
     }
 
     const isPremium = userResult.rows[0].is_premium_member;
-    const maxSubmissions = isPremium ? 3 : 1; // Premium: 3/period, Free: 1/period
-    // Change quota window from 1 day to 5 minutes for testing
-    const minutesBack = 5;
+    const maxSubmissions = isPremium ? 3 : 1; // Premium: 3/day, Free: 1/day
+    // Quota window: 1 day (24 hours)
+    const hoursBack = 24;
 
-    // Count submissions in the last 5 minutes
+    // Count submissions in the last 24 hours
     const quotaResult = await client.query(
       `SELECT COUNT(*) as submission_count 
        FROM challenge_submissions 
        WHERE athlete_id = $1
-         AND submitted_at >= NOW() - INTERVAL '${minutesBack} minutes'`,
+         AND submitted_at >= NOW() - INTERVAL '${hoursBack} hours'`,
       [athleteId]
     );
 
@@ -115,7 +115,7 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         current: currentCount,
         max: maxSubmissions,
-        period: `${minutesBack} minutes`,
+        period: `${hoursBack} hours`,
         isPremium: isPremium,
         remaining: Math.max(0, maxSubmissions - currentCount)
       })

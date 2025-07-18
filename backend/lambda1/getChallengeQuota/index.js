@@ -87,15 +87,15 @@ exports.handler = async (event) => {
 
     const isPremium = userResult.rows[0].is_premium_member;
     const maxChallenges = isPremium ? 5 : 3; // Premium: 5/week, Free: 3/week
-    // Change quota window from 7 days to 5 minutes for testing
-    const minutesBack = 5;
+    // Quota window: 7 days (1 week)
+    const daysBack = 7;
 
     // Count challenges created in the last 7 days
     const quotaResult = await client.query(
       `SELECT COUNT(*) as challenge_count 
        FROM challenges 
        WHERE coach_id = $1 
-       AND created_at >= NOW() - INTERVAL '${minutesBack} minutes'`,
+       AND created_at >= NOW() - INTERVAL '${daysBack} days'`,
       [coachId]
     );
 
@@ -112,7 +112,7 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         current: currentCount,
         max: maxChallenges,
-        period: `${minutesBack} minutes`,
+        period: `${daysBack} days`,
         isPremium: isPremium,
         remaining: Math.max(0, maxChallenges - currentCount)
       })
