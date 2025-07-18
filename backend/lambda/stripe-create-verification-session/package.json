@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "dependencies": {
+    "pg": "^8.11.3",
     "stripe": "^18.3.0",
-    "pg": "^8.11.3"
+    "uuid": "^11.1.0"
   }
-} 
+}

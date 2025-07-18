@@ -8,10 +8,6 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import EditableBio from '../common/EditableBio';
 import UpgradePremiumButton from './UpgradePremiumButton';
 import { getFollowerCount } from '../../api/userApi';
-import SubscribeButton from '../common/SubscribeButton';
-import ManageSubscriptionButton from '../common/ManageSubscriptionButton';
-import { getUserBio, updateUserBio } from '../../api/bioApi';
-import api from '../../api/axiosConfig';
 
 const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFollow, onUnfollow, connections, challengesUploaded }) => {
   const {
@@ -25,7 +21,6 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
   const [showFollowers, setShowFollowers] = useState(false);
   const [connectionsCount, setConnectionsCount] = useState(connections);
   const [bio, setBio] = useState(profile.bio || '');
-
   // Load bio from API
   useEffect(() => {
     const loadBio = async () => {

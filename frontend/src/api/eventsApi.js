@@ -1,152 +1,64 @@
-import { eventsApiClient } from './axiosConfig';
+import axios from 'axios';
 
-// Events API service
+const EVENTS_API_BASE = 'https://frf2mofcw1.execute-api.us-east-1.amazonaws.com/prod';
+const CHECKOUT_SESSION_URL = 'https://y219q4oqh5.execute-api.us-east-1.amazonaws.com/default/create-event-checkout-session';
+
 export const eventsApi = {
-  // Get all available events
-  getEvents: async () => {
-    try {
-      const response = await eventsApiClient.get('/events');
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching events:', error);
-      throw error;
-    }
-  },
-
-  // Get a specific event by ID
-  getEvent: async (eventId) => {
-    try {
-      const response = await eventsApiClient.get(`/events/${eventId}`);
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching event:', error);
-      throw error;
-    }
-  },
-
-  // Create a new event
-  createEvent: async (eventData) => {
-    try {
-      const response = await eventsApiClient.post('/events', eventData);
-      return response.data;
-    } catch (error) {
-      console.error('Error creating event:', error);
-      throw error;
-    }
-  },
-
-  // Get events hosted by the current user
-  getMyHostedEvents: async () => {
-    try {
-      const response = await eventsApiClient.get('/my-events/hosted');
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching hosted events:', error);
-      throw error;
-    }
-  },
-
-  // Get events the current user is registered for
-  getMyRegisteredEvents: async () => {
-    try {
-      const response = await eventsApiClient.get('/my-events/registered');
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching registered events:', error);
-      throw error;
-    }
-  },
-
-  // Register for an event
-  registerForEvent: async (eventId) => {
-    try {
-      const response = await eventsApiClient.post(`/events/${eventId}/register`);
-      return response.data;
-    } catch (error) {
-      console.error('Error registering for event:', error);
-      throw error;
-    }
-  },
-
-  // Deregister from an event
-  deregisterFromEvent: async (eventId) => {
-    try {
-      const response = await eventsApiClient.delete(`/events/${eventId}/register`);
-      return response.data;
-    } catch (error) {
-      console.error('Error deregistering from event:', error);
-      throw error;
-    }
-  },
-
-  // Get registered players for an event (host only)
-  getRegisteredPlayers: async (eventId) => {
-    try {
-      const response = await eventsApiClient.get(`/events/${eventId}/players`);
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching registered players:', error);
-      throw error;
-    }
-  },
-
-  // Generate pre-signed URL for image upload
-  generateImageUploadUrl: async (fileName, fileType) => {
-    try {
-      const response = await eventsApiClient.post('/events/image-upload', {
-        fileName,
-        contentType: fileType
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Error generating upload URL:', error);
-      throw error;
-    }
-  },
-
-  // Upload image to S3 using pre-signed URL
-  uploadImage: async (uploadUrl, file) => {
-    try {
-      const response = await fetch(uploadUrl, {
-        method: 'PUT',
-        body: file,
-        headers: {
-          'Content-Type': file.type,
-        },
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Upload failed: ${response.status}`);
-      }
-      
-      return response;
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      throw error;
-    }
-  },
-
-  // Generate upload URL for event images
-  generateEventImageUrl: async (fileName, contentType) => {
-    const response = await eventsApiClient.post('/events/generate-image-url', {
-      fileName,
-      contentType
+  // Create Stripe Checkout Session for event payment (creates event and returns payment URL)
+  createEventPaymentSession: async ({ userId, eventDraft, returnUrl }) => {
+    const response = await axios.post(CHECKOUT_SESSION_URL, {
+      userId,
+      eventDraft,
+      returnUrl,
     });
     return response.data;
   },
 
-  // Get count of events a user has participated in
-  getUserParticipatedEventsCount: async (userId) => {
-    try {
-      // For now, return 0 since the backend doesn't have a public endpoint
-      // for getting another user's participated events count
-      // TODO: Add backend endpoint /users/{userId}/participated-events/count
-      return 0;
-    } catch (error) {
-      console.error('Error fetching user participated events count:', error);
-      return 0;
-    }
-  }
-};
+  // Fetch all events (public)
+  getEvents: async () => {
+    const response = await axios.get(`${EVENTS_API_BASE}/findplayer-list-events`);
+    return response.data;
+  },
 
-export default eventsApi; 
+  // Fetch events hosted by the current user
+  getMyHostedEvents: async () => {
+    const response = await axios.get(`${EVENTS_API_BASE}/findplayer-list-my-hosted-events`);
+    return response.data;
+  },
+
+  // Fetch events the current user is registered for
+  getMyRegisteredEvents: async () => {
+    const response = await axios.get(`${EVENTS_API_BASE}/findplayer-list-my-registered-events`);
+    return response.data;
+  },
+
+  // Fetch a single event by eventId
+  getEvent: async (eventId) => {
+    const response = await axios.get(`${EVENTS_API_BASE}/findplayer-get-event/${eventId}`);
+    return response.data;
+  },
+
+  // Deregister from event
+  deregisterFromEvent: async (eventId) => {
+    const response = await axios.post(`${EVENTS_API_BASE}/findplayer-deregister-from-event`, { eventId });
+    return response.data;
+  },
+
+  // Register for event
+  registerForEvent: async (eventId) => {
+    const response = await axios.post(`${EVENTS_API_BASE}/findplayer-register-for-event`, { eventId });
+    return response.data;
+  },
+
+  // Generate event image upload URL
+  generateImageUploadUrl: async (fileName, contentType) => {
+    const response = await axios.post(`${EVENTS_API_BASE}/findplayer-generate-event-image-url`, { fileName, contentType });
+    return response.data;
+  },
+
+  // List registered players for an event (if needed)
+  getRegisteredPlayers: async (eventId) => {
+    const response = await axios.get(`${EVENTS_API_BASE}/findplayer-list-registered-players/${eventId}`);
+    return response.data;
+  },
+};

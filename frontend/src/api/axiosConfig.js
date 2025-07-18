@@ -10,7 +10,7 @@ const apiClient = axios.create({
 
 // Events API client (use ONLY for events)
 const eventsApiClient = axios.create({
-  baseURL: 'https://frf2mofcw1.execute-api.us-east-1.amazonaws.com/prod', // events API Gateway
+  baseURL: 'https://y219q4oqh5.execute-api.us-east-1.amazonaws.com/default', // updated to correct API Gateway for events
 });
 
 // Request interceptor for main API client

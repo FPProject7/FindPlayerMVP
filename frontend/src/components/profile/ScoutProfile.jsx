@@ -24,7 +24,9 @@ const ScoutProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
     id: userId,
   } = profile;
 
-
+  // Add these lines to define isPremium and stripeCustomerId
+  const isPremium = profile?.isPremiumMember || profile?.is_premium_member;
+  const stripeCustomerId = profile?.stripeCustomerId || profile?.stripe_customer_id;
 
   const [showFollowers, setShowFollowers] = useState(false);
   const [connectionsCount, setConnectionsCount] = useState(profile.connections || 0);
@@ -73,10 +75,7 @@ const ScoutProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
     }
   };
 
-  const isPremium = profile?.isPremiumMember || profile?.is_premium_member;
-  const stripeCustomerId = profile?.stripeCustomerId || profile?.stripe_customer_id;
-
-  // Handle bio save
+  // Add missing handleBioSave function
   const handleBioSave = async (newBio) => {
     try {
       await updateUserBio(profile.id, newBio);

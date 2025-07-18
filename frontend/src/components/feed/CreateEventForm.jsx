@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { eventsApi } from '../../api/eventsApi';
 import { useLoadScript } from '@react-google-maps/api';
 import { PUBLIC_BASE_URL } from '../../config';
+import { useAuthStore } from '../../stores/useAuthStore';
 
 // Toast for share/copy feedback - exact same as profile page
 const ShareToast = ({ message }) => (
@@ -69,8 +70,6 @@ const CreateEventForm = ({ onClose }) => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
-  const [showConfirmation, setShowConfirmation] = useState(false);
-  const [createdEventData, setCreatedEventData] = useState(null);
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
@@ -285,28 +284,16 @@ const CreateEventForm = ({ onClose }) => {
     const validationErrors = validate();
     setErrors(validationErrors);
     if (Object.keys(validationErrors).length > 0) return;
-    
     setIsSubmitting(true);
-    
     try {
       let imageUrl = null;
-      
-      // Handle image upload if there's an image file
       if (form.imageFile) {
-        // Generate unique filename
         const fileExtension = form.imageFile.name.split('.').pop();
         const fileName = `event-images/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExtension}`;
-        
-        // Get pre-signed URL
         const uploadData = await eventsApi.generateImageUploadUrl(fileName, form.imageFile.type);
-        
-        // Upload to S3
         await eventsApi.uploadImage(uploadData.uploadUrl, form.imageFile);
-        
-        // Get the public URL
         imageUrl = uploadData.publicUrl;
       }
-      
       // Prepare event data for backend
       const eventData = {
         title: form.title,
@@ -322,26 +309,23 @@ const CreateEventForm = ({ onClose }) => {
         imageUrl: imageUrl,
         coordinates: form.coordinates || undefined,
       };
-      
-      // Create event
-      const createdEvent = await eventsApi.createEvent(eventData);
-      
-      setIsSubmitting(false);
-      setShowConfirmation(true);
-      
-      // Store the created event for the confirmation modal
-      setCreatedEventData(createdEvent);
-      
+      // Create event and get payment session in one call
+      const userId = useAuthStore.getState().user?.id;
+      const paymentSession = await eventsApi.createEventPaymentSession({
+        userId,
+        eventDraft: eventData,
+        returnUrl: window.location.origin + '/events?tab=my',
+      });
+      // Redirect to Stripe Checkout
+      window.location.href = paymentSession.url;
     } catch (error) {
       setIsSubmitting(false);
-      console.error('Error creating event:', error);
-      
-      if (error.response?.data?.message) {
-        setSubmitError(error.response.data.message);
+      if (error.response?.data?.error) {
+        setSubmitError(error.response.data.error);
       } else if (error.message) {
         setSubmitError(error.message);
       } else {
-        setSubmitError('Failed to create event. Please try again.');
+        setSubmitError('Failed to create event or payment session. Please try again.');
       }
     }
   };
@@ -401,52 +385,15 @@ const CreateEventForm = ({ onClose }) => {
     // Optionally, if this form is in a modal, call a prop like onClose();
   };
 
-  // EventCreatedConfirmation component
-  const EventCreatedConfirmation = ({ event, onViewMyEvent, onShare, onClose, showShareToast, shareToastMsg }) => (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-      <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4 text-center shadow-xl relative">
-        <div className="text-green-500 text-4xl mb-4">✓</div>
-        <h3 className="text-xl font-bold mb-2">Event Created!</h3>
-        <p className="text-gray-600 mb-6">Your event "{event?.title || 'Event'}" has been successfully created.</p>
-        <div className="space-y-3">
-          <button
-            onClick={onViewMyEvent}
-            className="w-full py-2 bg-red-500 text-white rounded-full font-semibold hover:bg-red-600"
-          >
-            View My Event
-          </button>
-          <button
-            onClick={onShare}
-            className="w-full py-2 bg-gray-200 text-gray-800 rounded-full font-semibold hover:bg-gray-300 relative"
-          >
-            Share Event
-          </button>
-          <button
-            onClick={onClose}
-            className="w-full py-2 text-gray-500 hover:text-gray-700"
-          >
-            Close
-          </button>
-        </div>
-        {showShareToast && <ShareToast message={shareToastMsg} />}
-      </div>
-    </div>
-  );
-
   return (
-    <>
-      {showConfirmation && (
-        <EventCreatedConfirmation
-          event={createdEventData}
-          onViewMyEvent={handleViewMyEvent}
-          onShare={handleShare}
-          onClose={handleClose}
-          showShareToast={showShareToast}
-          shareToastMsg={shareToastMsg}
-        />
-      )}
-      {!showConfirmation && (
-        <div className="relative w-full">
+    <div className="relative w-full">
+      {/* Event Fee Description */}
+      <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 rounded">
+        <div className="font-semibold text-yellow-800 text-lg mb-1">Event Posting Fee</div>
+        <div className="text-yellow-700 text-sm">
+          To create and publish an event, a one-time, non-refundable fee of <span className="font-bold">$100 USD</span> is required. This helps us ensure only real, high-quality events are posted. You will be redirected to a secure Stripe payment page after submitting your event details.
+        </div>
+      </div>
           {submitError && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
               {submitError}
@@ -689,8 +636,6 @@ const CreateEventForm = ({ onClose }) => {
             </button>
           </form>
         </div>
-      )}
-    </>
   );
 };
 

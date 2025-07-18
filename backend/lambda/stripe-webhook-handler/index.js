@@ -28,6 +28,27 @@ exports.handler = async (event) => {
     const userId = session.metadata ? session.metadata.userId : null;
     const customerId = session.customer;
 
+    // Handle event creation payment
+    if (session.mode === 'payment' && session.metadata && session.metadata.eventId) {
+      const eventId = session.metadata.eventId;
+      // Mark the event as paid in DynamoDB (or your event store)
+      const AWS = require('aws-sdk');
+      const dynamoDb = new AWS.DynamoDB.DocumentClient();
+      const EVENTS_TABLE = process.env.EVENTS_TABLE || 'findplayer-events';
+      try {
+        await dynamoDb.update({
+          TableName: EVENTS_TABLE,
+          Key: { eventId },
+          UpdateExpression: 'SET #paid = :paid, updatedAt = :now',
+          ExpressionAttributeNames: { '#paid': 'paid' },
+          ExpressionAttributeValues: { ':paid': true, ':now': new Date().toISOString() },
+        }).promise();
+        console.log('Event marked as paid:', eventId);
+      } catch (dbErr) {
+        console.error('Failed to update event as paid:', dbErr);
+      }
+    }
+
     console.log('Webhook received checkout.session.completed:', { userId, customerId });
 
     if (userId && customerId) {

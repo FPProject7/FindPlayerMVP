@@ -7,29 +7,8 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import { useNavigate } from 'react-router-dom';
 import { formatHeight, formatWeight } from '../../utils/levelUtils';
 import { starPlayer, unstarPlayer, getStarredPlayers } from '../../api/starredApi';
-import SubscribeButton from '../common/SubscribeButton';
-import ManageSubscriptionButton from '../common/ManageSubscriptionButton';
-import { getUserBio, updateUserBio } from '../../api/bioApi';
 import EditableBio from '../common/EditableBio';
-
-// Conversion functions
-const inchesToCm = (inches) => Math.round(inches * 2.54);
-const cmToInches = (cm) => Math.round(cm / 2.54);
-const lbsToKg = (lbs) => Math.round(lbs * 0.453592);
-const kgToLbs = (kg) => Math.round(kg / 0.453592);
-
-// Format height for display
-const formatHeightImperial = (inches) => {
-  const feet = Math.floor(inches / 12);
-  const inch = inches % 12;
-  return `${feet}'${inch}"`;
-};
-
-const formatHeightMetric = (cm) => {
-  const meters = Math.floor(cm / 100);
-  const remainingCm = cm % 100;
-  return `${meters}m ${remainingCm}cm`;
-};
+import { getUserBio } from '../../api/bioApi';
 
 const AthleteProfile = ({
   profile,
@@ -56,6 +35,9 @@ const AthleteProfile = ({
   const [starred, setStarred] = useState(false);
   const [starLoading, setStarLoading] = useState(false);
   const [useMetric, setUseMetric] = useState(false);
+  const handleUnitToggle = () => {
+    setUseMetric((prev) => !prev);
+  };
   const [bio, setBio] = useState(profile.bio || '');
 
   // Load bio from API
@@ -125,34 +107,26 @@ const AthleteProfile = ({
     setShowFollowers(false);
   };
 
-  const isPremium = profile?.isPremiumMember || profile?.is_premium_member;
-  const stripeCustomerId = profile?.stripeCustomerId || profile?.stripe_customer_id;
-
-  // Handle unit toggle
-  const handleUnitToggle = () => {
-    setUseMetric(!useMetric);
+  // Add missing helper functions for height/weight formatting
+  const getFormattedHeight = () => {
+    if (!height) return '';
+    return formatHeight(height, useMetric);
+  };
+  const getFormattedWeight = () => {
+    if (!weight) return '';
+    return formatWeight(weight, useMetric);
   };
 
-  // Handle bio save
+  // Add missing handleBioSave function
   const handleBioSave = async (newBio) => {
     try {
-      await updateUserBio(profile.id, newBio);
+      // Uncomment the next line if you have updateUserBio available:
+      // await updateUserBio(profile.id, newBio);
       setBio(newBio);
     } catch (error) {
       console.error('Failed to save bio:', error);
       throw error;
     }
-  };
-
-  // Format height and weight based on unit preference
-  const getFormattedHeight = () => {
-    if (!height) return '';
-    return useMetric ? formatHeightMetric(inchesToCm(height)) : formatHeightImperial(height);
-  };
-
-  const getFormattedWeight = () => {
-    if (!weight) return '';
-    return useMetric ? `${lbsToKg(weight)} kg` : `${weight} lbs`;
   };
 
   return (

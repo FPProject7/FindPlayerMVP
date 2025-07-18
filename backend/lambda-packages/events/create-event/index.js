@@ -1,3 +1,8 @@
+// EVENT PAYMENT FLOW:
+// 1. Frontend calls this Lambda to create a draft event (status: 'pending_payment', paid: false), gets eventId.
+// 2. Frontend calls create-event-checkout-session with eventId to get Stripe Checkout URL.
+// 3. On payment, webhook marks event as paid.
+// 4. Only paid events are shown as active.
 const AWS = require('aws-sdk');
 const { v4: uuidv4 } = require('uuid');
 const axios = require('axios');
@@ -102,7 +107,7 @@ exports.handler = async (event) => {
     }
     
     const newEvent = {
-      eventId: uuidv4(),
+      eventId: body.eventId || uuidv4(),
       hostUserId: userId,
       title,
       description,
@@ -118,6 +123,8 @@ exports.handler = async (event) => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       coordinates,
+      status: 'pending_payment', // Mark as draft until payment
+      paid: false,
     };
     
     await dynamoDb.put({ TableName: EVENTS_TABLE, Item: newEvent }).promise();
