@@ -324,11 +324,24 @@ const AthleteChallengesView = () => {
   const fetchSubmissionStatuses = async (challengeIds) => {
     const statuses = {};
     
-    // Check submission status for each challenge
-    for (const challengeId of challengeIds) {
-      const submission = await checkSubmissionStatus(challengeId);
+    // Check submission status for all challenges in parallel
+    const submissionPromises = challengeIds.map(async (challengeId) => {
+      try {
+        const submission = await checkSubmissionStatus(challengeId);
+        return { challengeId, submission };
+      } catch (error) {
+        console.error(`Error checking submission for challenge ${challengeId}:`, error);
+        return { challengeId, submission: null };
+      }
+    });
+    
+    // Wait for all submission checks to complete
+    const results = await Promise.all(submissionPromises);
+    
+    // Build the statuses object from results
+    results.forEach(({ challengeId, submission }) => {
       statuses[challengeId] = submission;
-    }
+    });
     
     setSubmissionStatuses(statuses);
   };

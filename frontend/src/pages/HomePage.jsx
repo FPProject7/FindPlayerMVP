@@ -1,7 +1,7 @@
 // frontend/src/pages/HomePage.jsx
 
 import React, { useState, useEffect, useRef } from 'react';
-import { getFeed } from '../api/postApi';
+import { getFeed, getTrendingPosts } from '../api/postApi';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useCreatePostStore } from '../stores/useCreatePostStore';
 import CreatePostModal from '../components/feed/CreatePostModal';
@@ -14,16 +14,35 @@ const POSTS_PER_PAGE = 10;
 
 const HomePage = () => {
   const [posts, setPosts] = useState([]);
+  const [trendingPosts, setTrendingPosts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingTrending, setIsLoadingTrending] = useState(false);
   const [error, setError] = useState('');
   const [hasMore, setHasMore] = useState(true);
   const [offset, setOffset] = useState(0);
+  const [showTrendingFallback, setShowTrendingFallback] = useState(false);
   const user = useAuthStore((state) => state.user);
   const { isCreateModalOpen, closeCreateModal } = useCreatePostStore();
   const [refreshing, setRefreshing] = useState(false);
   const [pullStartY, setPullStartY] = useState(0);
   const [pullDistance, setPullDistance] = useState(0);
   const containerRef = useRef(null);
+
+  const loadTrendingPosts = async () => {
+    if (!user?.id) return;
+    
+    setIsLoadingTrending(true);
+    try {
+      const response = await getTrendingPosts(10, 0, user.id);
+      if (response.status === 200) {
+        setTrendingPosts(response.data.posts || []);
+      }
+    } catch (err) {
+      console.error('Error loading trending posts:', err);
+    } finally {
+      setIsLoadingTrending(false);
+    }
+  };
 
   const loadFeed = async (reset = false) => {
     if (!user?.id) {
@@ -37,13 +56,34 @@ const HomePage = () => {
       
       if (response.status === 200) {
         const newPosts = response.data.posts;
-        setPosts(prev => reset ? newPosts : [...prev, ...newPosts]);
+        
+        if (reset) {
+          setPosts(newPosts);
+          // If main feed is empty, load trending posts as fallback in parallel
+          if (newPosts.length === 0) {
+            setShowTrendingFallback(true);
+            // Load trending posts in parallel instead of waiting
+            loadTrendingPosts();
+          } else {
+            setShowTrendingFallback(false);
+            setTrendingPosts([]);
+          }
+        } else {
+          setPosts(prev => [...prev, ...newPosts]);
+        }
+        
         setHasMore(response.data.hasMore);
         setOffset(reset ? POSTS_PER_PAGE : currentOffset + POSTS_PER_PAGE);
       }
     } catch (err) {
       console.error('Error loading feed:', err);
       setError('Failed to load feed. Please try again.');
+      
+      // If main feed fails, try to load trending posts as fallback in parallel
+      if (reset && posts.length === 0) {
+        setShowTrendingFallback(true);
+        loadTrendingPosts();
+      }
     } finally {
       setIsLoading(false);
     }
@@ -66,10 +106,23 @@ const HomePage = () => {
       isLiked: false,
       commentsCount: 0
     }, ...prev]);
+    
+    // If we were showing trending posts, switch back to main feed
+    if (showTrendingFallback) {
+      setShowTrendingFallback(false);
+      setTrendingPosts([]);
+    }
   };
 
   const handleLikeUpdate = (postId, isLiked, likesCount) => {
+    // Update likes in both main posts and trending posts
     setPosts(prev => prev.map(post => 
+      post.id === postId 
+        ? { ...post, isLiked, likesCount }
+        : post
+    ));
+    
+    setTrendingPosts(prev => prev.map(post => 
       post.id === postId 
         ? { ...post, isLiked, likesCount }
         : post
@@ -77,7 +130,7 @@ const HomePage = () => {
   };
 
   const handleLoadMore = () => {
-    if (!isLoading && hasMore) {
+    if (!isLoading && hasMore && !showTrendingFallback) {
       loadFeed();
     }
   };
@@ -134,6 +187,10 @@ const HomePage = () => {
     );
   }
 
+  // Determine which posts to display
+  const displayPosts = showTrendingFallback ? trendingPosts : posts;
+  const isLoadingDisplay = showTrendingFallback ? isLoadingTrending : isLoading;
+
   return (
     <div className="max-w-2xl mx-auto" ref={containerRef}
       style={{ 
@@ -170,17 +227,30 @@ const HomePage = () => {
         </div>
       )}
 
+      {/* Trending Posts Header */}
+      {showTrendingFallback && trendingPosts.length > 0 && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center justify-center">
+            <span className="text-blue-600 font-semibold">🔥 Trending Posts</span>
+            <span className="ml-2 text-blue-500 text-sm">Popular content from the community</span>
+          </div>
+        </div>
+      )}
+
       {/* Posts Feed */}
       <div className="space-y-4">
-        {posts.length === 0 && !isLoading ? (
+        {displayPosts.length === 0 && !isLoadingDisplay ? (
           <div className="text-center py-8">
-            <p className="text-gray-500 mb-4">No posts yet in your feed.</p>
+            <p className="text-gray-500 mb-4">Welcome to FindPlayer! 🎉</p>
+            <p className="text-gray-400 text-sm mb-4">
+              Your feed is currently empty, but don't worry! We'll show you trending posts from active users to get you started.
+            </p>
             <p className="text-gray-400 text-sm">
-              Follow some users to see their posts here, or create your first post!
+              Follow some users, create your first post, or explore the community to see more content!
             </p>
           </div>
         ) : (
-          posts.map(post => (
+          displayPosts.map(post => (
             <PostCard
               key={post.id}
               post={post}
@@ -190,15 +260,15 @@ const HomePage = () => {
         )}
 
         {/* Loading State */}
-        {isLoading && posts.length === 0 && (
+        {isLoadingDisplay && displayPosts.length === 0 && (
           <div className="py-4 flex flex-col justify-center items-center bg-white" style={{ minHeight: 'calc(100vh - 120px)' }}>
             <ChallengeLoader />
           </div>
         )}
       </div>
 
-      {/* Load More Button */}
-      {hasMore && !isLoading && (
+      {/* Load More Button - Only show for main feed, not trending posts */}
+      {hasMore && !isLoading && !showTrendingFallback && (
         <div className="flex justify-center my-6">
           <button
             onClick={handleLoadMore}

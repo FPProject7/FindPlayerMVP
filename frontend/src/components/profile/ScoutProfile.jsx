@@ -8,8 +8,11 @@ import SubscribeButton from '../common/SubscribeButton';
 import ManageSubscriptionButton from '../common/ManageSubscriptionButton';
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '../../stores/useAuthStore';
+import EditableBio from '../common/EditableBio';
 import { useNavigate } from 'react-router-dom';
 import { getFollowerCount, getUsersViewedByScouts } from '../../api/userApi';
+import { getUserBio, updateUserBio } from '../../api/bioApi';
+import api from '../../api/axiosConfig';
 
 const ScoutProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFollow, onUnfollow }) => {
   const {
@@ -27,6 +30,24 @@ const ScoutProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
   const [connectionsCount, setConnectionsCount] = useState(profile.connections || 0);
   const [athletesViewedCount, setAthletesViewedCount] = useState(0);
   const [coachesViewedCount, setCoachesViewedCount] = useState(0);
+  const [bio, setBio] = useState(profile.bio || '');
+
+  // Load bio from API
+  useEffect(() => {
+    const loadBio = async () => {
+      try {
+        const bioData = await getUserBio(profile.id);
+        setBio(bioData.bio || '');
+      } catch (error) {
+        console.error('Failed to load bio:', error);
+        // Keep existing bio if API fails
+      }
+    };
+    
+    if (profile.id) {
+      loadBio();
+    }
+  }, [profile.id]);
   const logout = useAuthStore((state) => state.logout);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const navigate = useNavigate();
@@ -55,6 +76,17 @@ const ScoutProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
   const isPremium = profile?.isPremiumMember || profile?.is_premium_member;
   const stripeCustomerId = profile?.stripeCustomerId || profile?.stripe_customer_id;
 
+  // Handle bio save
+  const handleBioSave = async (newBio) => {
+    try {
+      await updateUserBio(profile.id, newBio);
+      setBio(newBio);
+    } catch (error) {
+      console.error('Failed to save bio:', error);
+      throw error;
+    }
+  };
+
   return (
     <div>
       <ProfileHeader profile={profile} currentUserId={currentUserId} isFollowing={isFollowing} buttonLoading={buttonLoading} onFollow={onFollow} onUnfollow={onUnfollow} />
@@ -79,6 +111,16 @@ const ScoutProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
         {quote && (
           <div className="italic text-gray-400 text-center mt-1">"{quote}"</div>
         )}
+      </div>
+      
+      {/* Bio Section */}
+      <div className="px-4">
+        <EditableBio
+          bio={bio}
+          isOwnProfile={currentUserId === profile.id}
+          onSave={handleBioSave}
+          placeholder="Add a description about yourself..."
+        />
       </div>
       <div className="flex justify-around my-4">
         <div className="flex flex-col items-center">

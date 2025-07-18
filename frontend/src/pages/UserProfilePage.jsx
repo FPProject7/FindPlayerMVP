@@ -11,6 +11,7 @@ import ScoutProfile from '../components/profile/ScoutProfile';
 import challengeClient, { coachClient } from '../api/challengeApi';
 import { fetchChallengesForAthlete, fetchCoachChallenges } from '../api/challengeApi';
 import { useAuthStore } from '../stores/useAuthStore';
+import { eventsApi } from '../api/eventsApi';
 
 function isUUID(str) {
   return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(str);
@@ -31,32 +32,58 @@ const UserProfilePage = () => {
   const [error, setError] = useState(null);
   const [followerCount, setFollowerCount] = useState(0);
   const [challengesCompleted, setChallengesCompleted] = useState(0);
+  const [participatedEventsCount, setParticipatedEventsCount] = useState(0);
 
   // Redirect /profile to the correct role-based URL for the current user
   useEffect(() => {
     if (!role && !profileUserId && isAuthenticated && user) {
-      const url = createProfileUrl(user.name, user.role);
-      navigate(url, { replace: true });
+      // Ensure user has the required properties before redirecting
+      if (user.name && user.role) {
+        const url = createProfileUrl(user.name, user.role);
+        navigate(url, { replace: true });
+      } else {
+        // If user data is incomplete, try to refresh it
+        if (user.id) {
+          // Fetch complete user data and then redirect
+          getInfoUser(user.id).then(response => {
+            const completeUser = response.data;
+            const url = createProfileUrl(completeUser.name, completeUser.role);
+            navigate(url, { replace: true });
+          }).catch(error => {
+            console.error('Failed to fetch complete user data for redirect:', error);
+          });
+        }
+      }
     }
   }, [role, profileUserId, isAuthenticated, user, navigate]);
 
   useEffect(() => {
     // Don't run the main profile loading logic if we're about to redirect
     if (!role && !profileUserId) return;
+    
     const loadUser = async () => {
       setLoading(true);
       setError(null);
       try {
         // Decode the URL parameter to handle special characters
         const decodedProfileId = profileUserId ? decodeProfileName(profileUserId) : null;
+        
         // 1. If authenticated, get current user info (for follow logic)
         let currentUserRes = null;
         if (isAuthenticated) {
-          currentUserRes = await getInfoUser();
-          setCurrentUserId(currentUserRes.data.id);
+          // Use the public endpoint for both lookups to ensure consistent ID format
+          // First get the current user's ID from the auth store
+          const authUser = useAuthStore.getState().user;
+          if (authUser && authUser.id) {
+            currentUserRes = await getInfoUser(authUser.id);
+            setCurrentUserId(currentUserRes.data.id);
+          } else {
+            setCurrentUserId(null);
+          }
         } else {
           setCurrentUserId(null);
         }
+        
         // 2. Fetch profile info for the viewed user
         let profileRes;
         if (isUUID(decodedProfileId)) {
@@ -66,6 +93,7 @@ const UserProfilePage = () => {
         }
         
         const userProfile = profileRes.data;
+        
         const actualUserRole = (userProfile.role || 'athlete').toLowerCase();
         const urlRole = (role || 'athlete').toLowerCase();
         
@@ -80,38 +108,88 @@ const UserProfilePage = () => {
         // If this is the current user's profile, update the global user in the store
         if (isAuthenticated && currentUserRes && currentUserRes.data.id === userProfile.id) {
           setUser(userProfile);
+        } else {
         }
         
-        // 4. Track profile view if authenticated and not viewing own profile
+        // 4. Make all remaining API calls in parallel for better performance
+        const parallelCalls = [];
+        
+        // Track profile view if authenticated and not viewing own profile
         if (isAuthenticated && currentUserRes && currentUserRes.data.id !== userProfile.id) {
-          try {
-            await trackProfileView(userProfile.id);
-          } catch (error) {
-            console.error('Failed to track profile view:', error);
-            // Don't fail the entire profile load if tracking fails
-          }
+          parallelCalls.push(
+            trackProfileView(userProfile.id).catch(error => {
+              console.error('Failed to track profile view:', error);
+              // Don't fail the entire profile load if tracking fails
+            })
+          );
+        } else {
         }
         
-        // 5. Fetch follower count for the profile user
-        const followerCountRes = await getFollowerCount(userProfile.id);
-        setFollowerCount(followerCountRes);
-        // 6. Fetch completed challenges for athletes
+        // Fetch follower count for the profile user
+        parallelCalls.push(
+          getFollowerCount(userProfile.id).then(setFollowerCount).catch(error => {
+            console.error('Failed to fetch follower count:', error);
+            setFollowerCount(0);
+          })
+        );
+        
+        // Fetch completed challenges for athletes
         if (actualUserRole === 'athlete') {
-          const challenges = await fetchChallengesForAthlete(userProfile.id);
-          const submitted = Array.isArray(challenges) ? challenges.length : 0;
-          setChallengesCompleted(submitted);
+          parallelCalls.push(
+            fetchChallengesForAthlete(userProfile.id).then(challenges => {
+              const submitted = Array.isArray(challenges) ? challenges.length : 0;
+              setChallengesCompleted(submitted);
+            }).catch(error => {
+              console.error('Failed to fetch athlete challenges:', error);
+              setChallengesCompleted(0);
+            })
+          );
         }
-        // 7. Fetch challenges posted by coaches
+        
+        // Fetch challenges posted by coaches
         if (actualUserRole === 'coach') {
-          const challenges = await fetchCoachChallenges(userProfile.id);
-          const posted = Array.isArray(challenges) ? challenges.length : 0;
-          setChallengesCompleted(posted);
+          parallelCalls.push(
+            fetchCoachChallenges(userProfile.id).then(challenges => {
+              const posted = Array.isArray(challenges) ? challenges.length : 0;
+              setChallengesCompleted(posted);
+            }).catch(error => {
+              console.error('Failed to fetch coach challenges:', error);
+              setChallengesCompleted(0);
+            })
+          );
         }
-        // 8. Optionally preload follow status (only if authenticated and not viewing own profile)
+
+        // Fetch participated events count (only for current user viewing their own profile)
+        if (actualUserRole === 'athlete' && isAuthenticated && currentUserRes && currentUserRes.data.id === userProfile.id) {
+          parallelCalls.push(
+            eventsApi.getMyRegisteredEvents().then(data => {
+              const count = (data.events || []).length;
+              setParticipatedEventsCount(count);
+            }).catch(error => {
+              console.error('Failed to fetch current user participated events:', error);
+              setParticipatedEventsCount(0);
+            })
+          );
+        } else {
+          // For other users or non-athletes, set to 0 for now
+          setParticipatedEventsCount(0);
+        }
+        
+        // Preload follow status (only if authenticated and not viewing own profile)
         if (isAuthenticated && currentUserRes && currentUserRes.data.id !== (userProfile.id || decodedProfileId)) {
-          const followRes = await checkFollowing(currentUserRes.data.id, userProfile.id);
-          setIsFollowing(followRes.data.isFollowing);
+          parallelCalls.push(
+            checkFollowing(currentUserRes.data.id, userProfile.id).then(followRes => {
+              setIsFollowing(followRes.data.isFollowing);
+            }).catch(error => {
+              console.error('Failed to check following status:', error);
+              setIsFollowing(false);
+            })
+          );
         }
+        
+        // Wait for all parallel calls to complete
+        await Promise.all(parallelCalls);
+        
       } catch (err) {
         setError('Failed to load profile.');
         if (err.response && err.response.status === 404) {
@@ -185,7 +263,7 @@ const UserProfilePage = () => {
           onUnfollow={handleUnfollow}
           connections={followerCount}
           challengesUploaded={challengesCompleted}
-          achievements={0}
+          achievements={participatedEventsCount}
         />
       ) : (
         <ProfileComponent
@@ -196,7 +274,7 @@ const UserProfilePage = () => {
           onFollow={handleFollow}
           onUnfollow={handleUnfollow}
           connections={followerCount}
-          achievements={0}
+          achievements={participatedEventsCount}
           challengesCompleted={challengesCompleted}
         />
       )}

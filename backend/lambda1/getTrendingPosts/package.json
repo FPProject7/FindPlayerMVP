@@ -1,0 +1,26 @@
+{
+  "name": "get-trending-posts",
+  "version": "1.0.0",
+  "description": "Lambda function to get trending posts based on engagement",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "package": "zip -r getTrendingPosts.zip ."
+  },
+  "keywords": [
+    "lambda",
+    "aws",
+    "posts",
+    "trending",
+    "engagement"
+  ],
+  "author": "FindPlayer Team",
+  "license": "ISC",
+  "dependencies": {
+    "pg": "^8.11.3"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  }
+} 
