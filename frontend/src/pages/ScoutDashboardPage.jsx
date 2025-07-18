@@ -560,7 +560,8 @@ const ScoutDashboardPage = () => {
   // Handler for viewing full profile
   const handleViewProfile = (user) => {
     if (user && user.name) {
-      navigate(createProfileUrl(user.name));
+      // Scout dashboard only shows athletes, so always use 'athlete' role
+      navigate(createProfileUrl(user.name, 'athlete'));
     }
   };
 

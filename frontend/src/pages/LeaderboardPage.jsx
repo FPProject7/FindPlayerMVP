@@ -495,7 +495,9 @@ const LeaderboardPage = () => {
   // Handler for viewing full profile
   const handleViewProfile = (user) => {
     if (user && user.name) {
-      navigate(createProfileUrl(user.name));
+      // Use the correct role based on the active tab
+      const role = activeTab === 'coaches' ? 'coach' : 'athlete';
+      navigate(createProfileUrl(user.name, role));
     }
   };
 

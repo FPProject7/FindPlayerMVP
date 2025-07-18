@@ -408,7 +408,7 @@ const AthleteLeaderboard = () => {
                       src={top3[0].profilePictureUrl}
                       alt={top3[0].name}
                       className={`w-10 h-10 sm:w-20 sm:h-20 rounded-full object-cover border-4 border-yellow-400 shadow cursor-pointer`}
-                      onClick={() => navigate(createProfileUrl(top3[0]))}
+                      onClick={() => navigate(createProfileUrl(top3[0].name, 'athlete'))}
                     />
                   ) : (
                     <div className="w-10 h-10 sm:w-20 sm:h-20 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold text-lg sm:text-3xl" style={{ border: `4px solid #FFD700` }}>{top3[0].name ? top3[0].name.charAt(0) : 'U'}</div>
@@ -416,7 +416,7 @@ const AthleteLeaderboard = () => {
                   <div className="absolute top-0 left-0 w-4 h-4 sm:w-7 sm:h-7 rounded-full flex items-center justify-center z-30 shadow -translate-x-1/3 -translate-y-1/3 bg-gradient-to-br from-yellow-400 to-yellow-600"><span className="text-white font-bold text-xs sm:text-lg">1</span></div>
                 </div>
                 <div className="flex flex-col flex-1 ml-2">
-                  <h2 className="font-extrabold text-lg sm:text-2xl mb-0 sm:mb-1 tracking-tight text-left cursor-pointer hover:underline truncate mt-2" onClick={() => navigate(createProfileUrl(top3[0]))}>{getShortName(top3[0]?.name)}</h2>
+                  <h2 className="font-extrabold text-lg sm:text-2xl mb-0 sm:mb-1 tracking-tight text-left cursor-pointer hover:underline truncate mt-2" onClick={() => navigate(createProfileUrl(top3[0].name, 'athlete'))}>{getShortName(top3[0]?.name)}</h2>
                   <div className="flex flex-row flex-wrap items-center gap-0.5 text-[11px] sm:text-lg text-gray-400 italic font-semibold mb-0.5 sm:mb-1">
                     <span>Age: {calculateAge(top3[0].dateOfBirth)}</span>
                     <span>•</span>
@@ -466,7 +466,7 @@ const AthleteLeaderboard = () => {
                       src={top3[1].profilePictureUrl}
                       alt={top3[1].name}
                       className={`w-7 h-7 sm:w-12 sm:h-12 rounded-full object-cover border-2 border-gray-400 shadow cursor-pointer`}
-                      onClick={() => navigate(createProfileUrl(top3[1]))}
+                      onClick={() => navigate(createProfileUrl(top3[1].name, 'athlete'))}
                     />
                   ) : (
                     <div className="w-7 h-7 sm:w-12 sm:h-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold text-xs sm:text-lg" style={{ border: `2px solid #A0A0A0` }}>{top3[1].name ? top3[1].name.charAt(0) : 'U'}</div>
@@ -474,7 +474,7 @@ const AthleteLeaderboard = () => {
                   <div className="absolute top-0 left-0 w-3 h-3 sm:w-5 sm:h-5 rounded-full flex items-center justify-center z-30 shadow -translate-x-1/3 -translate-y-1/3 bg-gradient-to-br from-gray-300 to-gray-400"><span className="text-white font-bold text-[10px] sm:text-xs">2</span></div>
                 </div>
                 <div className="flex flex-col flex-1 ml-2">
-                  <h2 className="font-extrabold text-base sm:text-xl mb-0 sm:mb-1 tracking-tight text-left cursor-pointer hover:underline truncate mt-2" onClick={() => navigate(createProfileUrl(top3[1]))}>{getShortName(top3[1]?.name)}</h2>
+                  <h2 className="font-extrabold text-base sm:text-xl mb-0 sm:mb-1 tracking-tight text-left cursor-pointer hover:underline truncate mt-2" onClick={() => navigate(createProfileUrl(top3[1].name, 'athlete'))}>{getShortName(top3[1]?.name)}</h2>
                   <div className="flex flex-row flex-wrap items-center gap-0.5 text-[9px] sm:text-base text-gray-400 italic font-semibold mb-0.5 sm:mb-1">
                     <span>Age: {calculateAge(top3[1].dateOfBirth)}</span>
                     <span>•</span>
@@ -521,7 +521,7 @@ const AthleteLeaderboard = () => {
                       src={top3[2].profilePictureUrl}
                       alt={top3[2].name}
                       className={`w-7 h-7 sm:w-12 sm:h-12 rounded-full object-cover border-2 border-orange-400 shadow cursor-pointer`}
-                      onClick={() => navigate(createProfileUrl(top3[2]))}
+                      onClick={() => navigate(createProfileUrl(top3[2].name, 'athlete'))}
                     />
                   ) : (
                     <div className="w-7 h-7 sm:w-12 sm:h-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold text-xs sm:text-lg" style={{ border: `2px solid #FFA500` }}>{top3[2].name ? top3[2].name.charAt(0) : 'U'}</div>
@@ -529,7 +529,7 @@ const AthleteLeaderboard = () => {
                   <div className="absolute top-0 left-0 w-3 h-3 sm:w-5 sm:h-5 rounded-full flex items-center justify-center z-30 shadow -translate-x-1/3 -translate-y-1/3 bg-gradient-to-br from-orange-400 to-orange-600"><span className="text-white font-bold text-[10px] sm:text-xs">3</span></div>
                 </div>
                 <div className="flex flex-col flex-1 ml-2">
-                  <h2 className="font-extrabold text-base sm:text-xl mb-0 sm:mb-1 tracking-tight text-left cursor-pointer hover:underline truncate mt-2" onClick={() => navigate(createProfileUrl(top3[2]))}>{getShortName(top3[2]?.name)}</h2>
+                  <h2 className="font-extrabold text-base sm:text-xl mb-0 sm:mb-1 tracking-tight text-left cursor-pointer hover:underline truncate mt-2" onClick={() => navigate(createProfileUrl(top3[2].name, 'athlete'))}>{getShortName(top3[2]?.name)}</h2>
                   <div className="flex flex-row flex-wrap items-center gap-0.5 text-[9px] sm:text-base text-gray-400 italic font-semibold mb-0.5 sm:mb-1">
                     <span>Age: {calculateAge(top3[2].dateOfBirth)}</span>
                     <span>•</span>
@@ -593,14 +593,14 @@ const AthleteLeaderboard = () => {
                       src={user.profilePictureUrl}
                       alt={user.name}
                       className="w-8 h-8 sm:w-12 sm:h-12 rounded-full object-cover border-2 border-gray-300 shadow cursor-pointer"
-                      onClick={() => navigate(createProfileUrl(user))}
+                      onClick={() => navigate(createProfileUrl(user.name, 'athlete'))}
                     />
                   ) : (
                     <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold text-base sm:text-xl" style={{ border: `2px solid #CCC` }}>{user.name ? user.name.charAt(0) : 'U'}</div>
                   )}
                 </div>
                 <div className="flex flex-col flex-1 ml-2 min-w-0">
-                  <h2 className="font-extrabold text-xs sm:text-lg mb-0 sm:mb-1 tracking-tight text-left cursor-pointer hover:underline truncate" onClick={() => navigate(createProfileUrl(user))}>{getShortName(user?.name)}</h2>
+                  <h2 className="font-extrabold text-xs sm:text-lg mb-0 sm:mb-1 tracking-tight text-left cursor-pointer hover:underline truncate" onClick={() => navigate(createProfileUrl(user.name, 'athlete'))}>{getShortName(user?.name)}</h2>
                   <div className="flex flex-row flex-wrap items-center gap-0.5 text-[8px] sm:text-xs text-gray-400 italic font-semibold mb-0.5 sm:mb-1">
                     <span>Age: {calculateAge(user.dateOfBirth)}</span>
                     <span>•</span>

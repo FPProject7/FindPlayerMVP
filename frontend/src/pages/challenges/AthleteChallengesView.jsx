@@ -217,7 +217,7 @@ const AthleteChallengesView = () => {
       setSelectedChallenge(challenge);
       setVideoFile(null);
       setVideoError(null);
-      
+
       // Lazy load: Check submission status only when viewing this challenge
       setSubmissionStatusLoading(prev => ({ ...prev, [challengeId]: true }));
       try {
