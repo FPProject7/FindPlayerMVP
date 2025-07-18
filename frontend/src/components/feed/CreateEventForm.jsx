@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { eventsApi } from '../../api/eventsApi';
 import { useLoadScript } from '@react-google-maps/api';
 import { PUBLIC_BASE_URL } from '../../config';
+import { useAuthStore } from '../../stores/useAuthStore';
 
 // Toast for share/copy feedback - exact same as profile page
 const ShareToast = ({ message }) => (
@@ -307,8 +308,8 @@ const CreateEventForm = ({ onClose }) => {
         imageUrl = uploadData.publicUrl;
       }
       
-      // Prepare event data for backend
-      const eventData = {
+      // Prepare event draft data for backend (do NOT create event yet)
+      const eventDraft = {
         title: form.title,
         sport: form.sport,
         eventType: form.eventType,
@@ -323,25 +324,42 @@ const CreateEventForm = ({ onClose }) => {
         coordinates: form.coordinates || undefined,
       };
       
-      // Create event
-      const createdEvent = await eventsApi.createEvent(eventData);
-      
-      setIsSubmitting(false);
-      setShowConfirmation(true);
-      
-      // Store the created event for the confirmation modal
-      setCreatedEventData(createdEvent);
+      // --- Stripe Checkout Integration ---
+      // Prepare payload for backend
+      const userId = useAuthStore.getState().user?.id;
+      const returnUrl = `${window.location.origin}/events`;
+
+      const response = await fetch('https://y219q4oqh5.execute-api.us-east-1.amazonaws.com/default/create-event-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          eventDraft,
+          returnUrl,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to initiate payment. Please try again.');
+      }
+      const data = await response.json();
+      if (!data.url) {
+        throw new Error('Payment link not received. Please contact support.');
+      }
+      // Redirect to Stripe Checkout
+      window.location.href = data.url;
+      // --- End Stripe Checkout Integration ---
       
     } catch (error) {
       setIsSubmitting(false);
-      console.error('Error creating event:', error);
-      
+      console.error('Error initiating payment:', error);
       if (error.response?.data?.message) {
         setSubmitError(error.response.data.message);
       } else if (error.message) {
         setSubmitError(error.message);
       } else {
-        setSubmitError('Failed to create event. Please try again.');
+        setSubmitError('Failed to initiate payment. Please try again.');
       }
     }
   };
