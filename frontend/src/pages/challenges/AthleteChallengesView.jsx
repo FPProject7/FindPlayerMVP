@@ -38,6 +38,10 @@ const AthleteChallengesView = () => {
   const [quotaLoading, setQuotaLoading] = useState(false);
   // Add state for error popup
   const [quotaErrorMessage, setQuotaErrorMessage] = useState("");
+  // Add state for submission status loading
+  const [submissionStatusLoading, setSubmissionStatusLoading] = useState({});
+  // Add state for list-wide submission status loading
+  const [loadingSubmissionStatuses, setLoadingSubmissionStatuses] = useState(false);
 
   const prevLocationKey = React.useRef(location.key);
   const containerRef = useRef(null);
@@ -86,9 +90,10 @@ const AthleteChallengesView = () => {
       const challengesData = await fetchChallenges();
       setChallenges(challengesData);
       
-      // Re-enable submission status checking with the new endpoint
+      // Smart loading: Check submission status for visible challenges with delays
+      // This provides immediate feedback without overwhelming the server
       const challengeIds = challengesData.map(challenge => challenge.id);
-      await fetchSubmissionStatuses(challengeIds);
+      fetchSubmissionStatusesGradually(challengeIds);
       
     } catch (err) {
       console.error('AthleteChallengesView: Failed to fetch challenges:', err);
@@ -212,18 +217,25 @@ const AthleteChallengesView = () => {
       setSelectedChallenge(challenge);
       setVideoFile(null);
       setVideoError(null);
-
-      // Check if user has already submitted using stored status
-      const submission = submissionStatuses[challengeId];
-      if (submission) {
-        setSubmissionStatus('already_submitted');
-      } else {
-        setSubmissionStatus('idle');
+      
+      // Lazy load: Check submission status only when viewing this challenge
+      setSubmissionStatusLoading(prev => ({ ...prev, [challengeId]: true }));
+      try {
+        const submission = await checkSubmissionStatus(challengeId);
+        setSubmissionStatuses(prev => ({
+          ...prev,
+          [challengeId]: submission
+        }));
+      } catch (submissionError) {
+        console.error('Error checking submission status:', submissionError);
+        // Don't block the UI if submission status check fails
+      } finally {
+        setSubmissionStatusLoading(prev => ({ ...prev, [challengeId]: false }));
       }
       
     } catch (err) {
-      console.error('Failed to load challenge details:', err);
-      setError('Failed to load challenge details. Please try again.');
+      console.error('Error loading challenge:', err);
+      setError(err.message || 'Failed to load challenge details.');
     } finally {
       setLoading(false);
     }
@@ -321,29 +333,36 @@ const AthleteChallengesView = () => {
     }
   };
 
-  const fetchSubmissionStatuses = async (challengeIds) => {
-    const statuses = {};
+  const fetchSubmissionStatusesGradually = async (challengeIds) => {
+    if (challengeIds.length === 0) return;
     
-    // Check submission status for all challenges in parallel
-    const submissionPromises = challengeIds.map(async (challengeId) => {
+    setLoadingSubmissionStatuses(true);
+    const delay = 150; // Slightly longer delay to be even more gentle
+
+    for (let i = 0; i < challengeIds.length; i++) {
+      const challengeId = challengeIds[i];
       try {
         const submission = await checkSubmissionStatus(challengeId);
-        return { challengeId, submission };
+        // Update the global submissionStatuses state immediately for each challenge
+        setSubmissionStatuses(prev => ({
+          ...prev,
+          [challengeId]: submission
+        }));
       } catch (error) {
         console.error(`Error checking submission for challenge ${challengeId}:`, error);
-        return { challengeId, submission: null };
+        // Set to null on error
+        setSubmissionStatuses(prev => ({
+          ...prev,
+          [challengeId]: null
+        }));
       }
-    });
+      // Add a delay between requests to be gentle on the server
+      if (i < challengeIds.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
     
-    // Wait for all submission checks to complete
-    const results = await Promise.all(submissionPromises);
-    
-    // Build the statuses object from results
-    results.forEach(({ challengeId, submission }) => {
-      statuses[challengeId] = submission;
-    });
-    
-    setSubmissionStatuses(statuses);
+    setLoadingSubmissionStatuses(false);
   };
 
   if (loading) {
@@ -465,6 +484,19 @@ const AthleteChallengesView = () => {
                   const existingSubmission = submissionStatuses[selectedChallenge.id];
                   const hasSubmitted = existingSubmission !== null && existingSubmission !== undefined;
                   const uploadStatus = getUploadStatus(selectedChallenge.id);
+                  const isLoadingSubmission = submissionStatusLoading[selectedChallenge.id];
+                  
+                  // Show loading state while checking submission status
+                  if (isLoadingSubmission) {
+                    return (
+                      <div className="status-message text-red-700 font-bold mb-4 border border-red-300 p-4 rounded-lg bg-red-50 flex flex-col items-center justify-center">
+                        <div className="flex items-center mb-2">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-red-600 mr-2"></div>
+                          <div>Checking submission status...</div>
+                        </div>
+                      </div>
+                    );
+                  }
                   
                   if (hasSubmitted) {
                     return (
@@ -602,6 +634,14 @@ const AthleteChallengesView = () => {
         </div>
       ) : (
         <div className="challenges-list flex flex-col max-w-lg w-full mx-auto">
+          {/* Loading indicator for submission statuses */}
+          {loadingSubmissionStatuses && (
+            <div className="flex items-center justify-center py-3 mb-4 text-gray-600 bg-gray-50 rounded-lg">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500 mr-2"></div>
+              <span className="text-sm">Loading submission statuses...</span>
+            </div>
+          )}
+          
           {challenges.length === 0 ? (
             <p className="text-gray-600 col-span-full text-center">No challenges available at the moment.</p>
           ) : (
@@ -687,6 +727,13 @@ const AthleteChallengesView = () => {
                             {uploadStatus.status === 'completed' && 'Completed!'}
                             {uploadStatus.status === 'error' && 'Failed'}
                           </span>
+                        </>
+                      ) : loadingSubmissionStatuses ? (
+                        <>
+                          <span className="mr-1">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
+                          </span>
+                          <span className="text-sm text-gray-500">Checking...</span>
                         </>
                       ) : (
                         <>
