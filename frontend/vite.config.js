@@ -8,9 +8,20 @@ export default defineConfig({
   plugins: [
     react(),
   ],
+  base: '/',
   server: {
     hmr: {
       overlay: false,
+    },
+  },
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: undefined,
+      },
     },
   },
   logLevel: 'error',
