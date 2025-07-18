@@ -46,7 +46,6 @@ exports.handler = async (event) => {
       type: 'document',
       metadata: { userId },
       return_url: returnUrl,
-      customer: user.stripe_customer_id, // Link to Stripe customer
       provided_details: {
         email: user.email, // Pre-fill email
       }
