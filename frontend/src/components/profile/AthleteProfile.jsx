@@ -41,6 +41,7 @@ const AthleteProfile = ({
   connections = 0,
   achievements = 0,
   challengesCompleted = 0,
+  onProfilePictureUpdate,
 }) => {
   const {
     height,
@@ -170,6 +171,7 @@ const AthleteProfile = ({
         starred={starred}
         starLoading={starLoading}
         onToggleStar={handleToggleStar}
+        onProfilePictureUpdate={onProfilePictureUpdate}
       />
       {/* Height and Weight */}
       {(height || weight || profile.country) && (

@@ -25,10 +25,11 @@ const MAX_CONCURRENT_PARTS = 3; // Upload 3 parts simultaneously
  */
 export const fetchChallenges = async () => {
   try {
-    // Always fetch all available challenges for the main list
     const authState = useAuthStore.getState();
     const token = authState.isAuthenticated ? await useAuthStore.getState().getValidIdToken() : null;
     const headers = token ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } : {};
+    
+    // Use the original working endpoint from the main branch
     const response = await axios.get('https://stpw2c9b5b.execute-api.us-east-1.amazonaws.com/default/challenges', { headers });
     return response.data;
   } catch (error) {
@@ -37,7 +38,7 @@ export const fetchChallenges = async () => {
       data: error.response?.data,
       message: error.message
     });
-    throw new Error(error.response?.data?.message || 'Failed to fetch challenges');
+    throw error;
   }
 };
 

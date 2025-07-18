@@ -232,6 +232,14 @@ const UserProfilePage = () => {
     }
   };
 
+  const handleProfilePictureUpdate = (newProfilePictureUrl) => {
+    // Properly update the profile state
+    setProfile(prevProfile => ({
+      ...prevProfile,
+      profilePictureUrl: newProfilePictureUrl
+    }));
+  };
+
   if (loading) return <div className="p-4 flex justify-center items-center" style={{minHeight: 200}}><ChallengeLoader /></div>;
   if (error) return <div className="p-4 text-center text-red-500">{error}</div>;
   if (!profile) return <div className="p-4 text-center">Profile not found.</div>;
@@ -264,6 +272,7 @@ const UserProfilePage = () => {
           connections={followerCount}
           challengesUploaded={challengesCompleted}
           achievements={participatedEventsCount}
+          onProfilePictureUpdate={handleProfilePictureUpdate}
         />
       ) : (
         <ProfileComponent
@@ -276,6 +285,7 @@ const UserProfilePage = () => {
           connections={followerCount}
           achievements={participatedEventsCount}
           challengesCompleted={challengesCompleted}
+          onProfilePictureUpdate={handleProfilePictureUpdate}
         />
       )}
     </div>

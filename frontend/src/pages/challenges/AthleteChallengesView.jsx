@@ -86,7 +86,7 @@ const AthleteChallengesView = () => {
       const challengesData = await fetchChallenges();
       setChallenges(challengesData);
       
-      // Re-enable submission status checking with the new endpoint
+      // Re-enable submission status checking with the correct endpoint
       const challengeIds = challengesData.map(challenge => challenge.id);
       await fetchSubmissionStatuses(challengeIds);
       
@@ -287,7 +287,7 @@ const AthleteChallengesView = () => {
 
       setVideoFile(null);
 
-      // Update the submission status for this challenge
+      // Re-enable submission status checking with the correct endpoint
       const newSubmission = await checkSubmissionStatus(selectedChallenge.id);
       setSubmissionStatuses(prev => ({
         ...prev,

@@ -106,6 +106,18 @@ export const handler = async (event) => {
             if (cognitoSub) {
                 const dbClient = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
                 await dbClient.connect();
+                
+                // First, check if user exists and get current profile_picture_url
+                const existingUser = await dbClient.query(
+                    'SELECT profile_picture_url FROM users WHERE id = $1',
+                    [cognitoSub]
+                );
+                
+                // Use existing profile_picture_url if available, otherwise use Cognito URL
+                const finalProfilePictureUrl = existingUser.rows.length > 0 && existingUser.rows[0].profile_picture_url 
+                    ? existingUser.rows[0].profile_picture_url 
+                    : userProfile.profilePictureUrl;
+                
                 await dbClient.query(
                     `INSERT INTO users (id, email, name, role, profile_picture_url, height, country, sport, position)
                      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -113,7 +125,7 @@ export const handler = async (event) => {
                        email = EXCLUDED.email,
                        name = EXCLUDED.name,
                        role = EXCLUDED.role,
-                       profile_picture_url = EXCLUDED.profile_picture_url,
+                       profile_picture_url = $5,
                        height = EXCLUDED.height,
                        country = EXCLUDED.country,
                        sport = EXCLUDED.sport,
@@ -124,7 +136,7 @@ export const handler = async (event) => {
                         userProfile.email,
                         userProfile.name,
                         userProfile.role,
-                        userProfile.profilePictureUrl,
+                        finalProfilePictureUrl,
                         userProfile.height,
                         userProfile.country,
                         userProfile.sport,
@@ -132,6 +144,9 @@ export const handler = async (event) => {
                     ]
                 );
                 await dbClient.end();
+                
+                // Update the userProfile with the final profile picture URL
+                userProfile.profilePictureUrl = finalProfilePictureUrl;
             } else {
                 console.error("Could not extract Cognito sub from userProfile or idToken for DB sync.");
             }

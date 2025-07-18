@@ -18,14 +18,11 @@ const ShareToast = ({ message }) => (
   </div>
 );
 
-const ProfileHeader = ({ profile, currentUserId, isFollowing, buttonLoading, onFollow, onUnfollow, quote, showShareButton = true, isScout = false, starred = false, starLoading = false, onToggleStar }) => {
-  // Responsive state for iPhone SE
-  const [isSmallScreen, setIsSmallScreen] = useState(
-    typeof window !== 'undefined' ? window.innerWidth <= 375 : false
-  );
-
-  // Profile picture editor state
+const ProfileHeader = ({ profile, currentUserId, isFollowing, buttonLoading, onFollow, onUnfollow, quote, showShareButton = true, isScout = false, starred = false, starLoading = false, onToggleStar, onProfilePictureUpdate }) => {
   const [showProfilePictureEditor, setShowProfilePictureEditor] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMsg, setToastMsg] = useState('');
+  const [isSmallScreen, setIsSmallScreen] = useState(false);
 
   useEffect(() => {
     const handleResize = () => {
@@ -36,8 +33,6 @@ const ProfileHeader = ({ profile, currentUserId, isFollowing, buttonLoading, onF
   }, []);
 
   // Share button logic
-  const [showToast, setShowToast] = useState(false);
-  const [toastMsg, setToastMsg] = useState('');
   const handleShare = async () => {
     const url = PUBLIC_BASE_URL + createProfileUrl(profile.name, profile.role);
 
@@ -110,8 +105,10 @@ const ProfileHeader = ({ profile, currentUserId, isFollowing, buttonLoading, onF
   const isOwnProfile = currentUserId && profile.id === currentUserId;
 
   const handleProfilePictureUpdate = (newProfilePictureUrl) => {
-    // Update the profile object with new picture URL
-    profile.profilePictureUrl = newProfilePictureUrl;
+    // Use the callback to properly update the profile state
+    if (onProfilePictureUpdate) {
+      onProfilePictureUpdate(newProfilePictureUrl);
+    }
   };
 
   return (
@@ -152,15 +149,20 @@ const ProfileHeader = ({ profile, currentUserId, isFollowing, buttonLoading, onF
               <UserStatusBadge user={profile} />
             </span>
           </span>
-          <div className="font-bold text-gray-700 text-lg text-center w-full mt-1">LEVEL {xpDetails.level}</div>
+          {/* Hide level indicator for scouts */}
+          {profile.role?.toLowerCase() !== 'scout' && (
+            <div className="font-bold text-gray-700 text-lg text-center w-full mt-1">LEVEL {xpDetails.level}</div>
+          )}
         </div>
-        {/* XP Bar: horizontal, fills space to right of image */}
-        <div className="w-full h-2 bg-gray-200 rounded-full relative mb-2">
-          <div
-            className="h-2 bg-red-600 rounded-full absolute top-0 left-0"
-            style={{ width: `${xpDetails.progress}%` }}
-          ></div>
-        </div>
+        {/* Hide XP bar for scouts */}
+        {profile.role?.toLowerCase() !== 'scout' && (
+          <div className="w-full h-2 bg-gray-200 rounded-full relative mb-2">
+            <div
+              className="h-2 bg-red-600 rounded-full absolute top-0 left-0"
+              style={{ width: `${xpDetails.progress}%` }}
+            ></div>
+          </div>
+        )}
         <div className="text-gray-500 text-base mb-1 w-full text-center">
           {profile.sport && <span>{profile.sport}</span>}
           {profile.sport && profile.position && <span> | </span>}

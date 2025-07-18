@@ -50,6 +50,8 @@ export const getInfoUser = (userId, username) => {
   const params = {};
   if (userId) params.userId = userId;
   if (username) params.username = username;
+  // Add cache-busting timestamp to ensure fresh data
+  params._t = Date.now();
   // Use public endpoint if looking up by userId or username (public profile)
   if (userId || username) {
     return axios.get(PUBLIC_USER_INFO_URL, { params });

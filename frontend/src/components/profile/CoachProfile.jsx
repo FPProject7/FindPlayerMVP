@@ -13,7 +13,7 @@ import ManageSubscriptionButton from '../common/ManageSubscriptionButton';
 import { getUserBio, updateUserBio } from '../../api/bioApi';
 import api from '../../api/axiosConfig';
 
-const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFollow, onUnfollow, connections, challengesUploaded }) => {
+const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFollow, onUnfollow, connections, challengesUploaded, onProfilePictureUpdate }) => {
   const {
     sessionsBooked = 0,
     sport,
@@ -107,6 +107,7 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
         onUnfollow={onUnfollow}
         quote={quote}
         showShareButton={true}
+        onProfilePictureUpdate={onProfilePictureUpdate}
       />
       {profile.country && (
         <div className="text-center text-gray-500 text-sm mb-2">
