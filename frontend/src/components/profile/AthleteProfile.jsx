@@ -7,6 +7,8 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import { useNavigate } from 'react-router-dom';
 import { formatHeight, formatWeight } from '../../utils/levelUtils';
 import { starPlayer, unstarPlayer, getStarredPlayers } from '../../api/starredApi';
+import SubscribeButton from '../common/SubscribeButton';
+import ManageSubscriptionButton from '../common/ManageSubscriptionButton';
 import { getUserBio, updateUserBio } from '../../api/bioApi';
 import EditableBio from '../common/EditableBio';
 
@@ -122,6 +124,9 @@ const AthleteProfile = ({
   const handleCloseFollowers = () => {
     setShowFollowers(false);
   };
+
+  const isPremium = profile?.isPremiumMember || profile?.is_premium_member;
+  const stripeCustomerId = profile?.stripeCustomerId || profile?.stripe_customer_id;
 
   // Handle unit toggle
   const handleUnitToggle = () => {
@@ -266,7 +271,16 @@ const AthleteProfile = ({
       {isAuthenticated && (
         <FollowersModal userId={userId} open={showFollowers} onClose={handleCloseFollowers} />
       )}
-      {currentUserId === profile.id && <UpgradePremiumButton />}
+      {currentUserId === profile.id && (
+        isPremium ? (
+          <>
+            <div className="premium-activated" style={{color: 'green', fontWeight: 'bold', margin: '16px 0', textAlign: 'center'}}>Premium Activated</div>
+            <ManageSubscriptionButton customerId={stripeCustomerId} isPremium={isPremium} />
+          </>
+        ) : (
+          <SubscribeButton userId={userId} userType="athlete" isPremium={isPremium} />
+        )
+      )}
       {currentUserId === profile.id && (
         <div className="text-xs text-center text-gray-400 mb-4">
           Stand out, get noticed, and unlock exclusive opportunities.

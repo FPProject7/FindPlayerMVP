@@ -1,0 +1,9 @@
+{
+  "name": "stripe-create-verification-session",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "stripe": "^18.3.0",
+    "pg": "^8.11.3"
+  }
+} 

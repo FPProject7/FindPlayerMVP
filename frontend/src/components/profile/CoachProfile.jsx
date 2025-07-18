@@ -8,6 +8,8 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import EditableBio from '../common/EditableBio';
 import UpgradePremiumButton from './UpgradePremiumButton';
 import { getFollowerCount } from '../../api/userApi';
+import SubscribeButton from '../common/SubscribeButton';
+import ManageSubscriptionButton from '../common/ManageSubscriptionButton';
 import { getUserBio, updateUserBio } from '../../api/bioApi';
 import api from '../../api/axiosConfig';
 
@@ -51,6 +53,8 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
   const isCoach = (role || '').toLowerCase() === 'coach';
   // Placeholder: Assume current user is athlete if not coach
   const showBookSession = !isCoach && !isOwnProfile;
+  const isPremium = profile?.isPremiumMember || profile?.is_premium_member;
+  const stripeCustomerId = profile?.stripeCustomerId || profile?.stripe_customer_id;
 
   useEffect(() => {
     if (profile?.id) {
@@ -157,7 +161,16 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
           </button>
         </div>
       )}
-      {currentUserRole !== 'athlete' && currentUserId === profile.id && <UpgradePremiumButton />}
+      {currentUserRole !== 'athlete' && currentUserId === profile.id && (
+        isPremium ? (
+          <>
+            <div className="premium-activated" style={{color: 'green', fontWeight: 'bold', margin: '16px 0', textAlign: 'center'}}>Premium Activated</div>
+            <ManageSubscriptionButton customerId={stripeCustomerId} isPremium={isPremium} />
+          </>
+        ) : (
+          <SubscribeButton userId={userId} userType="coach" isPremium={isPremium} />
+        )
+      )}
       {currentUserId === profile.id && (
         <div className="text-xs text-center text-gray-400 mb-4">
           Expand your reach, train more athletes, and grow your influence.

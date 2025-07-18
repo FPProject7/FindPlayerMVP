@@ -1,0 +1,8 @@
+{
+  "name": "stripe-create-checkout-session",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "stripe": "^12.18.0"
+  }
+}
