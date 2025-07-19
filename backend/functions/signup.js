@@ -162,9 +162,26 @@ export const handler = async (event) => {
             if (cognitoSub) {
                 const client = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
                 await client.connect();
+                
+                // Determine premium status based on role
+                let isPremiumMember = false;
+                let premiumStartDate = null;
+                
+                if (role.toLowerCase() === 'coach' || role.toLowerCase() === 'scout') {
+                    // Coaches and scouts get permanent premium during launch
+                    isPremiumMember = true;
+                    premiumStartDate = new Date();
+                    console.log(`Granting permanent premium to ${role} user: ${email}`);
+                } else if (role.toLowerCase() === 'athlete') {
+                    // Athletes get 1 month free premium
+                    isPremiumMember = true;
+                    premiumStartDate = new Date();
+                    console.log(`Granting 1 month free premium to athlete: ${email}`);
+                }
+                
                 await client.query(
-                    `INSERT INTO users (id, email, name, role, profile_picture_url, height, weight, date_of_birth, country, sport, position, gender)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                    `INSERT INTO users (id, email, name, role, profile_picture_url, height, weight, date_of_birth, country, sport, position, gender, is_premium_member, premium_start_date)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
                      ON CONFLICT (id) DO UPDATE SET
                        email = EXCLUDED.email,
                        name = EXCLUDED.name,
@@ -177,6 +194,8 @@ export const handler = async (event) => {
                        sport = EXCLUDED.sport,
                        position = EXCLUDED.position,
                        gender = EXCLUDED.gender,
+                       is_premium_member = EXCLUDED.is_premium_member,
+                       premium_start_date = EXCLUDED.premium_start_date,
                        updated_at = CURRENT_TIMESTAMP`,
                     [
                         cognitoSub,
@@ -190,11 +209,13 @@ export const handler = async (event) => {
                         country,
                         sport,
                         position,
-                        gender
+                        gender,
+                        isPremiumMember,
+                        premiumStartDate
                     ]
                 );
                 await client.end();
-                console.log("User successfully synced to users table.");
+                console.log("User successfully synced to users table with premium status.");
             }
         } catch (dbError) {
             console.error("DB sync failed:", dbError);
