@@ -95,21 +95,54 @@ export const handler = async (event) => {
             console.error("Error fetching user details with AdminGetUserCommand for login:", getUserError);
         }
 
-        // --- Sync user to users table in PostgreSQL ---
+        // --- Sync user to users table in PostgreSQL and get latest profile picture ---
+        console.log('Starting database sync section...');
         try {
             // Use Cognito sub (user id) from userProfile.id if available, otherwise extract from idToken
             let cognitoSub = userProfile.id;
+            console.log('Initial cognitoSub from userProfile.id:', cognitoSub);
             if (!cognitoSub && idToken) {
                 const payload = JSON.parse(Buffer.from(idToken.split('.')[1], 'base64').toString());
                 cognitoSub = payload.sub;
+                console.log('Extracted cognitoSub from idToken:', cognitoSub);
             }
             if (cognitoSub) {
+                console.log('Proceeding with database sync for cognitoSub:', cognitoSub);
                 const dbClient = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
                 await dbClient.connect();
                 
                 // Simple premium assignment for testing - all users get premium
                 let isPremiumMember = true;
                 let premiumStartDate = new Date();
+                
+                // First, try to get existing user data to check for latest profile picture
+                const existingUserQuery = `SELECT profile_picture_url, is_premium_member, premium_start_date FROM users WHERE id = $1`;
+                console.log('Executing database query:', existingUserQuery, 'with cognitoSub:', cognitoSub);
+                const existingUserResult = await dbClient.query(existingUserQuery, [cognitoSub]);
+                console.log('Database query result rows:', existingUserResult.rows.length);
+                
+                let latestProfilePictureUrl = userProfile.profilePictureUrl;
+                let existingPremiumStatus = isPremiumMember;
+                let existingPremiumStartDate = premiumStartDate;
+                
+                if (existingUserResult.rows.length > 0) {
+                    const existingUser = existingUserResult.rows[0];
+                    console.log('Existing user data:', existingUser);
+                    // Use database profile picture URL if it exists and is different from Cognito
+                    if (existingUser.profile_picture_url && existingUser.profile_picture_url !== userProfile.profilePictureUrl) {
+                        latestProfilePictureUrl = existingUser.profile_picture_url;
+                        console.log(`Using database profile picture URL: ${latestProfilePictureUrl} instead of Cognito: ${userProfile.profilePictureUrl}`);
+                    } else {
+                        console.log('No database profile picture URL found or URLs are the same');
+                    }
+                    // Preserve existing premium status if user already has it
+                    if (existingUser.is_premium_member !== null) {
+                        existingPremiumStatus = existingUser.is_premium_member;
+                        existingPremiumStartDate = existingUser.premium_start_date;
+                    }
+                } else {
+                    console.log('No existing user found in database');
+                }
                 
                 await dbClient.query(
                     `INSERT INTO users (id, email, name, role, profile_picture_url, height, country, sport, position, is_premium_member, premium_start_date)
@@ -129,15 +162,21 @@ export const handler = async (event) => {
                         userProfile.email,
                         userProfile.name,
                         userProfile.role,
-                        userProfile.profilePictureUrl,
+                        latestProfilePictureUrl,
                         userProfile.height,
                         userProfile.country,
                         userProfile.sport,
                         userProfile.position,
-                        isPremiumMember,
-                        premiumStartDate
+                        existingPremiumStatus,
+                        existingPremiumStartDate
                     ]
                 );
+                
+                // Update userProfile with the latest profile picture URL
+                userProfile.profilePictureUrl = latestProfilePictureUrl;
+                console.log(`Final userProfile.profilePictureUrl set to: ${latestProfilePictureUrl}`);
+                console.log('Database sync completed successfully');
+                
                 await dbClient.end();
             } else {
                 console.error("Could not extract Cognito sub from userProfile or idToken for DB sync.");
