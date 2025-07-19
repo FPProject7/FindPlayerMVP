@@ -34,19 +34,22 @@ exports.handler = async (event) => {
       AND premium_start_date IS NULL
     `);
 
-    // Find users whose premium membership has expired (5 minutes from premium start)
+    // Find users whose premium membership has expired
+    // Athletes: 1 month from premium start
+    // Coaches/Scouts: Permanent during launch (no expiry)
     const expiredUsersResult = await client.query(
-      `SELECT id, name, email, premium_start_date, updated_at 
+      `SELECT id, name, email, role, premium_start_date, updated_at 
        FROM users 
        WHERE is_premium_member = true 
-       AND premium_start_date < NOW() - INTERVAL '5 minutes'`
+       AND role = 'athlete'
+       AND premium_start_date < NOW() - INTERVAL '1 month'`
     );
 
     const expiredUsers = expiredUsersResult.rows;
-    console.log(`Found ${expiredUsers.length} users with expired premium membership`);
+    console.log(`Found ${expiredUsers.length} athletes with expired premium membership`);
 
     if (expiredUsers.length > 0) {
-      // Reset premium membership for expired users
+      // Reset premium membership for expired athletes only
       const userIds = expiredUsers.map(user => user.id);
       const placeholders = userIds.map((_, index) => `$${index + 1}`).join(',');
       
@@ -59,13 +62,26 @@ exports.handler = async (event) => {
         userIds
       );
 
-      console.log(`Reset premium membership for ${resetResult.rowCount} users`);
+      console.log(`Reset premium membership for ${resetResult.rowCount} athletes`);
       
       // Log the expired users for monitoring
       expiredUsers.forEach(user => {
-        console.log(`Premium expired for user: ${user.name} (${user.email}) - Started: ${user.premium_start_date}`);
+        console.log(`Premium expired for athlete: ${user.name} (${user.email}) - Started: ${user.premium_start_date}`);
       });
     }
+
+    // Log current premium status for monitoring
+    const premiumStatusResult = await client.query(`
+      SELECT role, COUNT(*) as count, 
+             COUNT(CASE WHEN is_premium_member = true THEN 1 END) as premium_count
+      FROM users 
+      GROUP BY role
+    `);
+    
+    console.log('Current premium status by role:');
+    premiumStatusResult.rows.forEach(row => {
+      console.log(`${row.role}: ${row.premium_count}/${row.count} premium users`);
+    });
 
     await client.end();
     console.log('Premium expiry check completed successfully');
@@ -79,8 +95,10 @@ exports.handler = async (event) => {
           id: u.id, 
           name: u.name, 
           email: u.email,
+          role: u.role,
           premiumStartDate: u.premium_start_date
-        }))
+        })),
+        premiumStatus: premiumStatusResult.rows
       })
     };
   } catch (error) {
