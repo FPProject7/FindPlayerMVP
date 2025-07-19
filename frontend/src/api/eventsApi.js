@@ -1,4 +1,5 @@
 import { eventsApiClient } from './axiosConfig';
+import { useAuthStore } from '../stores/useAuthStore';
 
 // Events API service
 export const eventsApi = {
@@ -145,6 +146,34 @@ export const eventsApi = {
     } catch (error) {
       console.error('Error fetching user participated events count:', error);
       return 0;
+    }
+  },
+
+  // Create Stripe checkout session for event payment
+  createEventPaymentSession: async (eventDraft) => {
+    try {
+      // Use the specific endpoint URL for this function
+      const response = await fetch('https://y219q4oqh5.execute-api.us-east-1.amazonaws.com/default/create-event-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await useAuthStore.getState().getValidIdToken()}`
+        },
+        body: JSON.stringify({
+          userId: eventDraft.userId,
+          eventDraft,
+          returnUrl: `${window.location.origin}/events`
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error creating event payment session:', error);
+      throw error;
     }
   }
 };
