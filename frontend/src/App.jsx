@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom';
+import { StatusBar } from '@capacitor/status-bar';
 import MainLayout from './components/layout/MainLayout';
 import HomePage from './pages/HomePage';
 import ChallengesPage from './pages/ChallengesPage';
@@ -57,6 +58,25 @@ function App() {
   const [modalType, setModalType] = useState('access');
   const location = useLocation();
   const { isAuthenticated, sessionExpired, clearSessionExpiredFlag } = useAuthStore();
+
+  // Configure status bar for iOS
+  useEffect(() => {
+    const configureStatusBar = async () => {
+      try {
+        // Hide the status bar completely (this will hide Dynamic Island too)
+        await StatusBar.hide();
+        
+        // Ensure overlay is enabled for full screen
+        await StatusBar.setOverlaysWebView({ overlay: true });
+        
+        console.log('Status bar hidden successfully');
+      } catch (error) {
+        console.log('StatusBar not available (probably running in browser):', error);
+      }
+    };
+
+    configureStatusBar();
+  }, []);
 
   useEffect(() => {
     // Check for session expiry first

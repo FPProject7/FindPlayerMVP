@@ -2,12 +2,43 @@
 
 body, html, #root {
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', 'SF Pro Display', 'Segoe UI', Roboto, Arial, sans-serif !important;
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  overflow-x: hidden;
 }
 
 #root {
   max-width: 1280px;
   margin: 0 auto;
   text-align: center;
+  height: 100vh;
+  position: relative;
+}
+
+/* Full-screen mobile layout */
+@media (max-width: 768px) {
+  #root {
+    max-width: 100%;
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  
+  /* Full screen - no safe area insets since status bar is hidden */
+  body {
+    padding: 0;
+    margin: 0;
+    height: 100vh;
+    width: 100vw;
+  }
+  
+  /* Ensure app takes full screen */
+  html {
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+  }
 }
 
 .logo {
