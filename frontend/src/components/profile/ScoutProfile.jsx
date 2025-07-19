@@ -90,19 +90,13 @@ const ScoutProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
   return (
     <div>
       <ProfileHeader profile={profile} currentUserId={currentUserId} isFollowing={isFollowing} buttonLoading={buttonLoading} onFollow={onFollow} onUnfollow={onUnfollow} />
+      {/* Additional profile info below header */}
       <div className="flex flex-col items-center mb-2">
-        <div className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-          {profile.name}
-          {(profile.is_verified || profile.isVerified) && (
-            <div className="bg-yellow-400 text-yellow-900 px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1">
-              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              VERIFIED
-            </div>
-          )}
-          {sport && <span className="text-gray-500 font-normal">, {sport}</span>}
-        </div>
+        {sport && (
+          <div className="font-bold text-gray-800 text-base mb-1">
+            {sport}
+          </div>
+        )}
         {profile.country && (
           <div className="text-gray-500 text-sm mt-1">
             Country: {profile.country}

@@ -106,9 +106,14 @@ export const handler = async (event) => {
             if (cognitoSub) {
                 const dbClient = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
                 await dbClient.connect();
+                
+                // Simple premium assignment for testing - all users get premium
+                let isPremiumMember = true;
+                let premiumStartDate = new Date();
+                
                 await dbClient.query(
-                    `INSERT INTO users (id, email, name, role, profile_picture_url, height, country, sport, position)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                    `INSERT INTO users (id, email, name, role, profile_picture_url, height, country, sport, position, is_premium_member, premium_start_date)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                      ON CONFLICT (id) DO UPDATE SET
                        email = EXCLUDED.email,
                        name = EXCLUDED.name,
@@ -128,7 +133,9 @@ export const handler = async (event) => {
                         userProfile.height,
                         userProfile.country,
                         userProfile.sport,
-                        userProfile.position
+                        userProfile.position,
+                        isPremiumMember,
+                        premiumStartDate
                     ]
                 );
                 await dbClient.end();
