@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { eventsApi } from '../../api/eventsApi';
 import { useLoadScript } from '@react-google-maps/api';
 import { PUBLIC_BASE_URL } from '../../config';
+import { useAuthStore } from '../../stores/useAuthStore';
 
 // Toast for share/copy feedback - exact same as profile page
 const ShareToast = ({ message }) => (
@@ -73,6 +74,7 @@ const CreateEventForm = ({ onClose }) => {
   const [createdEventData, setCreatedEventData] = useState(null);
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
+  const { user } = useAuthStore();
 
   // Google Maps Autocomplete state
   const [autocompleteValue, setAutocompleteValue] = useState('');
@@ -286,6 +288,11 @@ const CreateEventForm = ({ onClose }) => {
     setErrors(validationErrors);
     if (Object.keys(validationErrors).length > 0) return;
     
+    if (!user?.id) {
+      setSubmitError('You must be logged in to create an event.');
+      return;
+    }
+    
     setIsSubmitting(true);
     
     try {
@@ -307,8 +314,8 @@ const CreateEventForm = ({ onClose }) => {
         imageUrl = uploadData.publicUrl;
       }
       
-      // Prepare event data for backend
-      const eventData = {
+      // Prepare event draft data for backend
+      const eventDraft = {
         title: form.title,
         sport: form.sport,
         eventType: form.eventType,
@@ -321,27 +328,29 @@ const CreateEventForm = ({ onClose }) => {
         description: form.description,
         imageUrl: imageUrl,
         coordinates: form.coordinates || undefined,
+        userId: user.id
       };
       
-      // Create event
-      const createdEvent = await eventsApi.createEvent(eventData);
+      // Create Stripe checkout session for event payment
+      const paymentSession = await eventsApi.createEventPaymentSession(eventDraft);
       
-      setIsSubmitting(false);
-      setShowConfirmation(true);
-      
-      // Store the created event for the confirmation modal
-      setCreatedEventData(createdEvent);
+      // Redirect to Stripe Checkout
+      if (paymentSession.url) {
+        window.location.href = paymentSession.url;
+      } else {
+        throw new Error('No checkout URL received from Stripe');
+      }
       
     } catch (error) {
       setIsSubmitting(false);
-      console.error('Error creating event:', error);
+      console.error('Error creating event payment session:', error);
       
       if (error.response?.data?.message) {
         setSubmitError(error.response.data.message);
       } else if (error.message) {
         setSubmitError(error.message);
       } else {
-        setSubmitError('Failed to create event. Please try again.');
+        setSubmitError('Failed to create event payment session. Please try again.');
       }
     }
   };
@@ -685,7 +694,7 @@ const CreateEventForm = ({ onClose }) => {
               className="w-full py-2 rounded-full bg-red-500 text-white font-bold text-lg mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isSubmitting || !isFormValid}
             >
-              {isSubmitting ? 'Processing...' : 'Continue to Payment'}
+              {isSubmitting ? 'Creating Payment Session...' : 'Continue to Payment ($100)'}
             </button>
           </form>
         </div>
