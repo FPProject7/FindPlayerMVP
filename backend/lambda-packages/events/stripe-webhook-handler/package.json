@@ -1,0 +1,16 @@
+{
+  "name": "stripe-webhook",
+  "version": "1.0.0",
+  "description": "Lambda function to handle Stripe webhook events for event payments",
+  "main": "index.js",
+  "dependencies": {
+    "stripe": "^14.0.0",
+    "pg": "^8.11.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["stripe", "lambda", "webhook", "event"],
+  "author": "",
+  "license": "ISC"
+} 

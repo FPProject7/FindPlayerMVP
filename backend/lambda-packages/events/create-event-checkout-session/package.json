@@ -1,0 +1,16 @@
+{
+  "name": "create-event-checkout-session",
+  "version": "1.0.0",
+  "description": "Lambda function to create Stripe checkout sessions for event payments",
+  "main": "index.js",
+  "dependencies": {
+    "stripe": "^14.0.0",
+    "uuid": "^9.0.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["stripe", "lambda", "checkout", "event"],
+  "author": "",
+  "license": "ISC"
+} 
