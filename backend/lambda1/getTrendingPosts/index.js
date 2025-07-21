@@ -30,6 +30,7 @@ exports.handler = async (event) => {
     await client.connect();
 
     // Get trending posts based on engagement (likes + comments) from the last 7 days
+    // For new users, also include recent posts even without engagement
     const trendingQuery = `
       SELECT 
         p.id,
@@ -49,9 +50,9 @@ exports.handler = async (event) => {
       INNER JOIN users u ON p.user_id = u.id
       LEFT JOIN post_likes pl ON p.id = pl.post_id
       LEFT JOIN post_comments pc ON p.id = pc.post_id
-      WHERE p.created_at > NOW() - INTERVAL '7 days'
+      WHERE p.created_at > NOW() - INTERVAL '30 days'
+        AND p.user_id != ${userId ? '$3' : 'NULL'} -- Exclude user's own posts
       GROUP BY p.id, p.user_id, p.content, p.image_url, p.video_url, p.created_at, u.name, u.profile_picture_url, u.role
-      HAVING (COUNT(DISTINCT pl.id) + COUNT(DISTINCT pc.id) * 2) > 0
       ORDER BY engagement_score DESC, p.created_at DESC
       LIMIT $1 OFFSET $2
     `;

@@ -56,7 +56,13 @@ function App() {
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('access');
   const location = useLocation();
-  const { isAuthenticated, sessionExpired, clearSessionExpiredFlag } = useAuthStore();
+  const { isAuthenticated, sessionExpired, clearSessionExpiredFlag, checkAuthOnStartup } = useAuthStore();
+
+  // Check authentication on app startup
+  useEffect(() => {
+    console.log('[App] Checking authentication on startup...');
+    checkAuthOnStartup();
+  }, [checkAuthOnStartup]);
 
   useEffect(() => {
     // Check for session expiry first

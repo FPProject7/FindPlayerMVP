@@ -11,7 +11,7 @@ export const useTokenRefresh = () => {
       return;
     }
 
-    // Check token every 10 seconds for testing
+    // Check token every 5 minutes for mobile apps (less aggressive)
     const checkAndRefreshToken = async () => {
       try {
         const store = useAuthStore.getState();
@@ -19,23 +19,28 @@ export const useTokenRefresh = () => {
         const expired = store.isTokenExpired();
         
         if (expired) {
+          console.log('[TokenRefresh] Token expired, attempting refresh...');
+          
           // Check if refreshTokenAsync is actually a function
           if (typeof store.refreshTokenAsync !== 'function') {
-            throw new Error(`refreshTokenAsync is not a function. It's a: ${typeof store.refreshTokenAsync}`);
+            console.error('[TokenRefresh] refreshTokenAsync is not a function');
+            return;
           }
           
           await store.refreshTokenAsync();
+          console.log('[TokenRefresh] Token refresh completed');
         }
       } catch (error) {
-        // Remove all console.error statements from this file
+        console.error('[TokenRefresh] Error during token refresh:', error);
+        // Don't clear auth on network errors, only on real auth errors
       }
     };
 
     // Initial check
     checkAndRefreshToken();
 
-    // Set up interval (every 10 seconds for testing)
-    refreshIntervalRef.current = setInterval(checkAndRefreshToken, 10000);
+    // Set up interval (every 5 minutes for mobile apps)
+    refreshIntervalRef.current = setInterval(checkAndRefreshToken, 5 * 60 * 1000);
 
     return () => {
       if (refreshIntervalRef.current) {

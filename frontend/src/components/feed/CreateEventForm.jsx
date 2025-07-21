@@ -331,15 +331,35 @@ const CreateEventForm = ({ onClose }) => {
         userId: user.id
       };
       
-      // Create Stripe checkout session for event payment
-      const paymentSession = await eventsApi.createEventPaymentSession(eventDraft);
-      
-      // Redirect to Stripe Checkout
-      if (paymentSession.url) {
-        window.location.href = paymentSession.url;
-      } else {
-        throw new Error('No checkout URL received from Stripe');
+      // --- Stripe Checkout Integration ---
+      // Prepare payload for backend
+      const userId = useAuthStore.getState().user?.id;
+      const baseUrl = window.location.origin;
+      const successUrl = `${baseUrl}/events`;
+      const cancelUrl = `${baseUrl}/create-event`;
+
+      const response = await fetch('https://y219q4oqh5.execute-api.us-east-1.amazonaws.com/default/create-event-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          eventDraft,
+          successUrl,
+          cancelUrl,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to initiate payment. Please try again.');
       }
+      const data = await response.json();
+      if (!data.url) {
+        throw new Error('Payment link not received. Please contact support.');
+      }
+      // Redirect to Stripe Checkout
+      window.location.href = data.url;
+      // --- End Stripe Checkout Integration ---
       
     } catch (error) {
       setIsSubmitting(false);
@@ -704,3 +724,4 @@ const CreateEventForm = ({ onClose }) => {
 };
 
 export default CreateEventForm; 
+

@@ -73,5 +73,7 @@ export const getTrendingPosts = (limit = 20, offset = 0, userId = null) => {
   if (userId) {
     params.userId = userId;
   }
+  console.log('[postApi] Making trending posts request with params:', params);
+  console.log('[postApi] Full URL will be:', `https://36rrjiys1k.execute-api.us-east-1.amazonaws.com/prod/get-trending-posts?${new URLSearchParams(params).toString()}`);
   return postApiClient.get('/get-trending-posts', { params });
 }; 

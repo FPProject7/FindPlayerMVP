@@ -105,7 +105,6 @@ exports.handler = async (event) => {
             AND p.user_id NOT IN (SELECT id FROM fp_account)
             AND p.created_at > NOW() - INTERVAL '7 days'
           GROUP BY p.id, p.user_id, p.content, p.image_url, p.video_url, p.created_at, u.name, u.profile_picture_url, u.role
-          HAVING (COUNT(DISTINCT pl.id) + COUNT(DISTINCT pc.id) * 2) > 0
           ORDER BY engagement_score DESC, p.created_at DESC
           LIMIT 10
         )
