@@ -24,7 +24,8 @@ export const useAuthStore = create(
        * @param {object} tokenData - Contains token details, e.g., { IdToken: 'jwt_string', AccessToken: '...', RefreshToken: '...' }
        */
       login: (userProfile, tokenData) => {
-        const expiryTime = new Date(Date.now() + 3600000); // 1 hour (3600000 ms)
+        // Set token expiry to 30 days for mobile apps (like LinkedIn, Facebook)
+        const expiryTime = new Date(Date.now() + (30 * 24 * 60 * 60 * 1000)); // 30 days
         
         set({
           token: tokenData.IdToken,
@@ -64,7 +65,7 @@ export const useAuthStore = create(
           token: newToken,
           accessToken: newAccessToken,
           refreshToken: newRefreshToken || get().refreshToken,
-          tokenExpiry: new Date(Date.now() + 3600000), // 1 hour
+          tokenExpiry: new Date(Date.now() + (30 * 24 * 60 * 60 * 1000)), // 30 days
           sessionExpired: false, // Reset session expired flag on token update
         });
       },
@@ -72,7 +73,30 @@ export const useAuthStore = create(
       // Add setUser action to update the user in the store
       setUser: (userProfile) => set({ user: userProfile }),
 
-      // Check if token is expired or about to expire (within 5 minutes)
+      // Check if user is still authenticated on app startup
+      checkAuthOnStartup: () => {
+        const state = get();
+        if (!state.isAuthenticated || !state.token || !state.refreshToken) {
+          return false;
+        }
+        
+        // If token is expired, try to refresh it
+        if (state.isTokenExpired()) {
+          console.log('[AuthStore] Token expired on startup, attempting refresh...');
+          // Don't await here, let the refresh happen in the background
+          state.refreshTokenAsync().catch(error => {
+            console.error('[AuthStore] Failed to refresh token on startup:', error);
+            // Only clear auth if it's a real auth error
+            if (error.message.includes('refresh token') || error.message.includes('401') || error.message.includes('403')) {
+              state.logout(true);
+            }
+          });
+        }
+        
+        return state.isAuthenticated;
+      },
+
+      // Check if token is expired or about to expire (within 1 hour for mobile apps)
       isTokenExpired: () => {
         const state = get();
         if (!state.tokenExpiry) {
@@ -80,8 +104,8 @@ export const useAuthStore = create(
         }
         
         const now = new Date();
-        const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000);
-        const isExpired = state.tokenExpiry <= now;
+        const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour buffer
+        const isExpired = state.tokenExpiry <= oneHourFromNow;
         
         return isExpired;
       },
@@ -153,6 +177,9 @@ export const useAuthStore = create(
         if (!state.refreshToken) {
           throw new Error('No refresh token available');
         }
+        
+        console.log('[AuthStore] Attempting to refresh token...');
+        
         try {
           const response = await fetch('https://x0pskxuai7.execute-api.us-east-1.amazonaws.com/default/refreshToken', {
             method: 'POST',
@@ -163,39 +190,90 @@ export const useAuthStore = create(
               refreshToken: state.refreshToken
             })
           });
+          
+          console.log('[AuthStore] Refresh response status:', response.status);
+          
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
+            console.error('[AuthStore] Refresh failed:', errorData);
             throw new Error(errorData.message || `Token refresh failed with status: ${response.status}`);
           }
+          
           const data = await response.json();
+          console.log('[AuthStore] Refresh successful, updating tokens...');
+          
           set({
             token: data.idToken,
             accessToken: data.accessToken,
             refreshToken: data.refreshToken || state.refreshToken,
             user: state.user, // Preserve user profile information
             isAuthenticated: state.isAuthenticated, // Preserve authentication state
-            tokenExpiry: new Date(Date.now() + 3600000), // 1 hour
+            tokenExpiry: new Date(Date.now() + (30 * 24 * 60 * 60 * 1000)), // 30 days
             sessionExpired: false, // Reset session expired flag on successful refresh
           });
+          
+          console.log('[AuthStore] Token refresh completed successfully');
           return tokenType === 'id' ? data.idToken : data.accessToken;
         } catch (error) {
-          set({
-            token: null,
-            accessToken: null,
-            refreshToken: null,
-            user: null,
-            isAuthenticated: false,
-            tokenExpiry: null,
-            sessionExpired: true, // Mark as session expired when refresh fails
-          });
-          throw new Error('Authentication expired. Please log in again.');
+          console.error('[AuthStore] Token refresh failed:', error);
+          
+          // Only clear auth if it's a real authentication error, not a network error
+          if (error.message.includes('refresh token') || error.message.includes('401') || error.message.includes('403')) {
+            set({
+              token: null,
+              accessToken: null,
+              refreshToken: null,
+              user: null,
+              isAuthenticated: false,
+              tokenExpiry: null,
+              sessionExpired: true, // Mark as session expired when refresh fails
+            });
+            throw new Error('Authentication expired. Please log in again.');
+          } else {
+            // For network errors, don't clear auth - just throw the error
+            throw error;
+          }
         }
       },
     }),
     {
-      name: 'auth-storage', // The key to use for storing data in localStorage
-      // You can define which parts of the state to save if you don't want everything
-      // partialize: (state) => ({ token: state.token, user: state.user }),
+      name: 'findplayer-auth', // The key to use for storing data in localStorage
+      // Save all authentication data for mobile persistence
+      partialize: (state) => ({ 
+        token: state.token, 
+        accessToken: state.accessToken,
+        refreshToken: state.refreshToken,
+        user: state.user, 
+        isAuthenticated: state.isAuthenticated,
+        tokenExpiry: state.tokenExpiry,
+        sessionExpired: state.sessionExpired
+      }),
+      // Use a more reliable storage method for mobile
+      storage: {
+        getItem: (name) => {
+          try {
+            const item = localStorage.getItem(name);
+            return item ? JSON.parse(item) : null;
+          } catch (error) {
+            console.warn('Failed to get auth from localStorage:', error);
+            return null;
+          }
+        },
+        setItem: (name, value) => {
+          try {
+            localStorage.setItem(name, JSON.stringify(value));
+          } catch (error) {
+            console.warn('Failed to save auth to localStorage:', error);
+          }
+        },
+        removeItem: (name) => {
+          try {
+            localStorage.removeItem(name);
+          } catch (error) {
+            console.warn('Failed to remove auth from localStorage:', error);
+          }
+        },
+      },
     }
   )
 );

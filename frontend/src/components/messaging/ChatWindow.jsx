@@ -67,7 +67,7 @@ const ON_NEW_MESSAGE = gql`
 const PULL_THRESHOLD = 80;
 const MAX_PULL_DISTANCE = 120;
 
-export default function ChatWindow({ isOpen, onClose, conversationId, otherUserName, otherUserProfilePic, otherUserId, dbUser }) {
+export default function ChatWindow({ isOpen, onClose, conversationId, otherUserName, otherUserProfilePic, otherUserId, dbUser, automatedMessage }) {
   const location = useLocation();
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
@@ -96,33 +96,55 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
 
   // Check if this is a new conversation opened from "Book a Session" button
   useEffect(() => {
-    // Only show automated message if coming from booking flow (location.state.openChatWith)
-    if (isNewConversation && location.state?.openChatWith && user?.role?.toLowerCase() === 'athlete') {
+    console.log('[ChatWindow] Checking for automated message...');
+    console.log('[ChatWindow] isNewConversation:', isNewConversation);
+    console.log('[ChatWindow] sessionStorage showAutomatedMessage:', sessionStorage.getItem('showAutomatedMessage'));
+    console.log('[ChatWindow] sessionStorage automatedMessageText:', sessionStorage.getItem('automatedMessageText'));
+    console.log('[ChatWindow] location.state:', location.state);
+    console.log('[ChatWindow] user role:', user?.role);
+    console.log('[ChatWindow] automatedMessage prop:', automatedMessage);
+    
+    // First priority: Check for automated message passed as prop
+    if (isNewConversation && automatedMessage) {
+      console.log('[ChatWindow] Setting automated message from prop:', automatedMessage);
+      setShowAutomatedMessage(true);
+      setAutomatedMessageText(automatedMessage);
+      // Clear any sessionStorage flags
+      sessionStorage.removeItem('showAutomatedMessage');
+      sessionStorage.removeItem('automatedMessageText');
+    }
+    // Second priority: Check for automated message from sessionStorage (set by MessagesPage)
+    else if (isNewConversation && sessionStorage.getItem('showAutomatedMessage') === 'true') {
+      const autoMsg = sessionStorage.getItem('automatedMessageText');
+      if (autoMsg) {
+        console.log('[ChatWindow] Setting automated message from sessionStorage:', autoMsg);
+        setShowAutomatedMessage(true);
+        setAutomatedMessageText(autoMsg);
+        // Clear the sessionStorage flags
+        sessionStorage.removeItem('showAutomatedMessage');
+        sessionStorage.removeItem('automatedMessageText');
+      }
+    } else if (isNewConversation && location.state?.openChatWith && user?.role?.toLowerCase() === 'athlete') {
+      // Fallback: Only show automated message if coming from booking flow (location.state.openChatWith)
+      console.log('[ChatWindow] Setting automated message from location.state');
       setShowAutomatedMessage(true);
       setAutomatedMessageText(`Hi ${otherUserName || 'Coach'}! I'm interested in booking a training session with you. What's your availability like?`);
       // Clear the bookingFlow flag immediately so it doesn't persist after first render
       localStorage.removeItem('bookingFlow');
     } else {
+      console.log('[ChatWindow] No automated message conditions met');
       setShowAutomatedMessage(false);
       setAutomatedMessageText('');
       // Also clear the flag if not in booking flow
       localStorage.removeItem('bookingFlow');
     }
-  }, [isNewConversation, location.state, user?.role, otherUserName]);
+  }, [isNewConversation, location.state, user?.role, otherUserName, automatedMessage]);
 
   // Prefill chat input with automated message if sessionStorage flag is set
   useEffect(() => {
-    if (isNewConversation && sessionStorage.getItem('showAutomatedMessage') === 'true') {
-      const autoMsg = sessionStorage.getItem('automatedMessageText');
-      if (autoMsg) {
-        setInput(autoMsg);
-        setAutoMessageHandled(true);
-      }
-      sessionStorage.removeItem('showAutomatedMessage');
-      sessionStorage.removeItem('automatedMessageText');
-    } else {
-      setAutoMessageHandled(false);
-    }
+    // This is now handled in the main automated message useEffect above
+    // Just reset the autoMessageHandled flag
+    setAutoMessageHandled(false);
   }, [isNewConversation, otherUserId, conversationId]);
 
   // Reset input when starting a new conversation, unless booking flow flag is set

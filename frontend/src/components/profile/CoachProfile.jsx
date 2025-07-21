@@ -109,19 +109,7 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
         showShareButton={true}
       />
       
-      {/* Show Book a Session for athletes viewing a premium coach profile - moved to prominent position */}
-      {currentUserRole === 'athlete' && !isOwnProfile && (profile.is_premium_member || profile.isPremiumMember) && (
-        <div className="flex justify-center my-4 px-4">
-          <button
-            className="w-full max-w-xl bg-[#FF0505] hover:bg-[#CC0000] text-white rounded-full px-12 py-3 font-semibold shadow-md transition-colors duration-150 text-lg"
-            onClick={handleBookSession}
-          >
-            Book a Session
-          </button>
-        </div>
-      )}
-      
-      {/* Show Book a Session for athletes viewing any coach profile (fallback) */}
+      {/* Show Book a Session for athletes viewing a coach profile */}
       {((currentUserRole === 'athlete' && !isOwnProfile) || (!currentUserRole && !isOwnProfile)) && (
         <div className="flex justify-center my-4 px-4">
           <button

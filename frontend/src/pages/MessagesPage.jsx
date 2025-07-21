@@ -36,17 +36,24 @@ export default function MessagesPage() {
   // On mount, open chat if location.state.openChatWith is present
   useEffect(() => {
     if (!initialized && location.state && location.state.openChatWith) {
+      console.log('[MessagesPage] Received openChatWith state:', location.state.openChatWith);
+      const autoMessage = `Hi ${location.state.openChatWith.name || 'Coach'}! I'm interested in booking a training session with you. What's your availability like?`;
+      console.log('[MessagesPage] Setting up conversation with automated message:', autoMessage);
+      
       setSelectedConversation({
         conversationId: 'new',
         name: location.state.openChatWith.name,
         profilePic: location.state.openChatWith.profilePic,
-        userId: location.state.openChatWith.userId
+        userId: location.state.openChatWith.userId,
+        automatedMessage: autoMessage // Pass the message directly in the conversation object
       });
       setIsChatOpen(true);
       setInitialized(true);
-      // Set sessionStorage flag and message for automated message prompt
+      
+      // Also set sessionStorage as backup
       sessionStorage.setItem('showAutomatedMessage', 'true');
-      sessionStorage.setItem('automatedMessageText', `Hi ${location.state.openChatWith.name || 'Coach'}! I'm interested in booking a training session with you. What's your availability like?`);
+      sessionStorage.setItem('automatedMessageText', autoMessage);
+      
       // Immediately redirect to /messages without state so refresh doesn't re-trigger booking flow
       setTimeout(() => navigate('/messages', { replace: true }), 0);
     }
@@ -220,6 +227,7 @@ export default function MessagesPage() {
         otherUserProfilePic={selectedConversation?.profilePic}
         otherUserId={selectedConversation?.userId}
         dbUser={dbUser}
+        automatedMessage={selectedConversation?.automatedMessage}
       />
     </div>
   );

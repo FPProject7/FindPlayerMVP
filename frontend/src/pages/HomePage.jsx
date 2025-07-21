@@ -33,12 +33,26 @@ const HomePage = () => {
     
     setIsLoadingTrending(true);
     try {
+      console.log('[HomePage] Loading trending posts for user:', user.id);
+      // Add a small delay to ensure authentication is complete
+      await new Promise(resolve => setTimeout(resolve, 100));
       const response = await getTrendingPosts(10, 0, user.id);
+      console.log('[HomePage] Trending posts response:', response);
       if (response.status === 200) {
         setTrendingPosts(response.data.posts || []);
+        console.log('[HomePage] Set trending posts:', response.data.posts?.length || 0);
       }
     } catch (err) {
-      console.error('Error loading trending posts:', err);
+      console.error('[HomePage] Error loading trending posts:', err);
+      console.error('[HomePage] Error details:', {
+        message: err.message,
+        code: err.code,
+        response: err.response?.data,
+        status: err.response?.status
+      });
+      // Don't show trending posts if there's an error (like CORS)
+      setTrendingPosts([]);
+      setShowTrendingFallback(false);
     } finally {
       setIsLoadingTrending(false);
     }
