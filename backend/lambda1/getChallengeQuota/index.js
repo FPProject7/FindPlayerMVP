@@ -86,11 +86,12 @@ exports.handler = async (event) => {
     }
 
     const isPremium = userResult.rows[0].is_premium_member;
-    const maxChallenges = isPremium ? 5 : 3; // Premium: 5/week, Free: 3/week
+    // Removed quota limits - return unlimited values
+    const maxChallenges = -1; // -1 indicates unlimited
     // Quota window: 7 days (1 week)
     const daysBack = 7;
 
-    // Count challenges created in the last 7 days
+    // Count challenges created in the last 7 days (for informational purposes only)
     const quotaResult = await client.query(
       `SELECT COUNT(*) as challenge_count 
        FROM challenges 
@@ -114,7 +115,8 @@ exports.handler = async (event) => {
         max: maxChallenges,
         period: `${daysBack} days`,
         isPremium: isPremium,
-        remaining: Math.max(0, maxChallenges - currentCount)
+        remaining: -1, // -1 indicates unlimited
+        unlimited: true
       })
     };
   } catch (error) {

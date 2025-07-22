@@ -3,7 +3,8 @@ import { useAuthStore } from '../stores/useAuthStore';
 const BASE_URL = 'https://20mot13f4g.execute-api.us-east-1.amazonaws.com';
 
 async function getAuthHeader() {
-  const token = await useAuthStore.getState().getValidToken();
+  // Use ID token instead of access token to get custom claims
+  const token = await useAuthStore.getState().getValidIdToken();
   return { 'Authorization': `Bearer ${token}` };
 }
 
