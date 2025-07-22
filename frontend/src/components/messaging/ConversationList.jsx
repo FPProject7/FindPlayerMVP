@@ -67,12 +67,6 @@ export default function ConversationList({ onSelectConversation, isPremium }) {
 
   useEffect(() => {
     // Disable search for free users
-    if (!isPremium) {
-      setUserResults([]);
-      setShowUserDropdown(false);
-      return;
-    }
-    
     if (search.trim().length < 2) {
       setUserResults([]);
       setShowUserDropdown(false);
@@ -92,7 +86,7 @@ export default function ConversationList({ onSelectConversation, isPremium }) {
       }
     }, 300);
     return () => clearTimeout(timeout);
-  }, [search, isPremium]);
+  }, [search]);
 
   // Pull-to-refresh handlers
   const handleTouchStart = (e) => {
@@ -204,18 +198,17 @@ export default function ConversationList({ onSelectConversation, isPremium }) {
       <div className="conversation-search-bar">
         <input
           type="text"
-          placeholder={isPremium ? "Search for Teammates, Coaches, Scouts..." : "Upgrade to Premium to start new conversations"}
+          placeholder="Search for Teammates, Coaches, Scouts..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          disabled={!isPremium}
           style={{ 
             width: '100%', 
             padding: 8, 
             borderRadius: 8, 
             border: '1px solid #ddd',
-            backgroundColor: isPremium ? 'white' : '#f5f5f5',
-            color: isPremium ? 'black' : '#999',
-            cursor: isPremium ? 'text' : 'not-allowed'
+            backgroundColor: 'white',
+            color: 'black',
+            cursor: 'text'
           }}
           onFocus={() => { if (userResults.length > 0) setShowUserDropdown(true); }}
           onBlur={() => setTimeout(() => setShowUserDropdown(false), 200)}

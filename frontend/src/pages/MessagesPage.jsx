@@ -167,7 +167,7 @@ export default function MessagesPage() {
   const isVerified = dbUser?.is_verified;
   // All users can view existing conversations, but only premium users can initiate new ones
   // Scouts need BOTH premium and verified for full access
-  const canInitiateConversations = isScout ? (isPremium && isVerified) : isPremium;
+  const canInitiateConversations = isScout ? (isPremium && isVerified) : true; // Changed to true for all except scouts
   const hasMessagingAccess = true; // All authenticated users can access messaging
 
   // Determine what message/button to show for scouts

@@ -69,7 +69,7 @@ function TermsModal({ isOpen, onClose }) {
 
           <h2>5. Subscriptions and Payments</h2>
           <p>
-            Some features of the Platform are offered under paid subscription plans. Subscription fees are billed monthly or annually, depending on your selected plan. By subscribing, you agree to pay all associated fees and applicable taxes.
+            All features of the Platform are now available to all users (except scouts, who require verification for full access). There are no paid subscription plans at this time.
           </p>
           <p>
             All payments are non-refundable, except where required by law. We reserve the right to modify pricing, features, or access with prior notice.

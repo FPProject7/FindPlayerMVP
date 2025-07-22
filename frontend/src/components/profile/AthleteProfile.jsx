@@ -1,14 +1,11 @@
 import ProfileHeader from './ProfileHeader';
 import ProfileTabs from './ProfileTabs';
-import UpgradePremiumButton from './UpgradePremiumButton';
 import FollowersModal from './FollowersModal';
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useNavigate } from 'react-router-dom';
 import { formatHeight, formatWeight } from '../../utils/levelUtils';
 import { starPlayer, unstarPlayer, getStarredPlayers } from '../../api/starredApi';
-import SubscribeButton from '../common/SubscribeButton';
-import ManageSubscriptionButton from '../common/ManageSubscriptionButton';
 import { getUserBio, updateUserBio } from '../../api/bioApi';
 import EditableBio from '../common/EditableBio';
 
@@ -270,16 +267,6 @@ const AthleteProfile = ({
       </div>
       {isAuthenticated && (
         <FollowersModal userId={userId} open={showFollowers} onClose={handleCloseFollowers} />
-      )}
-      {currentUserId === profile.id && (
-        isPremium ? (
-          <>
-            <div className="premium-activated" style={{color: 'green', fontWeight: 'bold', margin: '16px 0', textAlign: 'center'}}>Premium Activated</div>
-            <ManageSubscriptionButton customerId={stripeCustomerId} isPremium={isPremium} />
-          </>
-        ) : (
-          <SubscribeButton userId={userId} userType="athlete" isPremium={isPremium} />
-        )
       )}
       {currentUserId === profile.id && (
         <div className="text-xs text-center text-gray-400 mb-4">

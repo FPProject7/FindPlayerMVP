@@ -1,11 +1,8 @@
 // frontend/src/components/profile/ScoutProfile.jsx
 import ProfileHeader from './ProfileHeader';
 import ProfileTabs from './ProfileTabs';
-import UpgradePremiumButton from './UpgradePremiumButton';
 import FollowersModal from './FollowersModal';
 import VerifyButton from './VerifyButton';
-import SubscribeButton from '../common/SubscribeButton';
-import ManageSubscriptionButton from '../common/ManageSubscriptionButton';
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '../../stores/useAuthStore';
 import EditableBio from '../common/EditableBio';
@@ -143,20 +140,6 @@ const ScoutProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
       {isAuthenticated && (
         <FollowersModal userId={userId} open={showFollowers} onClose={handleCloseFollowers} />
       )}
-      {currentUserId === profile.id && (
-        isPremium ? (
-          <>
-            <div className="premium-activated" style={{color: 'green', fontWeight: 'bold', margin: '16px 0', textAlign: 'center'}}>Premium Activated</div>
-            <ManageSubscriptionButton customerId={stripeCustomerId} isPremium={isPremium} />
-          </>
-        ) : (
-          <SubscribeButton userId={userId} userType="scout" isPremium={isPremium} />
-        )
-      )}
-      <div className="text-xs text-center text-gray-400 mb-4">
-        Get exclusive scouting insights & priority access to top athletes.
-      </div>
-      <ProfileTabs profile={profile} isOwnProfile={currentUserId === profile.id} />
       {currentUserId === profile.id && (
         <>
           {/* Show Verify button above sign out for scouts */}

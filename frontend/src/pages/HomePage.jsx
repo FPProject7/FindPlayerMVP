@@ -129,15 +129,13 @@ const HomePage = () => {
   };
 
   const handleLikeUpdate = (postId, isLiked, likesCount) => {
-    // Update likes in both main posts and trending posts
-    setPosts(prev => prev.map(post => 
-      post.id === postId 
-        ? { ...post, isLiked, likesCount }
+    setPosts(prev => prev.map(post =>
+      post.id === postId
+        ? { ...post, isLiked, likesCount } // force new object for reactivity
         : post
     ));
-    
-    setTrendingPosts(prev => prev.map(post => 
-      post.id === postId 
+    setTrendingPosts(prev => prev.map(post =>
+      post.id === postId
         ? { ...post, isLiked, likesCount }
         : post
     ));

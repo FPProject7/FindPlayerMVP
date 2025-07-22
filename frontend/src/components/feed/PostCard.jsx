@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { likePost } from '../../api/postApi';
 import { useAuthStore } from '../../stores/useAuthStore';
 import CommentModal from './CommentModal';
@@ -16,6 +16,12 @@ const PostCard = ({ post, onLikeUpdate }) => {
   const user = useAuthStore((state) => state.user);
   const [imageAspect, setImageAspect] = useState(null); // null, 'vertical', or 'horizontal'
   const navigate = useNavigate();
+
+  // Sync local state with post prop changes
+  useEffect(() => {
+    setLocalLikesCount(post.likesCount ?? post.likes_count ?? 0);
+    setLocalIsLiked(post.isLiked ?? post.is_liked ?? false);
+  }, [post.likesCount, post.likes_count, post.isLiked, post.is_liked]);
 
   // Defensive handling for missing user object
   const userObj = post.user || {
@@ -199,21 +205,19 @@ const PostCard = ({ post, onLikeUpdate }) => {
             <button
               onClick={handleLike}
               disabled={isLiking}
-              className={`flex items-center space-x-1 text-sm font-medium transition-colors duration-200 ${
-                localIsLiked 
-                  ? 'text-red-600' 
-                  : 'text-gray-500 hover:text-red-600'
-              }`}
+              className="flex items-center space-x-1 text-sm font-medium transition-colors duration-200"
             >
-              <svg 
-                className={`w-5 h-5 ${localIsLiked ? 'fill-current' : 'stroke-current fill-none'}`}
+              <svg
+                className="w-5 h-5"
                 viewBox="0 0 24 24"
+                fill={localIsLiked ? '#FF0505' : 'none'}
+                stroke={localIsLiked ? '#FF0505' : '#6B7280'}
+                strokeWidth="2"
               >
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth={localIsLiked ? 0 : 2}
-                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" 
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
                 />
               </svg>
               <span>{localLikesCount}</span>
