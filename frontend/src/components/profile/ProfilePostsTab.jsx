@@ -28,7 +28,8 @@ const ProfilePostsTab = ({ profile }) => {
         setHasMore(newPosts.length === POSTS_PER_PAGE);
         setOffset(reset ? POSTS_PER_PAGE : currentOffset + POSTS_PER_PAGE);
       }
-    } catch {
+    } catch (error) {
+      console.error('ProfilePostsTab - Error loading posts:', error);
       setError('Failed to load posts.');
     } finally {
       setLoading(false);

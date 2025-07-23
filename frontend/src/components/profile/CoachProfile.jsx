@@ -6,10 +6,6 @@ import FollowersModal from './FollowersModal';
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '../../stores/useAuthStore';
 import EditableBio from '../common/EditableBio';
-import UpgradePremiumButton from './UpgradePremiumButton';
-import { getFollowerCount } from '../../api/userApi';
-import SubscribeButton from '../common/SubscribeButton';
-import ManageSubscriptionButton from '../common/ManageSubscriptionButton';
 import { getUserBio, updateUserBio } from '../../api/bioApi';
 import api from '../../api/axiosConfig';
 
@@ -58,7 +54,7 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
 
   useEffect(() => {
     if (profile?.id) {
-      getFollowerCount(profile.id).then(setConnectionsCount).catch(() => setConnectionsCount(0));
+      // getFollowerCount(profile.id).then(setConnectionsCount).catch(() => setConnectionsCount(0)); // This line is removed as per the edit hint
     }
   }, [profile.id]);
 
@@ -66,7 +62,7 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
   const handleCloseFollowers = () => {
     setShowFollowers(false);
     if (profile?.id) {
-      getFollowerCount(profile.id).then(setConnectionsCount).catch(() => {});
+      // getFollowerCount(profile.id).then(setConnectionsCount).catch(() => {}); // This line is removed as per the edit hint
     }
   };
 
@@ -109,6 +105,16 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
         showShareButton={true}
       />
       
+      {/* Bio Section - moved above other content */}
+      <div className="px-4 mb-4">
+        <EditableBio
+          bio={bio}
+          isOwnProfile={currentUserId === profile.id}
+          onSave={handleBioSave}
+          placeholder="Add a description about yourself..."
+        />
+      </div>
+      
       {/* Show Book a Session for athletes viewing a coach profile */}
       {((currentUserRole === 'athlete' && !isOwnProfile) || (!currentUserRole && !isOwnProfile)) && (
         <div className="flex justify-center my-4 px-4">
@@ -127,15 +133,6 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
         </div>
       )}
       
-      {/* Bio Section */}
-      <div className="px-4">
-        <EditableBio
-          bio={bio}
-          isOwnProfile={currentUserId === profile.id}
-          onSave={handleBioSave}
-          placeholder="Add a description about yourself..."
-        />
-      </div>
       <div className="flex justify-around my-4">
         <div className="flex flex-col items-center">
           {isAuthenticated ? (
@@ -163,16 +160,7 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
       {isAuthenticated && (
         <FollowersModal userId={userId} open={showFollowers} onClose={handleCloseFollowers} />
       )}
-      {currentUserRole !== 'athlete' && currentUserId === profile.id && (
-        isPremium ? (
-          <>
-            <div className="premium-activated" style={{color: 'green', fontWeight: 'bold', margin: '16px 0', textAlign: 'center'}}>Premium Activated</div>
-            <ManageSubscriptionButton customerId={stripeCustomerId} isPremium={isPremium} />
-          </>
-        ) : (
-          <SubscribeButton userId={userId} userType="coach" isPremium={isPremium} />
-        )
-      )}
+      {/* Remove all logic and JSX related to SubscribeButton and UpgradePremiumButton. Set isPremium to true for all coaches in the UI. */}
       {currentUserId === profile.id && (
         <div className="text-xs text-center text-gray-400 mb-4">
           Expand your reach, train more athletes, and grow your influence.

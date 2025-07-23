@@ -161,30 +161,21 @@ export default function MessagesPage() {
     localStorage.removeItem('selectedConversation');
   };
 
-  // Use dbUser for all checks
-  const isPremium = dbUser?.is_premium_member || dbUser?.isPremiumMember;
+  // Use dbUser for verified checks
   const isScout = dbUser?.role === 'scout';
   const isVerified = dbUser?.is_verified;
-  // All users can view existing conversations, but only premium users can initiate new ones
-  // Scouts need BOTH premium and verified for full access
-  const canInitiateConversations = isScout ? (isPremium && isVerified) : isPremium;
-  const hasMessagingAccess = true; // All authenticated users can access messaging
+  
+  // Scouts need to be verified to access messaging
+  const hasMessagingAccess = isScout ? isVerified : true;
+  const canInitiateConversations = true; // All users can initiate conversations
 
   // Determine what message/button to show for scouts
   let scoutMessage = '';
   let scoutButton = '';
-  if (isScout) {
-    if (!isVerified) {
-      scoutMessage = 'Scouts need to be verified to access messaging.';
-      scoutButton = 'Get Verified';
-    } else if (!isPremium) {
-      scoutMessage = 'Scouts need premium membership to access messaging.';
-      scoutButton = 'Upgrade to Premium';
-    }
+  if (isScout && !isVerified) {
+    scoutMessage = 'Scouts need to be verified to access messaging.';
+    scoutButton = 'Get Verified';
   }
-
-  // Remove the premium check block - all authenticated users can access messaging
-  // The premium restrictions are now handled at the conversation level
 
   if (!isAuthenticated) {
     return (
@@ -211,11 +202,29 @@ export default function MessagesPage() {
     );
   }
 
+  // Block scouts who are not verified from accessing messaging
+  if (isScout && !isVerified) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-gray-50">
+        <div className="text-center p-8 bg-white rounded-lg shadow-md max-w-md">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">Verification Required</h2>
+          <p className="text-gray-600 mb-6">Scouts need to be verified to access messaging.</p>
+          <button
+            onClick={() => navigate('/profile')}
+            className="bg-red-600 text-white px-6 py-2 rounded-full hover:bg-red-700 transition-colors"
+          >
+            Go to Profile
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="messages-page-container" style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Conversation List - always visible */}
       <div style={{ flex: 1, overflow: 'hidden' }}>
-        <ConversationList onSelectConversation={handleConversationSelect} isPremium={canInitiateConversations} />
+        <ConversationList onSelectConversation={handleConversationSelect} />
       </div>
       
       {/* Chat Window Modal */}

@@ -1,10 +1,10 @@
 .bio-container {
   position: relative;
   margin: 1rem 0;
-  padding: 1rem;
-  background: #f8f9fa;
-  border-radius: 8px;
-  border: 1px solid #e9ecef;
+  padding: 0.5rem 0;
+  background: transparent;
+  border-radius: 0;
+  border: none;
 }
 
 .bio-content {
@@ -13,27 +13,29 @@
   justify-content: center;
   gap: 0.5rem;
   position: relative;
-  min-height: 60px;
+  min-height: 40px;
 }
 
 .bio-text {
   margin: 0;
-  color: #333333;
-  font-size: 0.9rem;
-  line-height: 1.4;
+  color: #666666;
+  font-size: 0.95rem;
+  line-height: 1.5;
   word-wrap: break-word;
   text-align: center;
   flex: 1;
+  font-weight: 400;
 }
 
 .bio-placeholder {
   margin: 0;
-  color: #6c757d;
-  font-size: 0.9rem;
-  line-height: 1.4;
+  color: #999999;
+  font-size: 0.95rem;
+  line-height: 1.5;
   font-style: italic;
   text-align: center;
   flex: 1;
+  font-weight: 300;
 }
 
 .bio-edit-btn {
@@ -41,21 +43,25 @@
   border: none;
   color: white;
   cursor: pointer;
-  padding: 6px 12px;
-  border-radius: 6px;
+  padding: 6px;
+  border-radius: 50%;
   transition: all 0.2s ease;
   position: absolute;
-  bottom: -8px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 0;
+  right: 0;
   font-size: 0.8rem;
   font-weight: 500;
   z-index: 10;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .bio-edit-btn:hover {
   background: #b91c1c;
-  transform: translateY(-1px);
+  transform: scale(1.1);
 }
 
 .bio-container.editing {

@@ -27,43 +27,11 @@ export default function CoachChallengesView() {
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [imageError, setImageError] = useState("");
-  const [quotaInfo, setQuotaInfo] = useState(null);
-  const [quotaLoading, setQuotaLoading] = useState(false);
 
   // Character limits
   const TITLE_CHAR_LIMIT = 50;
   const DESC_CHAR_LIMIT = 500;
   const COMMENT_CHAR_LIMIT = 500;
-
-  // Fetch quota information
-  const fetchQuotaInfo = async () => {
-    setQuotaLoading(true);
-    try {
-      const authState = useAuthStore.getState();
-      const token = authState.token;
-      const response = await fetch("https://ay6fctbr9c.execute-api.us-east-1.amazonaws.com/getChallengeQuota", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { "Authorization": `Bearer ${token}` } : {})
-        }
-      });
-      const data = await response.json();
-      setQuotaInfo(data);
-    } catch (error) {
-      console.error('Error fetching quota info:', error);
-      // Don't show error for quota fetch, just use default values
-    } finally {
-      setQuotaLoading(false);
-    }
-  };
-
-  // Fetch quota info when component mounts and when tab changes to post
-  useEffect(() => {
-    if (activeTab === "post") {
-      fetchQuotaInfo();
-    }
-  }, [activeTab]);
 
   // Fetch coach's challenges
   const fetchChallenges = async () => {
@@ -211,8 +179,6 @@ export default function CoachChallengesView() {
       if (activeTab === "view") fetchChallenges();
       setSuccessMessage("Challenge created!");
       setTimeout(() => setSuccessMessage(""), 1200);
-      // Update quota info immediately after successful challenge creation
-      fetchQuotaInfo();
     } catch (error) {
       setErrorMessage(error.response?.data?.message || error.message);
       setTimeout(() => setErrorMessage(""), 2000);
@@ -317,27 +283,10 @@ export default function CoachChallengesView() {
                 </svg>
                 <span className="text-sm font-medium text-gray-700">Challenge Creation Quota</span>
               </div>
-              {quotaLoading ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500"></div>
-              ) : (
-                <span className={`text-sm font-semibold ${quotaInfo?.current >= quotaInfo?.max ? 'text-red-600' : 'text-green-600'}`}>
-                  {quotaInfo ? `${quotaInfo.current}/${quotaInfo.max}` : 'Loading...'}
-                </span>
-              )}
+              <span className="text-sm font-semibold text-green-600">Unlimited</span>
             </div>
             <div className="mt-2 text-xs text-gray-500">
-              {quotaInfo ? (
-                <>
-                  {quotaInfo.isPremium ? 'Premium: 5 challenges per 7-day period' : 'Free: 3 challenges per 7-day period'}
-                  {quotaInfo.current >= quotaInfo.max && (
-                    <div className="text-red-600 mt-1 font-medium">
-                      Quota exceeded. Upgrade to Premium for more challenges.
-                    </div>
-                  )}
-                </>
-              ) : (
-                'Loading quota information...'
-              )}
+              You can create as many challenges as you want.
             </div>
           </div>
           <div>

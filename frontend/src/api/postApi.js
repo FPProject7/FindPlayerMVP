@@ -8,7 +8,8 @@ const postApiClient = axios.create({
 postApiClient.interceptors.request.use(
   async (config) => {
     try {
-      const token = await useAuthStore.getState().getValidToken();
+      // Use ID token instead of access token to get custom claims
+      const token = await useAuthStore.getState().getValidIdToken();
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }

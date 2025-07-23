@@ -89,11 +89,11 @@ exports.handler = async (event) => {
     }
 
     const isPremium = userResult.rows[0].is_premium_member;
-    const maxSubmissions = isPremium ? 3 : 1; // Premium: 3/day, Free: 1/day
-    // Quota window: 1 day (24 hours)
+    // Removed quota limits - return unlimited values
+    const maxSubmissions = -1; // -1 indicates unlimited
     const hoursBack = 24;
 
-    // Count submissions in the last 24 hours
+    // Count submissions in the last 24 hours (for informational purposes only)
     const quotaResult = await client.query(
       `SELECT COUNT(*) as submission_count 
        FROM challenge_submissions 
@@ -117,7 +117,8 @@ exports.handler = async (event) => {
         max: maxSubmissions,
         period: `${hoursBack} hours`,
         isPremium: isPremium,
-        remaining: Math.max(0, maxSubmissions - currentCount)
+        remaining: -1, // -1 indicates unlimited
+        unlimited: true
       })
     };
   } catch (error) {

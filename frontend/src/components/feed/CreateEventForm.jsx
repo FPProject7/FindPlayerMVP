@@ -226,7 +226,6 @@ const CreateEventForm = ({ onClose }) => {
     if (form.dressCode.length > DRESS_CODE_LIMIT) newErrors.dressCode = `Max ${DRESS_CODE_LIMIT} characters.`;
     if (!form.description.trim()) newErrors.description = 'Description is required.';
     if (form.description.length > DESCRIPTION_LIMIT) newErrors.description = `Max ${DESCRIPTION_LIMIT} characters.`;
-    if (!form.agree) newErrors.agree = 'You must agree to the terms.';
     // imageFile is optional, so no validation here
     return newErrors;
   };
@@ -314,8 +313,8 @@ const CreateEventForm = ({ onClose }) => {
         imageUrl = uploadData.publicUrl;
       }
       
-      // Prepare event draft data for backend
-      const eventDraft = {
+      // Prepare event payload for backend
+      const eventPayload = {
         title: form.title,
         sport: form.sport,
         eventType: form.eventType,
@@ -331,46 +330,29 @@ const CreateEventForm = ({ onClose }) => {
         userId: user.id
       };
       
-      // --- Stripe Checkout Integration ---
-      // Prepare payload for backend
-      const userId = useAuthStore.getState().user?.id;
-      const baseUrl = window.location.origin;
-      const successUrl = `${baseUrl}/events`;
-      const cancelUrl = `${baseUrl}/create-event`;
-
-      const response = await fetch('https://y219q4oqh5.execute-api.us-east-1.amazonaws.com/default/create-event-checkout-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId,
-          eventDraft,
-          successUrl,
-          cancelUrl,
-        }),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to initiate payment. Please try again.');
+      // Call the backend event creation API
+      const createdEvent = await eventsApi.createEvent(eventPayload);
+      setCreatedEventData(createdEvent);
+      setShowConfirmation(true);
+      setForm(initialState);
+      setErrors({});
+      setSubmitError('');
+      navigate('/events');
+      // Close the modal if onClose prop is provided
+      if (onClose) {
+        onClose();
       }
-      const data = await response.json();
-      if (!data.url) {
-        throw new Error('Payment link not received. Please contact support.');
-      }
-      // Redirect to Stripe Checkout
-      window.location.href = data.url;
-      // --- End Stripe Checkout Integration ---
       
     } catch (error) {
       setIsSubmitting(false);
-      console.error('Error creating event payment session:', error);
+      console.error('Error creating event:', error);
       
       if (error.response?.data?.message) {
         setSubmitError(error.response.data.message);
       } else if (error.message) {
         setSubmitError(error.message);
       } else {
-        setSubmitError('Failed to create event payment session. Please try again.');
+        setSubmitError('Failed to create event. Please try again.');
       }
     }
   };
@@ -697,24 +679,13 @@ const CreateEventForm = ({ onClose }) => {
               <div className="text-xs text-gray-400 text-right">{form.description.length}/{DESCRIPTION_LIMIT}</div>
               {errors.description && <div className="text-red-500 text-xs mt-1">{errors.description}</div>}
             </div>
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                name="agree"
-                checked={form.agree}
-                onChange={handleChange}
-                disabled={isSubmitting}
-              />
-              <label className="text-sm">I agree to pay the $100 posting fee and confirm this event is real.</label>
-            </div>
-            {errors.agree && <div className="text-red-500 text-xs mt-1">{errors.agree}</div>}
             {submitError && <div className="text-red-500 text-sm mt-2">{submitError}</div>}
             <button
               type="submit"
               className="w-full py-2 rounded-full bg-red-500 text-white font-bold text-lg mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isSubmitting || !isFormValid}
             >
-              {isSubmitting ? 'Creating Payment Session...' : 'Continue to Payment ($100)'}
+              {isSubmitting ? 'Creating Event...' : 'Create Event'}
             </button>
           </form>
         </div>
