@@ -103,10 +103,6 @@ export const handler = async (event) => {
 
         console.log('[send-message] Resolved senderId:', senderId, 'receiverId:', receiverId);
 
-        // Check premium status from DB
-        const isPremium = await isUserPremium(senderId);
-        console.log('[send-message] User premium status:', isPremium);
-
         // Deterministic conversationId for user pair
         const participants = [senderId, receiverId].sort();
         const conversationId = participants.join('_');
@@ -119,11 +115,6 @@ export const handler = async (event) => {
         const existingConversation = await findExistingConversation(conversationId);
         
         if (!existingConversation) {
-            // Only block non-premium users if they are initiating a new conversation (no previous messages)
-            if (!isPremium) {
-                console.log('[send-message] BLOCKED: Non-premium user trying to start new conversation');
-                throw new Error('Only premium members can initiate new conversations. Free users can respond to existing conversations.');
-            }
             // Create new conversation
             isNewConversation = true;
             const newConversation = {

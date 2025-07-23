@@ -31,7 +31,7 @@ const LIST_CONVERSATIONS = gql`
 const PULL_THRESHOLD = 80;
 const MAX_PULL_DISTANCE = 120;
 
-export default function ConversationList({ onSelectConversation, isPremium }) {
+export default function ConversationList({ onSelectConversation }) {
   const [search, setSearch] = useState('');
   const [userResults, setUserResults] = useState([]);
   const [showUserDropdown, setShowUserDropdown] = useState(false);

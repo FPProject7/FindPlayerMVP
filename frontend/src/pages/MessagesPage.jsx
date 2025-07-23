@@ -161,14 +161,13 @@ export default function MessagesPage() {
     localStorage.removeItem('selectedConversation');
   };
 
-  // Use dbUser for all checks
-  const isPremium = dbUser?.is_premium_member || dbUser?.isPremiumMember;
+  // Use dbUser for verified checks
   const isScout = dbUser?.role === 'scout';
   const isVerified = dbUser?.is_verified;
   
   // Scouts need to be verified to access messaging
   const hasMessagingAccess = isScout ? isVerified : true;
-  const canInitiateConversations = true; // Keep premium restrictions disabled
+  const canInitiateConversations = true; // All users can initiate conversations
 
   // Determine what message/button to show for scouts
   let scoutMessage = '';
@@ -225,7 +224,7 @@ export default function MessagesPage() {
     <div className="messages-page-container" style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Conversation List - always visible */}
       <div style={{ flex: 1, overflow: 'hidden' }}>
-        <ConversationList onSelectConversation={handleConversationSelect} isPremium={canInitiateConversations} />
+        <ConversationList onSelectConversation={handleConversationSelect} />
       </div>
       
       {/* Chat Window Modal */}
