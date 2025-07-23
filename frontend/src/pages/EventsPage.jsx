@@ -67,9 +67,12 @@ function LocationIcon({ className = '', size = 20 }) {
 
 const EventCard = ({ event }) => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const [hostInfo, setHostInfo] = useState(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  
+  // Check if user is a scout or coach (they shouldn't be able to register)
+  const isScoutOrCoach = user?.role?.toLowerCase() === 'scout' || user?.role?.toLowerCase() === 'coach';
   
   // Fetch host info when component mounts
   useEffect(() => {
@@ -193,12 +196,15 @@ const EventCard = ({ event }) => {
           <div className="flex items-center justify-between mt-2">
             {/* Always show fee per player */}
             <div className="text-xl font-bold text-gray-900">{fee} <span className="text-sm font-normal text-gray-500">/player</span></div>
-            <button 
-              className="bg-red-500 text-white px-4 py-2 rounded-full font-semibold hover:bg-red-600 text-sm"
-              onClick={handleRegisterClick}
-            >
-              Register now
-            </button>
+            {/* Only show register button for athletes */}
+            {!isScoutOrCoach && (
+              <button 
+                className="bg-red-500 text-white px-4 py-2 rounded-full font-semibold hover:bg-red-600 text-sm"
+                onClick={handleRegisterClick}
+              >
+                Register now
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -560,8 +566,16 @@ function isFutureEvent(event) {
 }
 
 const EventsPage = () => {
-  const { isAuthenticated } = useAuthStore(); // Get the authentication status
+  const { isAuthenticated, user } = useAuthStore(); // Get the authentication status and user info
   const navigate = useNavigate(); // Initialize navigate hook
+  
+  // Check if user is a scout or coach (they shouldn't see the Joined tab)
+  const isScoutOrCoach = user?.role?.toLowerCase() === 'scout' || user?.role?.toLowerCase() === 'coach';
+  
+  // Filter tab options based on user role
+  const filteredTabOptions = isScoutOrCoach 
+    ? tabOptions.filter(tab => tab.key !== 'participating')
+    : tabOptions;
   const [activeTab, setActiveTab] = useState('available');
   const [showLoginModal, setShowLoginModal] = useState(false);
   // Hosted tab modal state
@@ -598,6 +612,13 @@ const EventsPage = () => {
       mapRef.current = null;
     };
   }, []);
+  
+  // Redirect scouts and coaches away from participating tab if they're on it
+  useEffect(() => {
+    if (activeTab === 'participating' && isScoutOrCoach) {
+      setActiveTab('available');
+    }
+  }, [activeTab, isScoutOrCoach]);
 
   // Handle tab changes with authentication check
   const handleTabChange = (tabKey) => {
@@ -605,6 +626,13 @@ const EventsPage = () => {
       setShowLoginModal(true);
       return;
     }
+    
+    // Redirect scouts and coaches away from participating tab
+    if (tabKey === 'participating' && isScoutOrCoach) {
+      setActiveTab('available');
+      return;
+    }
+    
     setActiveTab(tabKey);
   };
 
@@ -725,7 +753,7 @@ const EventsPage = () => {
     <div className="events-page-container">
       {/* Tab Header */}
       <div className="flex justify-center gap-2 my-6">
-        {tabOptions.map(tab => (
+        {filteredTabOptions.map(tab => (
           <button
             key={tab.key}
             className={`flex-1 min-w-0 max-w-[160px] py-2 rounded-full border-2 font-bold text-sm uppercase transition-colors duration-200

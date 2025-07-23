@@ -168,6 +168,17 @@ const AthleteProfile = ({
         starLoading={starLoading}
         onToggleStar={handleToggleStar}
       />
+      
+      {/* Bio Section - moved above unit toggle */}
+      <div className="px-4 mb-4">
+        <EditableBio
+          bio={bio}
+          isOwnProfile={currentUserId === profile.id}
+          onSave={handleBioSave}
+          placeholder="Add a description about yourself..."
+        />
+      </div>
+      
       {/* Height and Weight */}
       {(height || weight || profile.country) && (
         <>
@@ -229,15 +240,6 @@ const AthleteProfile = ({
         </>
       )}
       
-      {/* Bio Section */}
-      <div className="px-4 mb-4">
-        <EditableBio
-          bio={bio}
-          isOwnProfile={currentUserId === profile.id}
-          onSave={handleBioSave}
-          placeholder="Add a description about yourself..."
-        />
-      </div>
       {/* Stats Row */}
       <div className="flex justify-between my-6 max-w-xs mx-auto">
         <div className="flex flex-col items-center flex-1">

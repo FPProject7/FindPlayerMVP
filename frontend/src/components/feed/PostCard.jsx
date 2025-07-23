@@ -27,7 +27,7 @@ const PostCard = ({ post, onLikeUpdate }) => {
   
   // Check if we're viewing someone else's profile (not the home page)
   const isProfileView = location.pathname.includes('/profile/') || location.pathname.includes('/athlete/') || location.pathname.includes('/coach/') || location.pathname.includes('/scout/');
-  const isOwnProfile = user?.id === post.user_id;
+  const isOwnProfile = user?.id === post.user_id || user?.id === post.user?.id;
   const showStarButton = isScout && isAthlete && (!isProfileView || isOwnProfile);
 
   // Sync local state with post prop changes
@@ -277,8 +277,9 @@ const PostCard = ({ post, onLikeUpdate }) => {
               }`}
             >
               <svg
-                className={`w-5 h-5 ${localIsLiked ? 'fill-current' : 'stroke-current fill-none'}`}
+                className="w-5 h-5 stroke-current fill-none"
                 viewBox="0 0 24 24"
+                style={{ strokeWidth: '2' }}
               >
                 <path
                   strokeLinecap="round"
