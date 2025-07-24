@@ -28,6 +28,13 @@ allprojects {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+    
+    // Set Java toolchain for all projects
+    tasks.withType(JavaCompile).configureEach {
+        javaCompiler = javaToolchains.compilerFor {
+            languageVersion = JavaLanguageVersion.of(17)
+        }
+    }
 }
 
 task clean(type: Delete) {
