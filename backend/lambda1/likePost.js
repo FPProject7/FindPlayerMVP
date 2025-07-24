@@ -78,7 +78,7 @@ exports.handler = async (event) => {
         },
         body: JSON.stringify({
           message: 'Post unliked successfully',
-          liked: false,
+          isLiked: false,
           likesCount: parseInt(newLikesCount.rows[0].count)
         })
       };
@@ -119,7 +119,7 @@ exports.handler = async (event) => {
         },
         body: JSON.stringify({
           message: 'Post liked successfully',
-          liked: true,
+          isLiked: true,
           likesCount: parseInt(newLikesCount.rows[0].count)
         })
       };
