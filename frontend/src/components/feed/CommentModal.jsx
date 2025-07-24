@@ -4,25 +4,28 @@ import { addComment, getComments } from '../../api/postApi';
 import { useAuthStore } from '../../stores/useAuthStore';
 import ChallengeLoader from '../common/ChallengeLoader';
 
-const CommentModal = ({ isOpen, onClose, post, onCommentAdded }) => {
+const CommentModal = ({ isOpen, onClose, post, postId, onCommentAdded }) => {
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [comments, setComments] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const user = useAuthStore((state) => state.user);
 
+  // Get the actual post ID from either post object or postId prop
+  const actualPostId = post?.id || postId;
+
   useEffect(() => {
-    if (isOpen && post) {
+    if (isOpen && actualPostId) {
       loadComments();
     }
-  }, [isOpen, post]);
+  }, [isOpen, actualPostId]);
 
   const loadComments = async () => {
-    if (!post?.id) return;
+    if (!actualPostId) return;
     
     setIsLoading(true);
     try {
-      const response = await getComments(post.id);
+      const response = await getComments(actualPostId);
       if (response.status === 200) {
         setComments(response.data.comments || []);
       }
@@ -35,12 +38,12 @@ const CommentModal = ({ isOpen, onClose, post, onCommentAdded }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!comment.trim() || !user?.id || isSubmitting) return;
+    if (!comment.trim() || !user?.id || isSubmitting || !actualPostId) return;
 
     setIsSubmitting(true);
     
     try {
-      const response = await addComment(user.id, post.id, comment.trim());
+      const response = await addComment(user.id, actualPostId, comment.trim());
       
       if (response.status === 201) {
         // Add the new comment to the list
@@ -149,7 +152,7 @@ const CommentModal = ({ isOpen, onClose, post, onCommentAdded }) => {
                     <div className="bg-gray-100 rounded-lg p-3">
                       <div className="flex items-center space-x-2 mb-1">
                         <span className="font-semibold text-sm">{comment.user.name}</span>
-                        <span className="text-xs text-gray-500">{formatDate(comment.createdAt)}</span>
+                        <span className="text-xs text-gray-500">{formatDate(comment.created_at || comment.createdAt)}</span>
                       </div>
                       <p className="text-sm text-gray-900">{comment.content}</p>
                     </div>

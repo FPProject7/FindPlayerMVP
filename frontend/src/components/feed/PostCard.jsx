@@ -277,9 +277,9 @@ const PostCard = ({ post, onLikeUpdate }) => {
               }`}
             >
               <svg
-                className="w-5 h-5 stroke-current fill-none"
+                className={`w-5 h-5 ${localIsLiked ? 'fill-current' : 'stroke-current fill-none'}`}
                 viewBox="0 0 24 24"
-                style={{ strokeWidth: '2' }}
+                style={{ strokeWidth: localIsLiked ? '0' : '2' }}
               >
                 <path
                   strokeLinecap="round"
