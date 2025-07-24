@@ -17,6 +17,16 @@ const CommentModal = ({ isOpen, onClose, post, onCommentAdded }) => {
     }
   }, [isOpen, post]);
 
+  // Helper to normalize comment fields to camelCase
+  const normalizeComment = (comment) => ({
+    ...comment,
+    createdAt: comment.createdAt || comment.created_at || new Date().toISOString(),
+    user: comment.user || {
+      name: comment.user_name || (comment.user && comment.user.name) || 'Unknown',
+      profilePictureUrl: comment.user_profile_picture || (comment.user && comment.user.profilePictureUrl) || null
+    }
+  });
+
   const loadComments = async () => {
     if (!post?.id) return;
     
@@ -24,7 +34,9 @@ const CommentModal = ({ isOpen, onClose, post, onCommentAdded }) => {
     try {
       const response = await getComments(post.id);
       if (response.status === 200) {
-        setComments(response.data.comments || []);
+        // Normalize all comments to have createdAt (camelCase) and user object
+        const normalized = (response.data.comments || []).map(normalizeComment);
+        setComments(normalized);
       }
     } catch (error) {
       console.error('Error loading comments:', error);
@@ -43,17 +55,17 @@ const CommentModal = ({ isOpen, onClose, post, onCommentAdded }) => {
       const response = await addComment(user.id, post.id, comment.trim());
       
       if (response.status === 201) {
-        // Add the new comment to the list
+        // Add the new comment to the list, normalizing fields
+        const backendComment = response.data.comment;
         const newComment = {
-          id: response.data.comment.id,
-          content: comment.trim(),
+          id: backendComment.id,
+          content: backendComment.content || comment.trim(),
           user: {
             name: user.name || user.given_name || 'You',
             profilePictureUrl: user.profilePictureUrl
           },
-          created_at: new Date().toISOString()
+          createdAt: backendComment.created_at || backendComment.createdAt || new Date().toISOString()
         };
-        
         setComments(prev => [newComment, ...prev]);
         setComment('');
         
