@@ -87,6 +87,17 @@ const ScoutProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
   return (
     <div>
       <ProfileHeader profile={profile} currentUserId={currentUserId} isFollowing={isFollowing} buttonLoading={buttonLoading} onFollow={onFollow} onUnfollow={onUnfollow} />
+      
+      {/* Bio Section - moved above other content */}
+      <div className="px-4 mb-4">
+        <EditableBio
+          bio={bio}
+          isOwnProfile={currentUserId === profile.id}
+          onSave={handleBioSave}
+          placeholder="Add a description about yourself..."
+        />
+      </div>
+      
       {/* Additional profile info below header */}
       <div className="flex flex-col items-center mb-2">
         {sport && (
@@ -104,15 +115,6 @@ const ScoutProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
         )}
       </div>
       
-      {/* Bio Section */}
-      <div className="px-4">
-        <EditableBio
-          bio={bio}
-          isOwnProfile={currentUserId === profile.id}
-          onSave={handleBioSave}
-          placeholder="Add a description about yourself..."
-        />
-      </div>
       <div className="flex justify-around my-4">
         <div className="flex flex-col items-center">
           {isAuthenticated ? (
@@ -142,17 +144,23 @@ const ScoutProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
       )}
       {currentUserId === profile.id && (
         <>
-          {/* Show Verify button above sign out for scouts */}
-          <VerifyButton isVerified={profile.is_verified || profile.isVerified} onStatusUpdate={() => window.location.reload()} />
-          <div className="flex justify-center mt-8 mb-24">
-            <button
-              className="w-full max-w-xs bg-[#FF0505] hover:bg-[#CC0000] text-white rounded-full px-8 py-3 font-semibold shadow-md transition-colors duration-200 text-base"
-              onClick={() => { logout(); navigate('/login'); }}
-            >
-              Sign Out
-            </button>
+          <div className="text-xs text-center text-gray-400 mb-4">
+            Stand out, get noticed, and unlock exclusive opportunities.
           </div>
+          {/* Show Verify button where premium button used to be */}
+          <VerifyButton isVerified={profile.is_verified || profile.isVerified} onStatusUpdate={() => window.location.reload()} />
         </>
+      )}
+      <ProfileTabs profile={profile} isOwnProfile={currentUserId === profile.id} />
+      {currentUserId === profile.id && (
+        <div className="flex justify-center mt-8 mb-24">
+          <button
+            className="w-full max-w-xs bg-[#FF0505] hover:bg-[#CC0000] text-white rounded-full px-8 py-3 font-semibold shadow-md transition-colors duration-200 text-base"
+            onClick={() => { logout(); navigate('/login'); }}
+          >
+            Sign Out
+          </button>
+        </div>
       )}
     </div>
   );

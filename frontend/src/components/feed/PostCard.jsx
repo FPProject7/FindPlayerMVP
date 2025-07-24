@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { likePost } from '../../api/postApi';
+import { starPlayer, unstarPlayer } from '../../api/starredApi';
 import { useAuthStore } from '../../stores/useAuthStore';
 import CommentModal from './CommentModal';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { createProfileUrl } from '../../utils/profileUrlUtils';
 
 const PostCard = ({ post, onLikeUpdate }) => {
@@ -13,15 +14,28 @@ const PostCard = ({ post, onLikeUpdate }) => {
   const [imageError, setImageError] = useState(false);
   const [videoError, setVideoError] = useState(false);
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
+  const [isStarring, setIsStarring] = useState(false);
+  const [localIsStarred, setLocalIsStarred] = useState(post.isStarred || false);
   const user = useAuthStore((state) => state.user);
   const [imageAspect, setImageAspect] = useState(null); // null, 'vertical', or 'horizontal'
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Check if current user is a scout
+  const isScout = user?.role?.toLowerCase() === 'scout';
+  const isAthlete = post.user?.role?.toLowerCase() === 'athlete';
+  
+  // Check if we're viewing someone else's profile (not the home page)
+  const isProfileView = location.pathname.includes('/profile/') || location.pathname.includes('/athlete/') || location.pathname.includes('/coach/') || location.pathname.includes('/scout/');
+  const isOwnProfile = user?.id === post.user_id || user?.id === post.user?.id;
+  const showStarButton = isScout && isAthlete && (!isProfileView || isOwnProfile);
 
   // Sync local state with post prop changes
   useEffect(() => {
     setLocalLikesCount(post.likesCount ?? post.likes_count ?? 0);
     setLocalIsLiked(post.isLiked ?? post.is_liked ?? false);
-  }, [post.likesCount, post.likes_count, post.isLiked, post.is_liked]);
+    setLocalIsStarred(post.isStarred || false);
+  }, [post.likesCount, post.likes_count, post.isLiked, post.is_liked, post.isStarred]);
 
   // Defensive handling for missing user object
   const userObj = post.user || {
@@ -85,6 +99,25 @@ const PostCard = ({ post, onLikeUpdate }) => {
     }
   };
 
+  const handleStarToggle = async () => {
+    if (!user?.id || !isScout || !isAthlete || isStarring) return;
+
+    setIsStarring(true);
+    try {
+      if (localIsStarred) {
+        await unstarPlayer(user.id, post.user_id);
+        setLocalIsStarred(false);
+      } else {
+        await starPlayer(user.id, post.user_id);
+        setLocalIsStarred(true);
+      }
+    } catch (error) {
+      console.error('Error toggling star:', error);
+    } finally {
+      setIsStarring(false);
+    }
+  };
+
   const handleCommentClick = () => {
     setIsCommentModalOpen(true);
   };
@@ -99,7 +132,26 @@ const PostCard = ({ post, onLikeUpdate }) => {
 
   return (
     <>
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4 relative">
+        {/* Star button for scouts - positioned in top right */}
+        {showStarButton && (
+          <button
+            onClick={handleStarToggle}
+            disabled={isStarring}
+            className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/80 backdrop-blur-sm border border-gray-200 hover:bg-white hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            title={localIsStarred ? 'Unstar this athlete' : 'Star this athlete'}
+          >
+            <svg 
+              className={`w-5 h-5 transition-colors duration-200 ${
+                localIsStarred ? 'text-yellow-500 fill-current' : 'text-gray-400 hover:text-yellow-500'
+              }`}
+              viewBox="0 0 20 20"
+            >
+              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.967a1 1 0 00.95.69h4.175c.969 0 1.371 1.24.588 1.81l-3.38 2.455a1 1 0 00-.364 1.118l1.287 3.966c.3.922-.755 1.688-1.54 1.118l-3.38-2.454a1 1 0 00-1.175 0l-3.38 2.454c-.784.57-1.838-.196-1.54-1.118l1.287-3.966a1 1 0 00-.364-1.118L2.05 9.394c-.783-.57-.38-1.81.588-1.81h4.175a1 1 0 00.95-.69l1.286-3.967z"/>
+            </svg>
+          </button>
+        )}
+
         {/* User Info */}
         <div className="flex items-center mb-3">
           {userObj.profilePictureUrl && !imageError ? (
@@ -124,7 +176,22 @@ const PostCard = ({ post, onLikeUpdate }) => {
             </div>
           )}
           <div className="flex-1">
-            <div className="font-semibold text-gray-900 cursor-pointer hover:underline" onClick={handleProfileClick}>{userName}</div>
+            <div className="flex items-center">
+              <div className="font-semibold text-gray-900 cursor-pointer hover:underline" onClick={handleProfileClick}>
+                {userName}
+              </div>
+              {/* Star indicator for athletes starred by scouts - shown next to name */}
+              {isScout && isAthlete && localIsStarred && (
+                <svg 
+                  className="w-4 h-4 text-yellow-400 ml-1" 
+                  fill="currentColor" 
+                  viewBox="0 0 20 20"
+                  title="Starred by you"
+                >
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.967a1 1 0 00.95.69h4.175c.969 0 1.371 1.24.588 1.81l-3.38 2.455a1 1 0 00-.364 1.118l1.287 3.966c.3.922-.755 1.688-1.54 1.118l-3.38-2.454a1 1 0 00-1.175 0l-3.38 2.454c-.784.57-1.838-.196-1.54-1.118l1.287-3.966a1 1 0 00-.364-1.118L2.05 9.394c-.783-.57-.38-1.81.588-1.81h4.175a1 1 0 00.95-.69l1.286-3.967z"/>
+                </svg>
+              )}
+            </div>
             <div className="text-sm text-gray-500">{formatTimeAgo(createdAt)}</div>
           </div>
         </div>
@@ -199,63 +266,53 @@ const PostCard = ({ post, onLikeUpdate }) => {
           </div>
         )}
 
-        {/* Action Buttons */}
+        {/* Post Actions */}
         <div className="flex items-center justify-between pt-3 border-t border-gray-100">
           <div className="flex items-center space-x-6">
             <button
               onClick={handleLike}
               disabled={isLiking}
-              className="flex items-center space-x-1 text-sm font-medium transition-colors duration-200"
+              className={`flex items-center space-x-2 text-sm transition-colors ${
+                localIsLiked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'
+              }`}
             >
               <svg
-                className="w-5 h-5"
+                className="w-5 h-5 stroke-current fill-none"
                 viewBox="0 0 24 24"
-                fill={localIsLiked ? '#FF0505' : 'none'}
-                stroke={localIsLiked ? '#FF0505' : '#6B7280'}
-                strokeWidth="2"
+                style={{ strokeWidth: '2' }}
               >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
+                  strokeWidth="2"
                   d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
                 />
               </svg>
               <span>{localLikesCount}</span>
             </button>
-            
+
             <button
               onClick={handleCommentClick}
-              className="flex items-center space-x-1 text-sm font-medium text-gray-500 hover:text-blue-600 transition-colors duration-200"
+              className="flex items-center space-x-2 text-sm text-gray-500 hover:text-blue-500 transition-colors"
             >
               <svg className="w-5 h-5 stroke-current fill-none" viewBox="0 0 24 24">
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth={2}
-                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" 
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
                 />
               </svg>
               <span>{localCommentsCount}</span>
             </button>
           </div>
-          
-          {/* Engagement Score for Trending Posts */}
-          {(post.engagementScore || post.engagement_score) && (
-            <div className="flex items-center space-x-1 text-xs text-orange-600 font-medium">
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-              </svg>
-              <span>Score: {post.engagementScore || post.engagement_score}</span>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Comment Modal */}
       <CommentModal
         isOpen={isCommentModalOpen}
         onClose={() => setIsCommentModalOpen(false)}
-        post={post}
+        postId={post.id}
         onCommentAdded={handleCommentAdded}
       />
     </>

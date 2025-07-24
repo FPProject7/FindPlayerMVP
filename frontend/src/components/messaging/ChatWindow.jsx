@@ -284,21 +284,17 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
     };
   }, [loading, pullDistance]);
 
-  // Remove useAuthStore premium checks
-  // Use dbUser for all premium/verified checks
-  const isPremium = dbUser?.is_premium_member || dbUser?.isPremiumMember;
+  // Use dbUser for verified checks
   const isScout = dbUser?.role === 'scout';
   const isVerified = dbUser?.is_verified;
-  // Free users can send messages in existing conversations, but need premium for new conversations
-  const canSendMessages = isNewConversation ? true : true; // Allow all users to send messages in new conversations
+  const canSendMessages = true; // Allow all users to send messages
 
   useEffect(() => {
     console.log('[ChatWindow] conversationId:', currentConversationId);
     console.log('[ChatWindow] isNewConversation:', isNewConversation);
     console.log('[ChatWindow] canSendMessages:', canSendMessages);
-    console.log('[ChatWindow] isPremium:', isPremium);
     console.log('[ChatWindow] myId:', myId, 'otherUserId:', otherUserId);
-  }, [currentConversationId, isNewConversation, canSendMessages, isPremium, myId, otherUserId]);
+  }, [currentConversationId, isNewConversation, canSendMessages, myId, otherUserId]);
 
   const handleSendAutomatedMessage = async () => {
     if (!automatedMessageText.trim()) return;
@@ -333,16 +329,8 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
       }, 100);
     } catch (error) {
       const msg = error?.message || error?.graphQLErrors?.[0]?.message || '';
-      if (msg.includes('Only premium members can use messaging.')) {
-        setErrorMessage('Premium Feature');
-        setTimeout(() => setErrorMessage(''), 2000);
-      } else if (msg.includes('Only premium members can initiate new conversations')) {
-        setErrorMessage('Upgrade to Premium to start new conversations. You can still respond to existing conversations.');
-        setTimeout(() => setErrorMessage(''), 4000);
-      } else {
-        setErrorMessage(msg || 'Failed to send message.');
-        setTimeout(() => setErrorMessage(''), 2000);
-      }
+      setErrorMessage(msg || 'Failed to send message.');
+      setTimeout(() => setErrorMessage(''), 2000);
       console.error('Error sending automated message:', error);
     }
   };
@@ -385,18 +373,9 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
         window.dispatchEvent(new CustomEvent('messagesRead'));
       }, 100);
     } catch (error) {
-      // Show styled popup for non-premium error
       const msg = error?.message || error?.graphQLErrors?.[0]?.message || '';
-      if (msg.includes('Only premium members can use messaging.')) {
-        setErrorMessage('Premium Feature');
-        setTimeout(() => setErrorMessage(''), 2000);
-      } else if (msg.includes('Only premium members can initiate new conversations')) {
-        setErrorMessage('Upgrade to Premium to start new conversations. You can still respond to existing conversations.');
-        setTimeout(() => setErrorMessage(''), 4000);
-      } else {
-        setErrorMessage(msg || 'Failed to send message.');
-        setTimeout(() => setErrorMessage(''), 2000);
-      }
+      setErrorMessage(msg || 'Failed to send message.');
+      setTimeout(() => setErrorMessage(''), 2000);
       console.error('Error sending message:', error);
     }
   };

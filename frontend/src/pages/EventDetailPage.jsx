@@ -171,7 +171,7 @@ const EventDetailPage = () => {
   const { eventId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   
   // State for event data and loading
   const [event, setEvent] = useState(null);
@@ -190,6 +190,9 @@ const EventDetailPage = () => {
   
   // Hide register button if ?hostView=1 is present
   const isHostView = new URLSearchParams(location.search).get('hostView') === '1';
+  
+  // Check if user is a scout or coach (they shouldn't be able to register)
+  const isScoutOrCoach = user?.role?.toLowerCase() === 'scout' || user?.role?.toLowerCase() === 'coach';
 
   // Fetch event data and host info
   useEffect(() => {
@@ -471,7 +474,7 @@ const EventDetailPage = () => {
             </>
           )}
           {/* Button logic */}
-          {!isHostView && (
+          {!isHostView && !isScoutOrCoach && (
             isRegistered ? (
               <button
                 className="w-full py-3 rounded-full bg-red-500 text-white font-bold text-lg mt-2 hover:bg-red-600 transition disabled:opacity-50"

@@ -37,7 +37,7 @@ exports.handler = async (event) => {
   try {
     await client.connect();
 
-    // Check athlete's premium status and quota
+    // Check if user exists (removed quota check)
     const userResult = await client.query(
       'SELECT is_premium_member FROM users WHERE id = $1',
       [athleteId]
@@ -51,38 +51,7 @@ exports.handler = async (event) => {
       };
     }
 
-    const isPremium = userResult.rows[0].is_premium_member;
-    const maxSubmissions = isPremium ? 3 : 1; // Premium: 3/day, Free: 1/day
-    // Use a 1-day window
-    const daysBack = 1;
-
-    // Count submissions made in the last 1 day
-    const quotaResult = await client.query(
-      `SELECT COUNT(*) as submission_count 
-       FROM challenge_submissions 
-       WHERE athlete_id = $1 
-       AND submitted_at >= NOW() - INTERVAL '${daysBack} day'`,
-      [athleteId]
-    );
-
-    const currentCount = parseInt(quotaResult.rows[0].submission_count);
-    console.log(`Athlete ${athleteId} has submitted ${currentCount}/${maxSubmissions} challenges in the last ${daysBack} day (Premium: ${isPremium})`);
-
-    if (currentCount >= maxSubmissions) {
-      await client.end();
-      return {
-        statusCode: 429,
-        body: JSON.stringify({ 
-          message: `Challenge submission quota exceeded. You can submit ${maxSubmissions} challenge${maxSubmissions > 1 ? 's' : ''} per ${daysBack}-day period. Current usage: ${currentCount}/${maxSubmissions}`,
-          quota: {
-            current: currentCount,
-            max: maxSubmissions,
-            period: `${daysBack} day`,
-            isPremium: isPremium
-          }
-        })
-      };
-    }
+    // Removed quota checking logic - allow unlimited submissions
 
     const existingSubmission = await client.query(
       `SELECT * FROM challenge_submissions 

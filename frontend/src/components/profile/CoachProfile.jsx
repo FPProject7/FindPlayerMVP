@@ -105,6 +105,16 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
         showShareButton={true}
       />
       
+      {/* Bio Section - moved above other content */}
+      <div className="px-4 mb-4">
+        <EditableBio
+          bio={bio}
+          isOwnProfile={currentUserId === profile.id}
+          onSave={handleBioSave}
+          placeholder="Add a description about yourself..."
+        />
+      </div>
+      
       {/* Show Book a Session for athletes viewing a coach profile */}
       {((currentUserRole === 'athlete' && !isOwnProfile) || (!currentUserRole && !isOwnProfile)) && (
         <div className="flex justify-center my-4 px-4">
@@ -123,15 +133,6 @@ const CoachProfile = ({ profile, currentUserId, isFollowing, buttonLoading, onFo
         </div>
       )}
       
-      {/* Bio Section */}
-      <div className="px-4">
-        <EditableBio
-          bio={bio}
-          isOwnProfile={currentUserId === profile.id}
-          onSave={handleBioSave}
-          placeholder="Add a description about yourself..."
-        />
-      </div>
       <div className="flex justify-around my-4">
         <div className="flex flex-col items-center">
           {isAuthenticated ? (

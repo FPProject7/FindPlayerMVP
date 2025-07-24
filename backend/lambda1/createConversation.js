@@ -47,11 +47,7 @@ export const handler = async (event) => {
     userId = await resolveUserId(userId);
     otherUserId = await resolveUserId(otherUserId);
 
-    // Check premium status from DB
-    const isPremium = await isUserPremium(userId);
-    if (!isPremium) {
-      throw new Error('Only premium members can initiate new conversations. Free users can respond to existing conversations.');
-    }
+
 
     if (!otherUserId || otherUserId === userId) {
       throw new Error('Invalid otherUserId');
