@@ -174,8 +174,31 @@ function getPositionAbbreviation(position) {
 function getShortName(name) {
   if (!name) return '';
   const parts = name.trim().split(' ');
-  if (parts.length === 1) return parts[0];
-  return `${parts[0][0]}. ${parts.slice(1).join(' ')}`;
+  if (parts.length === 1) {
+    // For single names, truncate if too long
+    return parts[0].length > 10 ? parts[0].substring(0, 10) + '...' : parts[0];
+  }
+  
+  // For multiple names, try different strategies
+  const firstName = parts[0];
+  const lastName = parts.slice(1).join(' ');
+  
+  // Strategy 1: First initial + last name
+  let combinedName = `${firstName[0]}. ${lastName}`;
+  
+  // If still too long, be more aggressive
+  if (combinedName.length > 12) {
+    // Strategy 2: Just first initial + first part of last name
+    const lastNameFirstPart = lastName.split(' ')[0];
+    combinedName = `${firstName[0]}. ${lastNameFirstPart}`;
+    
+    // If still too long, truncate the last name part
+    if (combinedName.length > 12) {
+      return `${firstName[0]}. ${lastNameFirstPart.substring(0, 9)}...`;
+    }
+  }
+  
+  return combinedName;
 }
 
 // Add helper for last name
@@ -1034,7 +1057,7 @@ const ScoutDashboardPage = () => {
             {/* Name */}
             <h2
               className="font-extrabold text-base sm:text-xl mt-2 sm:mt-0 mb-0 tracking-tight w-full text-center cursor-pointer hover:underline truncate"
-              style={{overflow: 'visible'}}
+              style={{overflow: 'hidden'}}
               onClick={() => handleViewProfile(top3[0])}
             >
               {getShortName(top3[0]?.name)}
