@@ -58,14 +58,15 @@ width: 60px;      /* or whatever size looks good */
   padding: 0;
   margin: 0;
   font-size: inherit;
-  color: #6b7280;
+  color: #FF0505;
   text-decoration: underline;
   cursor: pointer;
   font-family: inherit;
 }
 
 .terms-link:hover {
-  color: #374151;
+  color: #CC0000;
+  text-decoration: none;
 }
 
 .login-error {
