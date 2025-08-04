@@ -8,6 +8,7 @@ import api from '../../../api/axiosConfig';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import LoadingDots from '../../common/LoadingDots';
+import TermsModal from '../../common/TermsModal';
 import { countries } from '../../../utils/countryList';
 
 const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
@@ -38,6 +39,7 @@ function CoachSignUpForm() {
   const [apiError, setApiError] = useState('');
   const [imageError, setImageError] = useState('');
   const [isLoading, setIsLoading] = useState(false); // <--- New loading state
+  const [showTermsModal, setShowTermsModal] = useState(false);
   const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
 
@@ -163,7 +165,8 @@ function CoachSignUpForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="form-box">
+    <>
+      <form onSubmit={handleSubmit(onSubmit)} className="form-box">
       <button
         type="button"
         className="back-button"
@@ -272,9 +275,15 @@ function CoachSignUpForm() {
       </button>
 
       <p className="login-terms">
-        By clicking continue, you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
+        By clicking continue, you agree to our <button type="button" className="terms-link" onClick={() => setShowTermsModal(true)}>Terms of Service</button> and <button type="button" className="terms-link" onClick={() => setShowTermsModal(true)}>Privacy Policy</button>.
       </p>
     </form>
+    
+    <TermsModal 
+      isOpen={showTermsModal} 
+      onClose={() => setShowTermsModal(false)} 
+    />
+    </>
   );
 }
 

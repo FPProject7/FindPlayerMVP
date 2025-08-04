@@ -89,6 +89,23 @@
   margin-top: 8px;
 }
 
+.contact-info {
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 0;
+}
+
+.contact-info p {
+  margin-bottom: 8px;
+  color: #374151;
+}
+
+.contact-info p:last-child {
+  margin-bottom: 0;
+}
+
 .terms-footer {
   margin-top: 32px;
   padding-top: 16px;
