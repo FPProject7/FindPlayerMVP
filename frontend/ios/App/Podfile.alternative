@@ -9,11 +9,9 @@ use_frameworks!
 install! 'cocoapods', :disable_input_output_paths => true
 
 def capacitor_pods
-  # Use more explicit paths for better Xcode Cloud compatibility
-  capacitor_path = File.expand_path('../../../node_modules/@capacitor/ios', __FILE__)
-  
-  pod 'Capacitor', :path => capacitor_path
-  pod 'CapacitorCordova', :path => capacitor_path
+  # Alternative approach using git sources for Xcode Cloud
+  pod 'Capacitor', :git => 'https://github.com/ionic-team/capacitor.git', :tag => '7.4.2'
+  pod 'CapacitorCordova', :git => 'https://github.com/ionic-team/capacitor.git', :tag => '7.4.2'
 end
 
 target 'App' do
