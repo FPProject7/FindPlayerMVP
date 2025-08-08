@@ -178,11 +178,11 @@ const CreatePostModal = ({ isOpen, onClose, onPostCreated }) => {
 
   const modalContent = (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-1">
-      <div className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto relative">
+      <div className="bg-white rounded-lg max-w-md w-full p-4 sm:p-6 max-h-[80vh] overflow-y-auto relative">
         {/* Close button in top right inside modal */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl z-10"
+          className="absolute top-3 right-3 sm:top-4 sm:right-4 text-gray-500 hover:text-gray-700 text-2xl z-10"
           disabled={isLoading}
         >
           ×

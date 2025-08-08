@@ -291,6 +291,19 @@ export const updateUserStatus = async (statusData) => {
   }
 };
 
+// Delete my account
+export const deleteMyAccount = async () => {
+  const token = await useAuthStore.getState().getValidToken();
+  const url = 'https://iaulcttcsl.execute-api.us-east-1.amazonaws.com/delete-account';
+  const res = await axios.post(url, { confirm: true }, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  });
+  return res.data;
+};
+
 // Fetch count of unique athletes and coaches viewed by a scout (plural endpoint)
 export const getUsersViewedByScouts = async (scoutId) => {
   const token = await useAuthStore.getState().getValidToken();

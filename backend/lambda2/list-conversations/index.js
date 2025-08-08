@@ -10,6 +10,23 @@ const docClient = DynamoDBDocumentClient.from(dynamoClient);
 const CONVERSATIONS_TABLE = process.env.CONVERSATIONS_TABLE;
 const MESSAGES_TABLE = process.env.MESSAGES_TABLE || 'findplayer-messages';
 
+// Utility: resolveUserId (returns UUID if already UUID, else looks up by email)
+async function resolveUserId(identifier) {
+  if (/^[0-9a-fA-F-]{36}$/.test(identifier)) return identifier;
+  const client = new Client({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    ssl: { rejectUnauthorized: false }
+  });
+  await client.connect();
+  const res = await client.query('SELECT id FROM users WHERE email = $1 LIMIT 1', [identifier]);
+  await client.end();
+  if (res.rows.length === 0) throw new Error(`User not found for identifier: ${identifier}`);
+  return res.rows[0].id;
+}
+
 // Helper to fetch user info from RDS by userId
 async function getUserInfo(userId) {
     let client;
@@ -54,43 +71,86 @@ export const handler = async (event) => {
     try {
         // Extract user info from JWT claims
         const claims = event.identity.claims;
-        const cognitoUsername = claims['cognito:username'] || claims['sub'];
-        console.log('Cognito Username:', cognitoUsername);
+        let cognitoUsername = claims['cognito:username'] || claims['sub'];
+        console.log('Original Cognito Username:', cognitoUsername);
         console.log('Claims:', JSON.stringify(claims, null, 2));
 
         if (!cognitoUsername) {
             throw new Error('User not authenticated');
         }
 
+        // Always resolve to UUID for consistency with send-message function
+        cognitoUsername = await resolveUserId(cognitoUsername);
+        console.log('Resolved Cognito Username (UUID):', cognitoUsername);
+
         // Extract query parameters
         const { limit = 20, nextToken } = event.arguments || {};
         const validatedLimit = Math.min(Math.max(limit, 1), 50);
 
-        // Scan conversations where the user is a participant
-        const scanParams = {
-            TableName: CONVERSATIONS_TABLE,
-            FilterExpression: 'contains(participants, :userId)',
-            ExpressionAttributeValues: { ':userId': cognitoUsername },
-            Limit: validatedLimit,
-        };
-
-        if (nextToken) {
-            try {
-                scanParams.ExclusiveStartKey = JSON.parse(Buffer.from(nextToken, 'base64').toString());
-            } catch (tokenError) {
-                console.error('Invalid nextToken:', tokenError);
-                throw new Error('Invalid pagination token');
-            }
-        }
-
-        console.log('Scanning conversations with params:', JSON.stringify(scanParams, null, 2));
-        const response = await docClient.send(new ScanCommand(scanParams));
+        // Get additional identifiers for comprehensive search
+        const originalCognitoUsername = claims['cognito:username'] || claims['sub'];
+        const userEmail = claims['email'];
+        const searchIdentifiers = [cognitoUsername]; // Start with resolved UUID
         
-        console.log('Scan response:', JSON.stringify(response, null, 2));
+        // Add original identifier if different from resolved UUID
+        if (originalCognitoUsername !== cognitoUsername) {
+            searchIdentifiers.push(originalCognitoUsername);
+        }
+        
+        // Add email if available
+        if (userEmail) {
+            searchIdentifiers.push(userEmail);
+        }
+        
+        console.log('Search identifiers:', searchIdentifiers);
 
-        // Ensure we have items to process
-        const items = response.Items || [];
-        console.log(`Found ${items.length} conversations`);
+        // Comprehensive scan for conversations - search with all possible identifiers
+        let allConversations = [];
+        let lastEvaluatedKey = nextToken ? JSON.parse(Buffer.from(nextToken, 'base64').toString()) : undefined;
+        
+        do {
+            const scanParams = {
+                TableName: CONVERSATIONS_TABLE,
+                Limit: validatedLimit,
+            };
+            
+            if (lastEvaluatedKey) {
+                scanParams.ExclusiveStartKey = lastEvaluatedKey;
+            }
+            
+            console.log('Scanning conversations with params:', JSON.stringify(scanParams, null, 2));
+            const response = await docClient.send(new ScanCommand(scanParams));
+            
+            console.log('Scan response count:', response.Items?.length || 0);
+            
+            // Filter conversations where user is a participant using any of the search identifiers
+            const matchingConversations = (response.Items || []).filter(conversation => {
+                if (!conversation.participants || !Array.isArray(conversation.participants)) {
+                    return false;
+                }
+                
+                // Check if any of the search identifiers match any participant
+                return searchIdentifiers.some(identifier => 
+                    conversation.participants.includes(identifier)
+                );
+            });
+            
+            console.log('Matching conversations in this batch:', matchingConversations.length);
+            allConversations = allConversations.concat(matchingConversations);
+            
+            lastEvaluatedKey = response.LastEvaluatedKey;
+            
+            // Stop if we have enough conversations or no more data
+            if (allConversations.length >= validatedLimit || !lastEvaluatedKey) {
+                break;
+            }
+        } while (lastEvaluatedKey);
+
+        console.log(`Found ${allConversations.length} conversations total`);
+
+        // Limit to requested amount
+        const items = allConversations.slice(0, validatedLimit);
+        console.log(`Returning ${items.length} conversations`);
 
         // For each conversation, fetch the other user's info
         const userConversations = await Promise.all(
@@ -120,7 +180,7 @@ export const handler = async (event) => {
                             FilterExpression: 'conversationId = :conversationId AND receiverId = :receiverId AND isRead = :isRead',
                             ExpressionAttributeValues: {
                                 ':conversationId': conversation.conversationId,
-                                ':receiverId': cognitoUsername,
+                                ':receiverId': cognitoUsername, // Using resolved UUID
                                 ':isRead': false
                             },
                         };
@@ -160,8 +220,8 @@ export const handler = async (event) => {
             });
 
         let nextTokenResult = null;
-        if (response.LastEvaluatedKey) {
-            nextTokenResult = Buffer.from(JSON.stringify(response.LastEvaluatedKey)).toString('base64');
+        if (lastEvaluatedKey) {
+            nextTokenResult = Buffer.from(JSON.stringify(lastEvaluatedKey)).toString('base64');
         }
 
         const result = {
