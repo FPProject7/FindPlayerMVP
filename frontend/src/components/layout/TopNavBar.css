@@ -2,10 +2,10 @@
 
 .top-nav-bar {
     position: fixed; /* Anchored to the top of the viewport */
-    top: 0;
+    top: 0; /* Start from the very top of the screen */
     left: 0;
     right: 0;
-    height: 60px; /* Fixed height for the header bar */
+    height: calc(60px + env(safe-area-inset-top, 0)); /* Extend height to include safe area */
     background-color: rgba(255, 255, 255, 0.3); /* More transparent white background */
     backdrop-filter: blur(12px); /* Glassy blur effect */
     -webkit-backdrop-filter: blur(12px); /* Safari support */
@@ -16,7 +16,7 @@
     display: flex; /* Use flexbox to arrange items horizontally */
     align-items: center; /* Vertically center items */
     justify-content: space-between; /* Space out items */
-    padding: 0 15px; /* Horizontal padding */
+    padding: env(safe-area-inset-top, 0) max(15px, env(safe-area-inset-left, 0)) 0 max(15px, env(safe-area-inset-right, 0)); /* Top padding for safe area, horizontal padding */
     box-sizing: border-box; /* Include padding in element's total width */
   }
   
@@ -99,6 +99,10 @@
   .action-icons-container .action-icon-button:hover {
     background-color: #f0f0f0; /* Subtle hover effect */
   }
+
+
+
+
 
 @media (max-width: 500px) {
   .search-bar-container {

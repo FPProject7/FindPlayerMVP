@@ -98,6 +98,8 @@ function App() {
 
       <Routes>
         {/* Public Routes - Authentication forms (no MainLayout) */}
+        {/* Default root redirect: show Login when unauthenticated, Home when authenticated */}
+        <Route path="/" element={isAuthenticated ? <Navigate to="/home" replace /> : <Navigate to="/login" replace />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
@@ -111,7 +113,6 @@ function App() {
         
         {/* Main Application Content Routes (Viewable with modal if unauthenticated) */}
         <Route element={<MainLayout />}>
-          <Route path="/" element={<HomePage />} /> 
           <Route path="/home" element={<HomePage />} />
           <Route path="/challenges" element={<ChallengesPage />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />

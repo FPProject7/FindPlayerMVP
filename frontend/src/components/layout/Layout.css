@@ -68,11 +68,12 @@
 }
 
 .main-content-with-top-bar {
-  padding-top: 60px;
-  padding-bottom: 60px;
+  /* Account for top navbar height plus safe area */
+  padding-top: calc(60px + env(safe-area-inset-top, 0));
+  padding-bottom: max(60px, env(safe-area-inset-bottom, 0));
   box-sizing: border-box;
-  padding-left: 15px;
-  padding-right: 15px;
+  padding-left: max(15px, env(safe-area-inset-left, 0));
+  padding-right: max(15px, env(safe-area-inset-right, 0));
 
   max-width: 600px;
   margin-left: auto;

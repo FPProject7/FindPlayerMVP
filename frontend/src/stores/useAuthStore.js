@@ -16,6 +16,7 @@ export const useAuthStore = create(
       isAuthenticated: false,
       tokenExpiry: null,    // When the token expires
       sessionExpired: false, // Track if session expired vs manual logout
+      lastTokenCheck: null, // Track when we last checked token validity
 
       // --- ACTIONS ---
       /**
@@ -35,6 +36,7 @@ export const useAuthStore = create(
           isAuthenticated: true,
           tokenExpiry: expiryTime,
           sessionExpired: false, // Reset session expired flag on login
+          lastTokenCheck: new Date().toISOString(),
         });
         // Zustand persist middleware will automatically save this to localStorage
       },
@@ -49,6 +51,7 @@ export const useAuthStore = create(
           isAuthenticated: false,
           tokenExpiry: null,
           sessionExpired: isSessionExpired, // Track if logout was due to session expiry
+          lastTokenCheck: null,
         });
         // Zustand persist middleware will automatically clear from localStorage
       },
@@ -67,6 +70,7 @@ export const useAuthStore = create(
           refreshToken: newRefreshToken || get().refreshToken,
           tokenExpiry: new Date(Date.now() + (30 * 24 * 60 * 60 * 1000)), // 30 days
           sessionExpired: false, // Reset session expired flag on token update
+          lastTokenCheck: new Date().toISOString(),
         });
       },
 
@@ -80,12 +84,17 @@ export const useAuthStore = create(
           return false;
         }
         
-        // If token is expired, try to refresh it
-        if (state.isTokenExpired()) {
-          console.log('[AuthStore] Token expired on startup, attempting refresh...');
-          // Don't await here, let the refresh happen in the background
-          state.refreshTokenAsync().catch(error => {
-            console.error('[AuthStore] Failed to refresh token on startup:', error);
+        // Check if it's been more than 24 hours since last token check
+        const lastCheck = state.lastTokenCheck ? new Date(state.lastTokenCheck) : null;
+        const now = new Date();
+        const hoursSinceLastCheck = lastCheck ? (now - lastCheck) / (1000 * 60 * 60) : 24;
+        
+        // If it's been more than 24 hours, force a token validation
+        if (hoursSinceLastCheck > 24) {
+          console.log('[AuthStore] More than 24 hours since last token check, validating...');
+          // Don't await here, let the validation happen in the background
+          state.validateAndRefreshToken().catch(error => {
+            console.error('[AuthStore] Failed to validate token on startup:', error);
             // Only clear auth if it's a real auth error
             if (error.message.includes('refresh token') || error.message.includes('401') || error.message.includes('403')) {
               state.logout(true);
@@ -134,6 +143,29 @@ export const useAuthStore = create(
         }
         // Token is expired, try to refresh
         return await get().refreshTokenAsync('id');
+      },
+
+      // Validate and refresh token (new method for startup validation)
+      validateAndRefreshToken: async () => {
+        const state = get();
+        if (!state.isAuthenticated || !state.refreshToken) {
+          throw new Error('No refresh token available');
+        }
+        
+        console.log('[AuthStore] Validating token...');
+        
+        try {
+          // Try to refresh the token to validate it's still good
+          const result = await state.refreshTokenAsync('access');
+          
+          // Update last token check time
+          set({ lastTokenCheck: new Date().toISOString() });
+          
+          return result;
+        } catch (error) {
+          console.error('[AuthStore] Token validation failed:', error);
+          throw error;
+        }
       },
 
       // Refresh user profile from Cognito
@@ -196,6 +228,23 @@ export const useAuthStore = create(
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             console.error('[AuthStore] Refresh failed:', errorData);
+            
+            // Check if it's a refresh token expired error
+            if (response.status === 401 || errorData.message?.includes('refresh token')) {
+              // Clear auth state immediately for expired refresh tokens
+              set({
+                token: null,
+                accessToken: null,
+                refreshToken: null,
+                user: null,
+                isAuthenticated: false,
+                tokenExpiry: null,
+                sessionExpired: true,
+                lastTokenCheck: null,
+              });
+              throw new Error('Authentication expired. Please log in again.');
+            }
+            
             throw new Error(errorData.message || `Token refresh failed with status: ${response.status}`);
           }
           
@@ -210,6 +259,7 @@ export const useAuthStore = create(
             isAuthenticated: state.isAuthenticated, // Preserve authentication state
             tokenExpiry: new Date(Date.now() + (30 * 24 * 60 * 60 * 1000)), // 30 days
             sessionExpired: false, // Reset session expired flag on successful refresh
+            lastTokenCheck: new Date().toISOString(),
           });
           
           console.log('[AuthStore] Token refresh completed successfully');
@@ -218,7 +268,7 @@ export const useAuthStore = create(
           console.error('[AuthStore] Token refresh failed:', error);
           
           // Only clear auth if it's a real authentication error, not a network error
-          if (error.message.includes('refresh token') || error.message.includes('401') || error.message.includes('403')) {
+          if (error.message.includes('refresh token') || error.message.includes('401') || error.message.includes('403') || error.message.includes('Authentication expired')) {
             set({
               token: null,
               accessToken: null,
@@ -227,6 +277,7 @@ export const useAuthStore = create(
               isAuthenticated: false,
               tokenExpiry: null,
               sessionExpired: true, // Mark as session expired when refresh fails
+              lastTokenCheck: null,
             });
             throw new Error('Authentication expired. Please log in again.');
           } else {
@@ -246,7 +297,8 @@ export const useAuthStore = create(
         user: state.user, 
         isAuthenticated: state.isAuthenticated,
         tokenExpiry: state.tokenExpiry,
-        sessionExpired: state.sessionExpired
+        sessionExpired: state.sessionExpired,
+        lastTokenCheck: state.lastTokenCheck
       }),
       // Use a more reliable storage method for mobile
       storage: {

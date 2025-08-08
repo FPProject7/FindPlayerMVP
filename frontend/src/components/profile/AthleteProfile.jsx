@@ -1,9 +1,11 @@
 import ProfileHeader from './ProfileHeader';
 import ProfileTabs from './ProfileTabs';
 import FollowersModal from './FollowersModal';
+import DeleteAccountModal from '../common/DeleteAccountModal';
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useNavigate } from 'react-router-dom';
+import { deleteMyAccount } from '../../api/userApi';
 import { formatHeight, formatWeight } from '../../utils/levelUtils';
 import { starPlayer, unstarPlayer, getStarredPlayers } from '../../api/starredApi';
 import { getUserBio, updateUserBio } from '../../api/bioApi';
@@ -54,6 +56,8 @@ const AthleteProfile = ({
   const [starLoading, setStarLoading] = useState(false);
   const [useMetric, setUseMetric] = useState(false);
   const [bio, setBio] = useState(profile.bio || '');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Load bio from API
   useEffect(() => {
@@ -138,6 +142,22 @@ const AthleteProfile = ({
     } catch (error) {
       console.error('Failed to save bio:', error);
       throw error;
+    }
+  };
+
+  // Handle account deletion
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true);
+    try {
+      await deleteMyAccount();
+      logout();
+      navigate('/login');
+    } catch (error) {
+      console.error('Delete account failed:', error);
+      alert(error?.response?.data?.error || 'Failed to delete account. Please try again.');
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
     }
   };
 
@@ -277,15 +297,29 @@ const AthleteProfile = ({
       )}
       <ProfileTabs profile={profile} isOwnProfile={currentUserId === profile.id} />
       {currentUserId === profile.id && (
-        <div className="flex justify-center mt-8 mb-24">
+        <div className="flex flex-col items-center gap-3 mt-8 mb-24 px-4">
           <button
             className="w-full max-w-xs bg-[#FF0505] hover:bg-[#CC0000] text-white rounded-full px-8 py-3 font-semibold shadow-md transition-colors duration-200 text-base"
             onClick={() => { logout(); navigate('/login'); }}
           >
             Sign Out
           </button>
+          <button
+            className="w-full max-w-xs bg-white text-red-600 border-2 border-red-500 hover:bg-red-50 rounded-full px-8 py-3 font-semibold shadow-md transition-colors duration-200 text-base"
+            onClick={() => setShowDeleteModal(true)}
+          >
+            Delete My Account
+          </button>
         </div>
       )}
+      
+      {/* Delete Account Modal */}
+      <DeleteAccountModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDeleteAccount}
+        isLoading={isDeleting}
+      />
     </div>
   );
 };

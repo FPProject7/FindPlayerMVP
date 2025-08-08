@@ -86,6 +86,8 @@ const TopNavBar = () => {
     return () => clearTimeout(timeout);
   }, [search]);
 
+
+
   const handleProfileIconClick = () => {
     if (isAuthenticated) {
       navigate('/profile');

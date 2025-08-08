@@ -2,5 +2,8 @@
 	"appId": "co.findplayer.app",
 	"appName": "FindPlayer",
 	"webDir": "dist",
+	"ios": {
+		"contentInset": "automatic"
+	},
 	"packageClassList": []
 }
