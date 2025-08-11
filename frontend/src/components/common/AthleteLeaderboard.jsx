@@ -153,7 +153,7 @@ function getShortName(name) {
   const parts = name.trim().split(' ');
   if (parts.length === 1) {
     // For single names, truncate if too long
-    return parts[0].length > 10 ? parts[0].substring(0, 10) + '...' : parts[0];
+    return parts[0].length > 8 ? parts[0].substring(0, 8) + '...' : parts[0];
   }
   
   // For multiple names, try different strategies
@@ -164,14 +164,14 @@ function getShortName(name) {
   let combinedName = `${firstName[0]}. ${lastName}`;
   
   // If still too long, be more aggressive
-  if (combinedName.length > 12) {
+  if (combinedName.length > 10) {
     // Strategy 2: Just first initial + first part of last name
     const lastNameFirstPart = lastName.split(' ')[0];
     combinedName = `${firstName[0]}. ${lastNameFirstPart}`;
     
     // If still too long, truncate the last name part
-    if (combinedName.length > 12) {
-      return `${firstName[0]}. ${lastNameFirstPart.substring(0, 9)}...`;
+    if (combinedName.length > 10) {
+      return `${firstName[0]}. ${lastNameFirstPart.substring(0, 7)}...`;
     }
   }
   
@@ -439,7 +439,7 @@ const AthleteLeaderboard = () => {
                   <div className="absolute top-0 left-0 w-4 h-4 sm:w-7 sm:h-7 rounded-full flex items-center justify-center z-30 shadow -translate-x-1/3 -translate-y-1/3 bg-gradient-to-br from-yellow-400 to-yellow-600"><span className="text-white font-bold text-xs sm:text-lg">1</span></div>
                 </div>
                 <div className="flex flex-col flex-1 ml-2">
-                  <h2 className="font-extrabold text-lg sm:text-2xl mb-0 sm:mb-1 tracking-tight text-left cursor-pointer hover:underline truncate mt-2" onClick={() => navigate(createProfileUrl(top3[0].name, 'athlete'))}>{getShortName(top3[0]?.name)}</h2>
+                  <h2 className="font-extrabold text-lg sm:text-2xl mb-0 sm:mb-1 tracking-tight text-left cursor-pointer hover:underline truncate mt-2" style={{overflow: 'hidden', maxWidth: '100%'}} onClick={() => navigate(createProfileUrl(top3[0].name, 'athlete'))}>{getShortName(top3[0]?.name)}</h2>
                   <div className="flex flex-row flex-wrap items-center gap-0.5 text-[11px] sm:text-lg text-gray-400 italic font-semibold mb-0.5 sm:mb-1">
                     <span>Age: {calculateAge(top3[0].dateOfBirth)}</span>
                     <span>•</span>
@@ -497,7 +497,7 @@ const AthleteLeaderboard = () => {
                   <div className="absolute top-0 left-0 w-3 h-3 sm:w-5 sm:h-5 rounded-full flex items-center justify-center z-30 shadow -translate-x-1/3 -translate-y-1/3 bg-gradient-to-br from-gray-300 to-gray-400"><span className="text-white font-bold text-[10px] sm:text-xs">2</span></div>
                 </div>
                 <div className="flex flex-col flex-1 ml-2">
-                  <h2 className="font-extrabold text-base sm:text-xl mb-0 sm:mb-1 tracking-tight text-left cursor-pointer hover:underline truncate mt-2" onClick={() => navigate(createProfileUrl(top3[1].name, 'athlete'))}>{getShortName(top3[1]?.name)}</h2>
+                  <h2 className="font-extrabold text-base sm:text-xl mb-0 sm:mb-1 tracking-tight text-left cursor-pointer hover:underline truncate mt-2" style={{overflow: 'hidden', maxWidth: '100%'}} onClick={() => navigate(createProfileUrl(top3[1].name, 'athlete'))}>{getShortName(top3[1]?.name)}</h2>
                   <div className="flex flex-row flex-wrap items-center gap-0.5 text-[9px] sm:text-base text-gray-400 italic font-semibold mb-0.5 sm:mb-1">
                     <span>Age: {calculateAge(top3[1].dateOfBirth)}</span>
                     <span>•</span>
@@ -552,7 +552,7 @@ const AthleteLeaderboard = () => {
                   <div className="absolute top-0 left-0 w-3 h-3 sm:w-5 sm:h-5 rounded-full flex items-center justify-center z-30 shadow -translate-x-1/3 -translate-y-1/3 bg-gradient-to-br from-orange-400 to-orange-600"><span className="text-white font-bold text-[10px] sm:text-xs">3</span></div>
                 </div>
                 <div className="flex flex-col flex-1 ml-2">
-                  <h2 className="font-extrabold text-base sm:text-xl mb-0 sm:mb-1 tracking-tight text-left cursor-pointer hover:underline truncate mt-2" onClick={() => navigate(createProfileUrl(top3[2].name, 'athlete'))}>{getShortName(top3[2]?.name)}</h2>
+                  <h2 className="font-extrabold text-base sm:text-xl mb-0 sm:mb-1 tracking-tight text-left cursor-pointer hover:underline truncate mt-2" style={{overflow: 'hidden', maxWidth: '100%'}} onClick={() => navigate(createProfileUrl(top3[2].name, 'athlete'))}>{getShortName(top3[2]?.name)}</h2>
                   <div className="flex flex-row flex-wrap items-center gap-0.5 text-[9px] sm:text-base text-gray-400 italic font-semibold mb-0.5 sm:mb-1">
                     <span>Age: {calculateAge(top3[2].dateOfBirth)}</span>
                     <span>•</span>
@@ -623,7 +623,7 @@ const AthleteLeaderboard = () => {
                   )}
                 </div>
                 <div className="flex flex-col flex-1 ml-2 min-w-0">
-                  <h2 className="font-extrabold text-xs sm:text-lg mb-0 sm:mb-1 tracking-tight text-left cursor-pointer hover:underline truncate" onClick={() => navigate(createProfileUrl(user.name, 'athlete'))}>{getShortName(user?.name)}</h2>
+                  <h2 className="font-extrabold text-xs sm:text-lg mb-0 sm:mb-1 tracking-tight text-left cursor-pointer hover:underline truncate" style={{overflow: 'hidden', maxWidth: '100%'}} onClick={() => navigate(createProfileUrl(user.name, 'athlete'))}>{getShortName(user?.name)}</h2>
                   <div className="flex flex-row flex-wrap items-center gap-0.5 text-[8px] sm:text-xs text-gray-400 italic font-semibold mb-0.5 sm:mb-1">
                     <span>Age: {calculateAge(user.dateOfBirth)}</span>
                     <span>•</span>
