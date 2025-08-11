@@ -230,7 +230,7 @@ export default function CoachChallengesView() {
 
   // UI rendering
   return (
-    <div className="p-4 pt-24">
+    <div className="p-4" style={{ paddingTop: 'calc(60px + env(safe-area-inset-top, 0) + 20px)' }}>
       {/* Centered Success Message Notification */}
       {successMessage && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none">
@@ -248,7 +248,7 @@ export default function CoachChallengesView() {
         </div>
       )}
       {/* Fixed Tabs */}
-      <div className="fixed top-16 left-0 right-0 z-50 px-4 py-3 pointer-events-none">
+      <div className="fixed left-0 right-0 z-50 px-4 py-3 pointer-events-none" style={{ top: 'calc(60px + env(safe-area-inset-top, 0))' }}>
         <div className="flex space-x-4 max-w-lg w-full mx-auto pointer-events-auto">
         <button
             onClick={() => setActiveTab('post')}
@@ -273,7 +273,7 @@ export default function CoachChallengesView() {
 
       {/* Post Challenge Form */}
       {activeTab === "post" && (
-        <div className="pb-24 px-4">
+        <div className="pb-32 px-4">
           <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-lg shadow-md max-w-lg mx-auto">
             {/* Quota Information */}
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
