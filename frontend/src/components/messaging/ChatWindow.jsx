@@ -407,7 +407,7 @@ export default function ChatWindow({ isOpen, onClose, conversationId, otherUserN
 
   // Modal content
   const modalContent = (
-    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-0" style={{ minHeight: '100vh' }}>
+    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[100000] p-0" style={{ minHeight: '100vh' }}>
       {/* Error Popup */}
       {errorMessage && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none">

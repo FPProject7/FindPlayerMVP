@@ -230,7 +230,7 @@ export default function CoachChallengesView() {
 
   // UI rendering
   return (
-    <div className="p-4 pt-24">
+    <div className="p-4" style={{ paddingTop: 'calc(60px + env(safe-area-inset-top, 0) + 20px)' }}>
       {/* Centered Success Message Notification */}
       {successMessage && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none">
@@ -248,7 +248,7 @@ export default function CoachChallengesView() {
         </div>
       )}
       {/* Fixed Tabs */}
-      <div className="fixed top-16 left-0 right-0 z-50 px-4 py-3 pointer-events-none">
+      <div className="fixed left-0 right-0 z-50 px-4 py-3 pointer-events-none" style={{ top: 'calc(60px + env(safe-area-inset-top, 0))' }}>
         <div className="flex space-x-4 max-w-lg w-full mx-auto pointer-events-auto">
         <button
             onClick={() => setActiveTab('post')}
@@ -273,86 +273,88 @@ export default function CoachChallengesView() {
 
       {/* Post Challenge Form */}
       {activeTab === "post" && (
-        <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-lg shadow-md max-w-lg mx-auto">
-          {/* Quota Information */}
-          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <svg className="w-5 h-5 text-gray-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                <span className="text-sm font-medium text-gray-700">Challenge Creation Quota</span>
+        <div className="pb-32 px-4">
+          <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-lg shadow-md max-w-lg mx-auto">
+            {/* Quota Information */}
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <svg className="w-5 h-5 text-gray-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  <span className="text-sm font-medium text-gray-700">Challenge Creation Quota</span>
+                </div>
+                <span className="text-sm font-semibold text-green-600">Unlimited</span>
               </div>
-              <span className="text-sm font-semibold text-green-600">Unlimited</span>
+              <div className="mt-2 text-xs text-gray-500">
+                You can create as many challenges as you want.
+              </div>
             </div>
-            <div className="mt-2 text-xs text-gray-500">
-              You can create as many challenges as you want.
-            </div>
-          </div>
-          <div>
-            <label htmlFor="title" className="block text-sm font-semibold text-gray-700 mb-1">Challenge Title</label>
-          <input
-            type="text"
-              id="title"
-            name="title"
-            value={formData.title}
-            onChange={handleFormChange}
-              placeholder="Enter challenge title"
-              maxLength={TITLE_CHAR_LIMIT}
-              className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 text-gray-800 text-base"
-            required
-          />
-            <div className="text-xs text-gray-400 text-right">{formData.title.length}/{TITLE_CHAR_LIMIT}</div>
-          </div>
-          <div>
-            <label htmlFor="description" className="block text-sm font-semibold text-gray-700 mb-1">Challenge Description</label>
-          <textarea
-              id="description"
-            name="description"
-            value={formData.description}
-            onChange={handleFormChange}
-              placeholder="Describe the challenge..."
-              maxLength={DESC_CHAR_LIMIT}
-              className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 text-gray-800 text-base min-h-[80px]"
-            required
-          />
-            <div className="text-xs text-gray-400 text-right">{formData.description.length}/{DESC_CHAR_LIMIT}</div>
-          </div>
-          <div>
-            <div className="block text-base font-bold text-red-500 mb-1">{formData.xp_value} XP</div>
-          <input
-              type="range"
-              id="xp_value"
-            name="xp_value"
-              min="1"
-              max="5"
-            value={formData.xp_value}
-            onChange={handleFormChange}
-              className="w-full focus:outline-none focus:ring-2 focus:ring-red-400 accent-red-500"
-              style={{ accentColor: '#FF0505' }}
-            />
-          </div>
-          <div>
-            <label htmlFor="challenge-image" className="block text-sm font-semibold text-gray-700 mb-1">Challenge Image (max 2MB)</label>
+            <div>
+              <label htmlFor="title" className="block text-sm font-semibold text-gray-700 mb-1">Challenge Title</label>
             <input
-              id="challenge-image"
-              type="file"
-              accept="image/*"
-              onChange={handleImageChange}
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100"
+              type="text"
+                id="title"
+              name="title"
+              value={formData.title}
+              onChange={handleFormChange}
+                placeholder="Enter challenge title"
+                maxLength={TITLE_CHAR_LIMIT}
+                className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 text-gray-800 text-base"
+              required
             />
-            {imageError && <div className="text-red-600 text-xs mt-1">{imageError}</div>}
-            {imagePreview && (
-              <div className="mt-2"><img src={imagePreview} alt="Preview" className="w-full max-h-48 object-contain rounded-lg border" /></div>
-            )}
-          </div>
-          <button
-            type="submit"
-            className="w-full bg-white text-red-600 border-2 border-red-500 hover:bg-red-100 font-bold py-3 rounded-full text-base uppercase transition-colors duration-200"
-          >
-            Submit Challenge
-          </button>
-        </form>
+              <div className="text-xs text-gray-400 text-right">{formData.title.length}/{TITLE_CHAR_LIMIT}</div>
+            </div>
+            <div>
+              <label htmlFor="description" className="block text-sm font-semibold text-gray-700 mb-1">Challenge Description</label>
+            <textarea
+                id="description"
+              name="description"
+              value={formData.description}
+              onChange={handleFormChange}
+                placeholder="Describe the challenge..."
+                maxLength={DESC_CHAR_LIMIT}
+                className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 text-gray-800 text-base min-h-[80px]"
+              required
+            />
+              <div className="text-xs text-gray-400 text-right">{formData.description.length}/{DESC_CHAR_LIMIT}</div>
+            </div>
+            <div>
+              <div className="block text-base font-bold text-red-500 mb-1">{formData.xp_value} XP</div>
+            <input
+                type="range"
+                id="xp_value"
+              name="xp_value"
+                min="1"
+                max="5"
+              value={formData.xp_value}
+              onChange={handleFormChange}
+                className="w-full focus:outline-none focus:ring-2 focus:ring-red-400 accent-red-500"
+                style={{ accentColor: '#FF0505' }}
+              />
+            </div>
+            <div>
+              <label htmlFor="challenge-image" className="block text-sm font-semibold text-gray-700 mb-1">Challenge Image (max 2MB)</label>
+              <input
+                id="challenge-image"
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100"
+              />
+              {imageError && <div className="text-red-600 text-xs mt-1">{imageError}</div>}
+              {imagePreview && (
+                <div className="mt-2"><img src={imagePreview} alt="Preview" className="w-full max-h-48 object-contain rounded-lg border" /></div>
+              )}
+            </div>
+            <button
+              type="submit"
+              className="w-full bg-white text-red-600 border-2 border-red-500 hover:bg-red-100 font-bold py-3 rounded-full text-base uppercase transition-colors duration-200"
+            >
+              Submit Challenge
+            </button>
+          </form>
+        </div>
       )}
 
       {/* Grouped Challenge List View */}

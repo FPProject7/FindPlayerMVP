@@ -176,7 +176,7 @@ function getShortName(name) {
   const parts = name.trim().split(' ');
   if (parts.length === 1) {
     // For single names, truncate if too long
-    return parts[0].length > 10 ? parts[0].substring(0, 10) + '...' : parts[0];
+    return parts[0].length > 8 ? parts[0].substring(0, 8) + '...' : parts[0];
   }
   
   // For multiple names, try different strategies
@@ -187,14 +187,14 @@ function getShortName(name) {
   let combinedName = `${firstName[0]}. ${lastName}`;
   
   // If still too long, be more aggressive
-  if (combinedName.length > 12) {
+  if (combinedName.length > 10) {
     // Strategy 2: Just first initial + first part of last name
     const lastNameFirstPart = lastName.split(' ')[0];
     combinedName = `${firstName[0]}. ${lastNameFirstPart}`;
     
     // If still too long, truncate the last name part
-    if (combinedName.length > 12) {
-      return `${firstName[0]}. ${lastNameFirstPart.substring(0, 9)}...`;
+    if (combinedName.length > 10) {
+      return `${firstName[0]}. ${lastNameFirstPart.substring(0, 7)}...`;
     }
   }
   
@@ -866,7 +866,7 @@ const ScoutDashboardPage = () => {
                     {mostViewedAthlete.name ? mostViewedAthlete.name.charAt(0).toUpperCase() : 'A'}
                   </div>
                 </div>
-                <div className="font-semibold text-base sm:text-lg text-gray-900 ml-2 sm:ml-4 truncate hover:underline">{getShortName(mostViewedAthlete.name)}</div>
+                <div className="font-semibold text-base sm:text-lg text-gray-900 ml-2 sm:ml-4 truncate hover:underline" style={{overflow: 'hidden', maxWidth: '100%'}}>{getShortName(mostViewedAthlete.name)}</div>
               </div>
               {/* Info Row: Age, Level, Position */}
               <div className="flex justify-center items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-400 italic font-semibold mt-2 mb-1 w-full">
@@ -956,7 +956,7 @@ const ScoutDashboardPage = () => {
                         {grinder.name ? grinder.name.charAt(0).toUpperCase() : 'A'}
                       </div>
                     </div>
-                    <div className="font-semibold text-base sm:text-lg text-gray-900 ml-2 sm:ml-4 truncate hover:underline">{getShortName(grinder.name)}</div>
+                    <div className="font-semibold text-base sm:text-lg text-gray-900 ml-2 sm:ml-4 truncate hover:underline" style={{overflow: 'hidden', maxWidth: '100%'}}>{getShortName(grinder.name)}</div>
                   </div>
                   {/* Info Row: Age, Level, Position */}
                   <div className="flex justify-center items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-400 italic font-semibold mt-2 mb-1 w-full">
@@ -1057,7 +1057,7 @@ const ScoutDashboardPage = () => {
             {/* Name */}
             <h2
               className="font-extrabold text-base sm:text-xl mt-2 sm:mt-0 mb-0 tracking-tight w-full text-center cursor-pointer hover:underline truncate"
-              style={{overflow: 'hidden'}}
+              style={{overflow: 'hidden', maxWidth: '100%'}}
               onClick={() => handleViewProfile(top3[0])}
             >
               {getShortName(top3[0]?.name)}
@@ -1148,6 +1148,7 @@ const ScoutDashboardPage = () => {
                     <div className="flex flex-col flex-1 ml-2">
                       <h2
                         className="font-extrabold text-base sm:text-xl mb-0 sm:mb-1 tracking-tight text-left cursor-pointer hover:underline truncate mt-2"
+                        style={{overflow: 'hidden', maxWidth: '100%'}}
                         onClick={() => handleViewProfile(top3[1])}
                       >
                         {getShortName(top3[1]?.name)}
@@ -1229,6 +1230,7 @@ const ScoutDashboardPage = () => {
                     <div className="flex flex-col flex-1 ml-2">
                       <h2
                         className="font-extrabold text-base sm:text-xl mb-0 sm:mb-1 tracking-tight text-left cursor-pointer hover:underline truncate mt-2"
+                        style={{overflow: 'hidden', maxWidth: '100%'}}
                         onClick={() => handleViewProfile(top3[2])}
                       >
                         {getShortName(top3[2]?.name)}

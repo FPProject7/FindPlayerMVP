@@ -177,7 +177,7 @@ const CreatePostModal = ({ isOpen, onClose, onPostCreated }) => {
   if (!isOpen) return null;
 
   const modalContent = (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-1">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100000] p-1">
       <div className="bg-white rounded-lg max-w-md w-full p-4 sm:p-6 max-h-[80vh] overflow-y-auto relative">
         {/* Close button in top right inside modal */}
         <button

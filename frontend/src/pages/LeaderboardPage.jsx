@@ -175,7 +175,7 @@ function getShortName(name) {
   const parts = name.trim().split(' ');
   if (parts.length === 1) {
     // For single names, truncate if too long
-    return parts[0].length > 10 ? parts[0].substring(0, 10) + '...' : parts[0];
+    return parts[0].length > 8 ? parts[0].substring(0, 8) + '...' : parts[0];
   }
   
   // For multiple names, try different strategies
@@ -186,14 +186,14 @@ function getShortName(name) {
   let combinedName = `${firstName[0]}. ${lastName}`;
   
   // If still too long, be more aggressive
-  if (combinedName.length > 12) {
+  if (combinedName.length > 10) {
     // Strategy 2: Just first initial + first part of last name
     const lastNameFirstPart = lastName.split(' ')[0];
     combinedName = `${firstName[0]}. ${lastNameFirstPart}`;
     
     // If still too long, truncate the last name part
-    if (combinedName.length > 12) {
-      return `${firstName[0]}. ${lastNameFirstPart.substring(0, 9)}...`;
+    if (combinedName.length > 10) {
+      return `${firstName[0]}. ${lastNameFirstPart.substring(0, 7)}...`;
     }
   }
   
@@ -676,7 +676,7 @@ const LeaderboardPage = () => {
                 {/* Name */}
                 <h2
                   className="font-extrabold text-base sm:text-xl mt-2 sm:mt-0 mb-0 tracking-tight w-full text-center cursor-pointer hover:underline truncate"
-                  style={{overflow: 'hidden'}}
+                  style={{overflow: 'hidden', maxWidth: '100%'}}
                   onClick={() => handleViewProfile(top3[0])}
                 >
                   {getShortName(top3[0]?.name)}
@@ -796,6 +796,7 @@ const LeaderboardPage = () => {
                         <div className="flex flex-col flex-1 ml-2">
                           <h2
                             className="font-extrabold text-base sm:text-xl mb-0 sm:mb-1 tracking-tight text-left cursor-pointer hover:underline truncate mt-2"
+                            style={{overflow: 'hidden', maxWidth: '100%'}}
                             onClick={() => handleViewProfile(top3[1])}
                           >
                             {getShortName(top3[1]?.name)}
@@ -902,6 +903,7 @@ const LeaderboardPage = () => {
                         <div className="flex flex-col flex-1 ml-2">
                           <h2
                             className="font-extrabold text-base sm:text-xl mb-0 sm:mb-1 tracking-tight text-left cursor-pointer hover:underline truncate mt-2"
+                            style={{overflow: 'hidden', maxWidth: '100%'}}
                             onClick={() => handleViewProfile(top3[2])}
                           >
                             {getShortName(top3[2]?.name)}
@@ -1178,7 +1180,7 @@ const LeaderboardPage = () => {
                   {/* Name and info */}
                   <div className="flex flex-col min-w-0">
                     <div className="flex items-center gap-1">
-                      <div className="font-extrabold text-xs sm:text-base truncate cursor-pointer hover:underline leading-tight" onClick={() => handleViewProfile(user)}>
+                      <div className="font-extrabold text-xs sm:text-base truncate cursor-pointer hover:underline leading-tight" style={{overflow: 'hidden', maxWidth: '100%'}} onClick={() => handleViewProfile(user)}>
                         {getLastName(user.name)}
                       </div>
                       {activeTab === 'athletes' && (
