@@ -13,6 +13,26 @@ exports.handler = async (event) => {
       };
     }
 
+    // Validate returnUrl format
+    try {
+      const url = new URL(returnUrl);
+      // Ensure it's a valid HTTP/HTTPS URL
+      if (!['http:', 'https:'].includes(url.protocol)) {
+        return {
+          statusCode: 400,
+          headers: { 'Access-Control-Allow-Origin': '*' },
+          body: JSON.stringify({ error: 'Return URL must be a valid HTTP or HTTPS URL' }),
+        };
+      }
+    } catch (urlError) {
+      console.error('Invalid returnUrl:', returnUrl, urlError);
+      return {
+        statusCode: 400,
+        headers: { 'Access-Control-Allow-Origin': '*' },
+        body: JSON.stringify({ error: 'Invalid return URL format' }),
+      };
+    }
+
     // Get user data from database
     const client = new Client({
       host: process.env.DB_HOST,
@@ -41,6 +61,8 @@ exports.handler = async (event) => {
 
     const user = userResult.rows[0];
 
+    console.log('Creating verification session with returnUrl:', returnUrl);
+
     // Create verification session with user data
     const session = await stripe.identity.verificationSessions.create({
       type: 'document',
@@ -59,6 +81,16 @@ exports.handler = async (event) => {
     };
   } catch (error) {
     console.error('Error creating verification session:', error);
+    
+    // Check if it's a Stripe error about invalid URL
+    if (error.message && error.message.includes('url')) {
+      return {
+        statusCode: 400,
+        headers: { 'Access-Control-Allow-Origin': '*' },
+        body: JSON.stringify({ error: 'Invalid return URL format. Please ensure the URL is properly formatted.' }),
+      };
+    }
+    
     return {
       statusCode: 500,
       headers: { 'Access-Control-Allow-Origin': '*' },

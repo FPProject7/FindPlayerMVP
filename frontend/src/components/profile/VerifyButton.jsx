@@ -20,20 +20,72 @@ const VerifyButton = ({ isVerified, onStatusUpdate }) => {
     try {
       // Create a proper return URL to the scout's profile page
       const profileUrl = createProfileUrl(user.name, user.role);
-      const returnUrl = `${window.location.origin}${profileUrl}`;
+      
+      // Always use a proper HTTP/HTTPS URL for Stripe return URL
+      // Stripe requires return URLs to be valid web URLs, not Capacitor protocol URLs
+      const returnUrl = `https://findplayer.app${profileUrl}`;
+      
+      // iOS-specific debugging
+      console.log('Platform:', navigator.platform);
+      console.log('User Agent:', navigator.userAgent);
+      console.log('Window location:', window.location);
+      console.log('Profile URL:', profileUrl);
+      console.log('Final return URL:', returnUrl);
+      
+      // Validate the URL format
+      try {
+        const urlObj = new URL(returnUrl);
+        console.log('URL validation successful:', urlObj.href);
+      } catch (urlError) {
+        console.error('Invalid URL constructed:', returnUrl, urlError);
+        setError('Invalid URL format. Please try again.');
+        return;
+      }
+
+      console.log('Sending verification request with returnUrl:', returnUrl);
+
       const res = await fetch(`${API_BASE_URL}/stripe-create-verification-session`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id, returnUrl }),
       });
+      
       const data = await res.json();
+      
+      console.log('API Response:', data);
+      
+      if (!res.ok) {
+        console.error('Verification API error:', data);
+        setError(data.error || `Server error: ${res.status}`);
+        return;
+      }
+      
       if (data.url) {
-        window.location.href = data.url;
+        console.log('Redirecting to Stripe URL:', data.url);
+        
+        // iOS-specific redirect handling
+        if (navigator.platform.includes('iPhone') || navigator.platform.includes('iPad') || navigator.userAgent.includes('iPhone') || navigator.userAgent.includes('iPad')) {
+          // For iOS, try using window.open first, then fallback to location.href
+          try {
+            const newWindow = window.open(data.url, '_blank');
+            if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+              // Fallback to location.href
+              window.location.href = data.url;
+            }
+          } catch (openError) {
+            console.log('window.open failed, using location.href:', openError);
+            window.location.href = data.url;
+          }
+        } else {
+          // For other platforms, use the standard approach
+          window.location.href = data.url;
+        }
       } else {
         setError(data.error || 'Failed to start verification session');
       }
     } catch (err) {
-      setError('Network error');
+      console.error('Verification error:', err);
+      setError('Network error. Please check your connection and try again.');
     } finally {
       setIsLoading(false);
     }

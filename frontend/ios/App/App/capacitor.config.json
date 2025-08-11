@@ -3,6 +3,17 @@
 	"appName": "FindPlayer",
 	"webDir": "dist",
 	"ios": {
-		"contentInset": "automatic"
+		"contentInset": "automatic",
+		"webView": {
+			"allowsLinkPreview": true,
+			"allowsBackForwardNavigationGestures": true
+		}
+	},
+	"server": {
+		"allowNavigation": [
+			"*.stripe.com",
+			"*.stripe.network",
+			"*.stripe.dev"
+		]
 	}
 }
