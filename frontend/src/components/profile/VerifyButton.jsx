@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { createProfileUrl } from '../../utils/profileUrlUtils';
+import { Browser } from '@capacitor/browser';
 
 const API_BASE_URL = 'https://y219q4oqh5.execute-api.us-east-1.amazonaws.com/default';
 
@@ -25,10 +26,6 @@ const VerifyButton = ({ isVerified, onStatusUpdate }) => {
       // Stripe requires return URLs to be valid web URLs, not Capacitor protocol URLs
       const returnUrl = `https://findplayer.app${profileUrl}`;
       
-      // iOS-specific debugging
-      console.log('Platform:', navigator.platform);
-      console.log('User Agent:', navigator.userAgent);
-      console.log('Window location:', window.location);
       console.log('Profile URL:', profileUrl);
       console.log('Final return URL:', returnUrl);
       
@@ -61,23 +58,14 @@ const VerifyButton = ({ isVerified, onStatusUpdate }) => {
       }
       
       if (data.url) {
-        console.log('Redirecting to Stripe URL:', data.url);
+        console.log('Opening Stripe URL in external browser:', data.url);
         
-        // iOS-specific redirect handling
-        if (navigator.platform.includes('iPhone') || navigator.platform.includes('iPad') || navigator.userAgent.includes('iPhone') || navigator.userAgent.includes('iPad')) {
-          // For iOS, try using window.open first, then fallback to location.href
-          try {
-            const newWindow = window.open(data.url, '_blank');
-            if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-              // Fallback to location.href
-              window.location.href = data.url;
-            }
-          } catch (openError) {
-            console.log('window.open failed, using location.href:', openError);
-            window.location.href = data.url;
-          }
-        } else {
-          // For other platforms, use the standard approach
+        try {
+          // Use Capacitor Browser plugin to open in external browser
+          await Browser.open({ url: data.url });
+        } catch (browserError) {
+          console.error('Browser plugin failed, falling back to window.location:', browserError);
+          // Fallback to traditional web approach if Browser plugin fails
           window.location.href = data.url;
         }
       } else {
