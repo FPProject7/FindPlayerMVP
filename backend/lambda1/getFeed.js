@@ -167,7 +167,7 @@ exports.handler = async (event) => {
             SELECT following_id FROM followers WHERE follower_id = $1
           ),
           fp_account AS (
-            SELECT id FROM users WHERE email = 'sz@findplayer.co' OR name ILIKE '%findplayer official%' OR name ILIKE '%findplayer%' OR name ILIKE '%find player%' LIMIT 1
+            SELECT id FROM users WHERE email = 'sz@findplayer.co' OR email = 'Sz@szaiagency.com' OR name ILIKE '%findplayer official%' OR name ILIKE '%findplayer%' OR name ILIKE '%find player%' LIMIT 1
           ),
           trending_posts AS (
             SELECT 
@@ -235,7 +235,7 @@ exports.handler = async (event) => {
             SELECT following_id FROM followers WHERE follower_id = $1
           ),
           fp_account AS (
-            SELECT id FROM users WHERE email = 'sz@findplayer.co' OR name ILIKE '%findplayer official%' OR name ILIKE '%findplayer%' OR name ILIKE '%find player%' LIMIT 1
+            SELECT id FROM users WHERE email = 'sz@findplayer.co' OR email = 'Sz@szaiagency.com' OR name ILIKE '%findplayer official%' OR name ILIKE '%findplayer%' OR name ILIKE '%find player%' LIMIT 1
           ),
           trending_posts AS (
             SELECT 
