@@ -4,7 +4,8 @@
 echo "Starting pre-xcodebuild setup..."
 
 # Navigate to the project root (from ci_scripts directory)
-cd "$CI_WORKSPACE"
+# The script runs from ci_scripts, so we need to go up 4 levels to reach project root
+cd "../../../../"
 
 # Ensure we're in the right directory
 echo "Current directory: $(pwd)"
