@@ -18,14 +18,22 @@ if [ ! -d "frontend" ]; then
     exit 1
 fi
 
-# Install Node.js dependencies if not already done
-echo "Installing Node.js dependencies..."
-cd "frontend"
-npm ci --prefer-offline --no-audit
+# Check if node_modules exists, if not run npm install
+echo "Checking if node_modules exists..."
+if [ ! -d "frontend/node_modules" ]; then
+    echo "node_modules not found, installing dependencies..."
+    cd "frontend"
+    npm ci --prefer-offline --no-audit
+    cd ".."
+else
+    echo "node_modules found, skipping npm install"
+fi
 
 # Sync Capacitor to ensure all plugins are properly configured
 echo "Syncing Capacitor..."
+cd "frontend"
 npx cap sync ios --verbose
+cd ".."
 
 # Navigate to iOS project
 cd "ios/App"
