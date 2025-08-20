@@ -3,11 +3,19 @@
 # Xcode Cloud Pre-Xcodebuild Script
 echo "Starting pre-xcodebuild setup..."
 
-# Navigate to the project root
+# Navigate to the project root (from ci_scripts directory)
 cd "$CI_WORKSPACE"
 
 # Ensure we're in the right directory
 echo "Current directory: $(pwd)"
+
+# Check if we're in the right place
+if [ ! -d "frontend" ]; then
+    echo "❌ frontend directory not found in $(pwd)"
+    echo "Listing current directory contents:"
+    ls -la
+    exit 1
+fi
 
 # Install Node.js dependencies if not already done
 echo "Installing Node.js dependencies..."
