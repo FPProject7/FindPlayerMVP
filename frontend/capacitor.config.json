@@ -9,6 +9,15 @@
       "allowsBackForwardNavigationGestures": true
     }
   },
+  "android": {
+    "path": "./android"
+  },
+  "plugins": {
+    "@capacitor/assets": {
+      "iconPath": "src/assets/android_logo.png",
+      "splashPath": "src/assets/android_logo.png"
+    }
+  },
   "server": {
     "allowNavigation": [
       "*.stripe.com",
