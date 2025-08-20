@@ -3,6 +3,9 @@
 # Xcode Cloud Post-Clone Script for iOS
 echo "Starting Xcode Cloud post-clone setup..."
 
+# Navigate to the project root (from ci_scripts directory)
+cd "../../../../"
+
 # Verify pre-built dependencies exist
 echo "Verifying pre-built dependencies..."
 if [ ! -d "frontend/node_modules" ]; then
@@ -16,9 +19,6 @@ if [ ! -d "frontend/ios/App/Pods" ]; then
 fi
 
 echo "✅ Pre-built dependencies verified"
-
-# Navigate to the project root
-cd "$CI_WORKSPACE"
 
 # All dependencies are pre-built locally
 echo "All dependencies are pre-built locally - no installation needed"
