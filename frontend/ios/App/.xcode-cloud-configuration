@@ -1,12 +1,12 @@
 {
   "buildSettings": {
     "ENABLE_BITCODE": "NO",
-    "IPHONEOS_DEPLOYMENT_TARGET": "15.0",
+    "IPHONEOS_DEPLOYMENT_TARGET": "14.0",
     "SWIFT_VERSION": "5.0"
   },
   "preBuildScripts": [
     {
-      "name": "Install Dependencies",
+      "name": "Install Dependencies and Build",
       "script": "cd $CI_WORKSPACE/frontend && npm ci && npm run build && npx cap sync ios && cd ios/App && pod install && cd ../.. && npx cap build ios"
     }
   ]
