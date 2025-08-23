@@ -25,28 +25,12 @@ if [ -n "$CI_XCODE_CLOUD" ] || [ -n "$CI" ]; then
     echo "Syncing Capacitor iOS project..."
     npx cap sync ios
     
-    # Verify Capacitor files exist
-    echo "Verifying Capacitor files..."
-    if [ ! -f "node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDVWebViewProcessPoolFactory.h" ]; then
-        echo "❌ CapacitorCordova header file not found"
-        echo "Reinstalling Capacitor dependencies..."
-        npm install @capacitor/ios@latest
-        npx cap sync ios
-    else
-        echo "✅ CapacitorCordova files verified"
-    fi
-    
     # Navigate to iOS App directory
     cd "ios/App"
     
     # Install CocoaPods dependencies
     echo "Installing CocoaPods dependencies..."
     pod install --repo-update
-    
-    # Build the iOS app using Capacitor
-    echo "Building iOS app using Capacitor..."
-    cd "../.."
-    npx cap build ios
     
 else
     # Local development environment
