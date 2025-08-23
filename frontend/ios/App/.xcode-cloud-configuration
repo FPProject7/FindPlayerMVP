@@ -7,7 +7,7 @@
   "preBuildScripts": [
     {
       "name": "Install Dependencies and Build",
-      "script": "cd $CI_WORKSPACE/frontend && npm ci && npm run build && npx cap sync ios && cd ios/App && pod install && cd ../.. && npx cap build ios"
+      "script": "cd $CI_WORKSPACE/frontend && npm ci && npm run build && npx cap sync ios && cd ios/App && pod install --repo-update && cd ../.. && npx cap build ios"
     }
   ]
 }
