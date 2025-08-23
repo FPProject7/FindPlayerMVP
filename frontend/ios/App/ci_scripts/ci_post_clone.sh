@@ -20,6 +20,12 @@ fi
 
 echo "✅ Pre-built dependencies verified"
 
+# Add privacy manifests to resolve App Store submission issue
+echo "Adding privacy manifests to Capacitor and Cordova frameworks..."
+cd "frontend/ios/App"
+chmod +x add-privacy-manifests.sh
+./add-privacy-manifests.sh
+
 # All dependencies are pre-built locally
 echo "All dependencies are pre-built locally - no installation needed"
 

@@ -30,4 +30,7 @@ post_install do |installer|
       config.build_settings['SWIFT_VERSION'] = '5.0'
     end
   end
+  
+  # Add privacy manifests to Capacitor and Cordova frameworks
+  system('chmod +x add-privacy-manifests.sh && ./add-privacy-manifests.sh')
 end
