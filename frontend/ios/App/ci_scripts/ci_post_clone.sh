@@ -59,6 +59,11 @@ if [ -n "$CI_XCODE_CLOUD" ] || [ -n "$CI" ]; then
     echo "Installing CocoaPods dependencies..."
     pod install
     
+    # Build the iOS app using Capacitor
+    echo "Building iOS app using Capacitor..."
+    cd "../.."
+    npx cap build ios
+    
 else
     # Local development environment
     echo "Running in local development environment"
