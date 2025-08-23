@@ -24,5 +24,8 @@
 			"*.stripe.network",
 			"*.stripe.dev"
 		]
-	}
+	},
+	"packageClassList": [
+		"CAPBrowserPlugin"
+	]
 }
