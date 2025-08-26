@@ -106,6 +106,7 @@
 				504EC3011FED79650016851F /* Frameworks */,
 				504EC3021FED79650016851F /* Resources */,
 				9592DBEFFC6D2A0C8D5DEB22 /* [CP] Embed Pods Frameworks */,
+				9B9E00001AAA000000000001 /* Add Privacy Manifests */, 
 			);
 			buildRules = (
 			);
@@ -200,6 +201,21 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-App/Pods-App-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		9B9E00001AAA000000000001 /* Add Privacy Manifests */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Add Privacy Manifests";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\nAPP_FRAMEWORKS=\"$TARGET_BUILD_DIR/$FRAMEWORKS_FOLDER_PATH\"\n\nadd_manifest() {\n  local framework_path=\"$1\"\n  local manifest_src=\"$SRCROOT/App/PrivacyManifests/$2/PrivacyInfo.xcprivacy\"\n  local manifest_dst=\"$framework_path/PrivacyInfo.xcprivacy\"\n  if [ -d \"$framework_path\" ] && [ -f \"$manifest_src\" ]; then\n    echo \"Adding privacy manifest to $framework_path\"\n    cp -f \"$manifest_src\" \"$manifest_dst\"\n    if [ -n \"$CODE_SIGNING_ALLOWED\" ] && [ \"$CODE_SIGNING_ALLOWED\" = \"YES\" ]; then\n      /usr/bin/codesign --force --sign \"$EXPANDED_CODE_SIGN_IDENTITY\" --preserve-metadata=identifier,entitlements \"$framework_path\" || true\n    fi\n  fi\n}\n\nadd_manifest \"$APP_FRAMEWORKS/Capacitor.framework\" Capacitor\nadd_manifest \"$APP_FRAMEWORKS/Cordova.framework\" Cordova\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
