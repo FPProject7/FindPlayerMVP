@@ -92,6 +92,23 @@ exports.handler = async (event) => {
          VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
         ['challenge_submission', athleteId, coachId, challengeId, submission.id, false]
       );
+      // Send push to coach (same pattern as likes/comments/follows/messages)
+      try {
+        const tokenRes = await client.query('SELECT push_token, push_platform FROM users WHERE id = $1', [coachId]);
+        const pushToken = tokenRes.rows[0]?.push_token;
+        if (pushToken) {
+          const AWS = require('aws-sdk');
+          const sns = new AWS.SNS({ region: process.env.AWS_REGION || 'us-east-1' });
+          const message = {
+            default: 'New challenge submission',
+            APNS: JSON.stringify({ aps: { alert: { title: 'Challenge Submission', body: 'You received a new submission' }, sound: 'default', badge: 1 } }),
+            GCM: JSON.stringify({ notification: { title: 'Challenge Submission', body: 'You received a new submission' } }),
+          };
+          await sns.publish({ Message: JSON.stringify(message), MessageStructure: 'json', TargetArn: pushToken }).promise();
+        }
+      } catch (e) {
+        console.warn('Failed to send challenge submission push', e.message);
+      }
     }
 
     // === Streak update logic (inlined from updateStreak) ===
