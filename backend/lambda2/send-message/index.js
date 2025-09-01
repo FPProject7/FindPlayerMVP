@@ -2,6 +2,7 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand, ScanCommand, UpdateCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import pkg from 'pg';
 const { Client } = pkg;
+import AWS from 'aws-sdk';
 
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
@@ -171,6 +172,65 @@ export const handler = async (event) => {
         
         console.log('[send-message] Updating conversation with params:', JSON.stringify(updateConversationParams, null, 2));
         await docClient.send(new UpdateCommand(updateConversationParams));
+
+        // Fetch receiver push token and platform to send push notification
+        let pushToken = null;
+        let pushPlatform = null;
+        try {
+          const client = new Client({
+            host: process.env.DB_HOST,
+            user: process.env.DB_USER,
+            password: process.env.DB_PASSWORD,
+            database: process.env.DB_NAME,
+            ssl: { rejectUnauthorized: false }
+          });
+          await client.connect();
+          const res = await client.query('SELECT push_token, push_platform, name FROM users WHERE id = $1 LIMIT 1', [receiverId]);
+          await client.end();
+          if (res.rows.length > 0) {
+            pushToken = res.rows[0].push_token;
+            pushPlatform = res.rows[0].push_platform;
+          }
+        } catch (e) {
+          console.warn('[send-message] Failed to load push token', e.message);
+        }
+
+        if (pushToken && pushPlatform) {
+          try {
+            const sns = new AWS.SNS({ region: process.env.AWS_REGION || 'us-east-1' });
+            const messagePayload = {
+              default: `New message: ${content}`,
+              APNS: JSON.stringify({
+                aps: {
+                  alert: {
+                    title: 'New Message',
+                    body: content,
+                  },
+                  sound: 'default',
+                  badge: 1,
+                },
+                data: { conversationId }
+              }),
+              GCM: JSON.stringify({
+                notification: {
+                  title: 'New Message',
+                  body: content,
+                },
+                data: { conversationId }
+              }),
+            };
+
+            // If pushToken is a direct FCM token/APNs token behind SNS, assuming it's an endpoint ARN.
+            // For simplicity, treat pushToken as an endpoint ARN when using SNS.
+            await sns.publish({
+              Message: JSON.stringify(messagePayload),
+              MessageStructure: 'json',
+              TargetArn: pushToken,
+            }).promise();
+          } catch (e) {
+            console.warn('[send-message] SNS publish failed', e.message);
+          }
+        }
 
         const result = {
             message: {

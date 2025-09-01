@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "321528998657",
+    "project_id": "findplayer-45d8c",
+    "storage_bucket": "findplayer-45d8c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:321528998657:android:2556bdd04b396237568900",
+        "android_client_info": {
+          "package_name": "co.findplayer.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDqW1sHiInrSVCJoVGtkPd1iB9rVySVSjw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

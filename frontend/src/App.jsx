@@ -12,6 +12,7 @@ import EmailVerificationPage from './pages/Auth/EmailVerificationPage';
 import LoginPromptModal from "./components/common/LoginPromptModal";
 import { useAuthStore } from './stores/useAuthStore';
 import { useTokenRefresh } from './hooks/useTokenRefresh';
+import { registerPushNotifications } from './services/pushNotificationService';
 
 // Existing new page imports
 import UserProfilePage from './pages/UserProfilePage';
@@ -63,6 +64,11 @@ function App() {
     console.log('[App] Checking authentication on startup...');
     checkAuthOnStartup();
   }, [checkAuthOnStartup]);
+
+  // Initialize push notifications once after auth check
+  useEffect(() => {
+    registerPushNotifications().catch((e) => console.warn('[Push] registration failed', e));
+  }, []);
 
   useEffect(() => {
     // Check for session expiry first

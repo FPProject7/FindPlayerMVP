@@ -4,6 +4,7 @@
   "description": "Lambda function for getting user feed",
   "main": "getFeed.js",
   "dependencies": {
+    "aws-sdk": "^2.1574.0",
     "pg": "^8.11.3"
   },
   "scripts": {

@@ -65,10 +65,41 @@ exports.handler = async (event) => {
     // Add notification if not commenting on own post
     if (userId !== postOwnerId) {
       await client.query(
-        `INSERT INTO notifications (type, from_user_id, to_user_id, post_id, comment_id, created_at)
-         VALUES ($1, $2, $3, $4, $5, NOW())`,
-        ['comment_post', userId, postOwnerId, postId, commentResult.rows[0].id]
+        `INSERT INTO notifications (type, from_user_id, to_user_id, is_read, created_at)
+         VALUES ($1, $2, $3, $4, NOW())`,
+        ['comment_post', userId, postOwnerId, false]
       );
+    }
+
+    // Send push notification to post owner
+    try {
+      const tokenRes = await client.query('SELECT push_token, push_platform FROM users WHERE id = $1', [postOwnerId]);
+      const pushToken = tokenRes.rows[0]?.push_token;
+      if (pushToken) {
+        const AWS = require('aws-sdk');
+        const sns = new AWS.SNS({ region: process.env.AWS_REGION || 'us-east-1' });
+        const message = {
+          default: 'Your post was commented on',
+          APNS: JSON.stringify({ aps: { alert: { title: 'New Comment', body: 'Someone commented on your post' }, sound: 'default', badge: 1 } }),
+          GCM: JSON.stringify({ notification: { title: 'New Comment', body: 'Someone commented on your post' } }),
+        };
+        
+        // Add timeout to prevent Lambda timeout
+        const publishPromise = sns.publish({ 
+          Message: JSON.stringify(message), 
+          MessageStructure: 'json', 
+          TargetArn: pushToken 
+        }).promise();
+        
+        await Promise.race([
+          publishPromise,
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('SNS timeout')), 2000)
+          )
+        ]);
+      }
+    } catch (e) {
+      console.warn('Failed to send comment push', e.message);
     }
 
     // Get updated comment count

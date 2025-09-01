@@ -1,6 +1,7 @@
 {
-  "appId": "co.findplayer.app",
+  "appId": "co.findplayer.findplayer",
   "appName": "FindPlayer",
+  "version": "1.0.1",
   "webDir": "dist",
   "ios": {
     "contentInset": "automatic",

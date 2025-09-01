@@ -71,6 +71,24 @@ exports.handler = async (event) => {
       );
     }
 
+    // Send push to post owner
+    try {
+      const tokenRes = await client.query('SELECT push_token, push_platform FROM users WHERE id = $1', [postOwnerId]);
+      const pushToken = tokenRes.rows[0]?.push_token;
+      if (pushToken) {
+        const AWS = require('aws-sdk');
+        const sns = new AWS.SNS({ region: process.env.AWS_REGION || 'us-east-1' });
+        const message = {
+          default: 'New comment on your post',
+          APNS: JSON.stringify({ aps: { alert: { title: 'New Comment', body: 'Someone commented on your post' }, sound: 'default', badge: 1 } }),
+          GCM: JSON.stringify({ notification: { title: 'New Comment', body: 'Someone commented on your post' } }),
+        };
+        await sns.publish({ Message: JSON.stringify(message), MessageStructure: 'json', TargetArn: pushToken }).promise();
+      }
+    } catch (e) {
+      console.warn('Failed to send comment push', e.message);
+    }
+
     // Get updated comment count
     const commentCountRes = await client.query(
       'SELECT COUNT(*) as count FROM post_comments WHERE post_id = $1',

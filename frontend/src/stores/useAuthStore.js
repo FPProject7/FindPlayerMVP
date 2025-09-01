@@ -38,6 +38,14 @@ export const useAuthStore = create(
           sessionExpired: false, // Reset session expired flag on login
           lastTokenCheck: new Date().toISOString(),
         });
+        // Notify listeners (e.g., push registration) that a login occurred
+        try {
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('auth:loggedin'));
+          }
+        } catch (e) {
+          // no-op
+        }
         // Zustand persist middleware will automatically save this to localStorage
       },
 
