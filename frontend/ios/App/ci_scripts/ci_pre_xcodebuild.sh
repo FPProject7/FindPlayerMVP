@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Xcode Cloud Pre-Xcodebuild Script - ensure Pods are present
+# Xcode Cloud Pre-Xcodebuild Script - verify Pods exist
 set -euo pipefail
 
 echo "Starting bulletproof pre-xcodebuild setup..."
@@ -19,15 +19,14 @@ fi
 
 cd "${IOS_APP_DIR}"
 
-# Ensure CapacitorPushNotifications xcconfig exists; if not, run pod install
-if [ ! -f "Pods/Target Support Files/CapacitorPushNotifications/CapacitorPushNotifications.release.xcconfig" ]; then
-  echo "CapacitorPushNotifications xcconfig missing; running pod install..."
-  pod install --repo-update
-else
+# Verify CapacitorPushNotifications xcconfig exists (should be created by pod install in post-clone)
+if [ -f "Pods/Target Support Files/CapacitorPushNotifications/CapacitorPushNotifications.release.xcconfig" ]; then
   echo "✅ Found CapacitorPushNotifications.release.xcconfig"
+else
+  echo "❌ Missing CapacitorPushNotifications.release.xcconfig even after post-clone setup."
+  echo "Listing Pods/Target Support Files contents for diagnostics:"
+  ls -la "Pods/Target Support Files/" || true
+  exit 1
 fi
 
-# Print a quick tree for diagnostics
-ls -la "Pods/Target Support Files/CapacitorPushNotifications/" || true
-
-echo "Pre-xcodebuild setup completed."
+echo "Pre-xcodebuild verification completed."
