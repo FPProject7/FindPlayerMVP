@@ -1,32 +1,40 @@
 #!/bin/sh
 
 # Xcode Cloud Post-Clone Script for iOS
+set -euo pipefail
+
 echo "Starting Xcode Cloud post-clone setup..."
 
-# Navigate to the project root (from ci_scripts directory)
+# Navigate to the repository root (from ci_scripts directory)
 cd "../../../../"
 
-# Verify pre-built dependencies exist
-echo "Verifying pre-built dependencies..."
-if [ ! -d "frontend/node_modules" ]; then
-    echo "❌ node_modules not found - dependencies should be pre-built locally"
-    exit 1
+ROOT_DIR=$(pwd)
+IOS_APP_DIR="frontend/ios/App"
+FRONTEND_DIR="frontend"
+
+echo "Repository root: ${ROOT_DIR}"
+
+# 1) Install npm dependencies for Capacitor/CocoaPods paths
+if [ -f "${FRONTEND_DIR}/package.json" ]; then
+  echo "Installing frontend npm deps (npm ci)..."
+  (cd "${FRONTEND_DIR}" && npm ci)
+else
+  echo "⚠️ ${FRONTEND_DIR}/package.json not found; skipping npm install"
 fi
 
-if [ ! -d "frontend/ios/App/Pods" ]; then
-    echo "❌ Pods directory not found - iOS dependencies should be pre-built locally"
-    exit 1
+# 2) Install CocoaPods and generate Pods if missing
+if [ -d "${IOS_APP_DIR}" ]; then
+  echo "Running pod install in ${IOS_APP_DIR}..."
+  (cd "${IOS_APP_DIR}" && pod install --repo-update)
+else
+  echo "❌ iOS app directory not found at ${IOS_APP_DIR}"
+  exit 1
 fi
 
-echo "✅ Pre-built dependencies verified"
-
-# Add privacy manifests to resolve App Store submission issue
-echo "Adding privacy manifests to Capacitor and Cordova frameworks..."
-cd "frontend/ios/App"
-chmod +x add-privacy-manifests.sh
-./add-privacy-manifests.sh
-
-# All dependencies are pre-built locally
-echo "All dependencies are pre-built locally - no installation needed"
+# 3) Add privacy manifests (idempotent)
+if [ -f "${IOS_APP_DIR}/add-privacy-manifests.sh" ]; then
+  echo "Adding privacy manifests to frameworks..."
+  (cd "${IOS_APP_DIR}" && chmod +x add-privacy-manifests.sh && ./add-privacy-manifests.sh)
+fi
 
 echo "Xcode Cloud setup completed successfully!"
